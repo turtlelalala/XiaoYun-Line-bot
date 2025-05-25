@@ -84,7 +84,7 @@ def create_default_sticker_config():
         # "笑": [{"package_id": "789", "sticker_id": "10857"}], # 已包含在 "開心"
         "淡定": [{"package_id": "11537", "sticker_id": "52002746"}],
         "肚子餓": [{"package_id": "6362", "sticker_id": "11087922"}], # 也可作為 "開動啦"
-        "好奇": [{"package_id": "11537", "sticker_id": "52002739"}], # 這是鞠躬，可能用 52002744 疑惑更合適
+        "好奇": [{"package_id": "11537", "sticker_id": "52002744"}], 
     }
 
     # 新增：詳細情境觸發詞對應的貼圖
@@ -564,20 +564,19 @@ def parse_response_and_send(response_text, reply_token):
                         messages.append(TextSendMessage(text=sub_part.strip()))
         else:
             if "]" in part:
-                emotion_end_index = part.find("]")
-                emotion = part[:emotion_end_index].strip()
-                remaining_text = part[emotion_end_index = part.find("]")
-                sticker_keyword = part[:emotion_end_index].strip() # 改名為 sticker_keyword
-                remaining_text = part[emotion_end_index + 1:].strip()
-                
-                sticker_info = select_sticker_by_keyword(sticker_keyword) # 調用新的選擇函數
-                if sticker_info:
-                    messages.append(StickerSendMessage(
-                        package_id=str(sticker_info["package_id"]),
-                        sticker_id=str(sticker_info["sticker_id"])
-                    ))
-                else:
-                    logger.error(f"無法為情緒 '{emotion}' 選擇貼圖，跳過此貼圖。")
+            sticker_keyword_end_index = part.find("]")
+            sticker_keyword = part[:sticker_keyword_end_index].strip() # 使用 sticker_keyword
+            remaining_text = part[sticker_keyword_end_index + 1:].strip()
+            
+            sticker_info = select_sticker_by_keyword(sticker_keyword)
+            if sticker_info:
+                messages.append(StickerSendMessage(
+                    package_id=str(sticker_info["package_id"]),
+                    sticker_id=str(sticker_info["sticker_id"])
+                ))
+            else:
+                # 日誌中也使用 sticker_keyword
+                logger.error(f"無法為關鍵字 '{sticker_keyword}' 選擇貼圖，跳過此貼圖。")
                 if remaining_text:
                     text_sub_parts = remaining_text.split("[SPLIT]")
                     for sub_part in text_sub_parts:
@@ -591,9 +590,9 @@ def parse_response_and_send(response_text, reply_token):
                         messages.append(TextSendMessage(text=sub_part.strip()))
 
     if not messages:
-        logger.warning("Gemini 回應解析後無有效訊息，發送預設文字訊息。")
-        default_sticker_info = select_sticker_by_emotion("思考")
-        if default_sticker_info:
+    logger.warning("Gemini 回應解析後無有效訊息，發送預設文字訊息。")
+    default_sticker_info = select_sticker_by_keyword("思考") # <<< 修改為 select_sticker_by_keyword
+    if default_sticker_info:
             messages = [
                 TextSendMessage(text="咪...？小雲好像沒有聽得很懂耶..."),
                 TextSendMessage(text="可以...再說一次嗎？[STICKER:害羞]"),
@@ -784,7 +783,7 @@ def handle_sticker_message(event):
         parse_response_and_send(ai_response, event.reply_token)
     except requests.exceptions.HTTPError as http_err:
         logger.error(f"Gemini API 貼圖處理 HTTP 錯誤: {http_err} - {response.text}")
-        sticker = select_sticker_by_emotion("害羞")
+         sticker = select_sticker_by_keyword("害羞")
         if sticker:
             line_bot_api.reply_message(
                 event.reply_token,
@@ -794,7 +793,7 @@ def handle_sticker_message(event):
             line_bot_api.reply_message(event.reply_token, TextSendMessage(text="咪？這貼圖小雲看不懂耶～[STICKER:思考]"))
     except Exception as e:
         logger.error(f"處理貼圖訊息時發生錯誤: {e}")
-        sticker = select_sticker_by_emotion("思考")
+        sticker = select_sticker_by_keyword("思考")
         if sticker:
             line_bot_api.reply_message(
                 event.reply_token,
