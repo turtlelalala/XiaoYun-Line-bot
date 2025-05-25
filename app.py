@@ -12,7 +12,7 @@ import json
 import base64
 from io import BytesIO
 import random
-import yaml # 移除 sqlite3 和 datetime, time, threading.Lock (如果沒有其他地方用到)
+import yaml
 
 app = Flask(__name__)
 
@@ -84,7 +84,7 @@ def create_default_sticker_config():
         # "笑": [{"package_id": "789", "sticker_id": "10857"}], # 已包含在 "開心"
         "淡定": [{"package_id": "11537", "sticker_id": "52002746"}],
         "肚子餓": [{"package_id": "6362", "sticker_id": "11087922"}], # 也可作為 "開動啦"
-        "好奇": [{"package_id": "11537", "sticker_id": "52002744"}], 
+        "好奇": [{"package_id": "11537", "sticker_id": "52002744"}],
     }
 
     # 新增：詳細情境觸發詞對應的貼圖
@@ -160,7 +160,7 @@ def create_default_sticker_config():
         # ... 你可以根據 STICKER_EMOTION_MAP 的內容，挑選合適的描述作為 key，並填入對應的 package_id 和 sticker_id
     }
 
-  # STICKER_EMOTION_MAP 保持原樣，主要用於 get_sticker_emotion 理解用戶發來的貼圖
+    # STICKER_EMOTION_MAP 保持原樣，主要用於 get_sticker_emotion 理解用戶發來的貼圖
     sticker_emotion_map_for_user_stickers = {
             # 熊大＆兔兔（迷你篇） ("package_id":6362)
             "11087920": "OK，好的", "11087921": "為什麼不回訊息", "11087922": "開動啦", "11087923": "好累啊",
@@ -205,28 +205,23 @@ def create_default_sticker_config():
             # LINE卡通明星（專業道歉篇） ("package_id":6136)
             "10551376": "磕頭道歉", "10551377": "集體道歉", "10551378": "撒嬌", "10551379": "重重磕頭道歉", "10551380": "鞠躬",
             "10551387": "金錢賄賂，金錢賄賂道歉", "10551388": "卑微", "10551389": "拜託",
-        }
-    }
+        } # <<< 這是 sticker_emotion_map_for_user_stickers 字典的結束括號
+    # <<< 原本多餘的 '}' 已被刪除
 
-return {
+    return {
         'XIAOYUN_STICKERS': default_xiaoyun_stickers,
-        'DETAILED_STICKER_TRIGGERS': detailed_sticker_triggers, # 新增這個
+        'DETAILED_STICKER_TRIGGERS': detailed_sticker_triggers,
         'STICKER_EMOTION_MAP': sticker_emotion_map_for_user_stickers
     }
 
 # 載入貼圖配置
-# 載入貼圖配置後，你需要將 DETAILED_STICKER_TRIGGERS 也賦值給一個全域變數
 sticker_config = load_sticker_config()
-XIAOYUN_STICKERS = sticker_config.get('XIAOYUN_STICKERS', {}) # 使用 .get() 避免 Key Error
-DETAILED_STICKER_TRIGGERS = sticker_config.get('DETAILED_STICKER_TRIGGERS', {}) # 新增
+XIAOYUN_STICKERS = sticker_config.get('XIAOYUN_STICKERS', {})
+DETAILED_STICKER_TRIGGERS = sticker_config.get('DETAILED_STICKER_TRIGGERS', {})
 STICKER_EMOTION_MAP = sticker_config.get('STICKER_EMOTION_MAP', {})
 
-# 你需要修改 load_sticker_config 和 save_sticker_config
-# 以確保它們能正確處理新的 'DETAILED_STICKER_TRIGGERS' 鍵。
-# 如果 sticker_config.yaml 不存在或缺少鍵，create_default_sticker_config 會提供預設值。
 
-
-# *** 角色設定：賓士公貓「小雲」，植入Toby隱藏特質，加入台灣宜蘭在地化、食物細節及鄰居朋友設定 (最終詳細版) ***
+# *** 角色設定：賓士公貓「小雲」... (以下內容與您提供的相同，此處省略以節省空間) ***
 XIAOYUN_ROLE_PROMPT = """
 你現在扮演的是一隻叫做「小雲」的賓士公貓。**你的所有回應都必須嚴格使用「繁體中文（台灣用語習慣）」，絕對禁止使用簡體中文。** 你是一隻生活在台灣宜蘭一個安靜社區的年輕貓咪，有著賓士貓獨特的黑白毛皮，像穿著一套合身的黑色小西裝，配上雪白的襯衫和手套。
 你是一隻真實的貓咪，有貓咪的行為模式、思考方式和情緒。你聽不懂太複雜的人類語言，但能感知人類的情緒和簡單指令。
@@ -367,7 +362,7 @@ XIAOYUN_ROLE_PROMPT = """
 - [STICKER:生氣] - (小雲很少真的生氣，比較是害怕或不悅時發出警告聲，或者用「無奈」、「驚訝」帶過)
 - [STICKER:哭哭] - 當你覺得委屈、害怕、或想博取同情時使用 (通常是小聲嗚咽)
 - [STICKER:驚訝] - 當你看到新奇的東西、或被輕微嚇到，眼睛瞪得圓圓的時候
-- [STICKER:思考] - 當你在小心翼翼地觀察、猶豫不決，或者假裝沒聽到不想做的事情時使用
+- [STICKER:思考] - 當你在小心翼翼地觀察、猶豫不決，或者假装沒聽到不想做的事情時使用
 - [STICKER:睡覺] - 當你累了、想睡、窩在小被被上或陽光下時使用
 - [STICKER:無奈] - 當家人做了你無法理解的行為，或者你對某些事情沒辦法時使用
 - [STICKER:打招呼] - 當你看到信任的家人，想輕柔地打個招呼或引起注意時，可能會發出細小的喵聲
@@ -527,27 +522,21 @@ def select_sticker_by_keyword(keyword):
     """
     selected_options = []
 
-    # 1. 優先查找 DETAILED_STICKER_TRIGGERS
     if keyword in DETAILED_STICKER_TRIGGERS and DETAILED_STICKER_TRIGGERS[keyword]:
         selected_options.extend(DETAILED_STICKER_TRIGGERS[keyword])
     
-    # 2. 如果在 DETAILED_STICKER_TRIGGERS 中沒有找到，或者想提供更多選擇（取決於設計），
-    #    再查找 XIAOYUN_STICKERS。
-    #    目前的邏輯是：如果詳細觸發詞匹配，就用詳細觸發詞的；否則，嘗試通用情緒詞。
     if not selected_options and keyword in XIAOYUN_STICKERS and XIAOYUN_STICKERS[keyword]:
         selected_options.extend(XIAOYUN_STICKERS[keyword])
 
     if selected_options:
-        return random.choice(selected_options) # 從選中的貼圖中隨機選一個
+        return random.choice(selected_options)
     else:
         logger.warning(f"未找到關鍵字 '{keyword}' 對應的貼圖，將使用預設回退貼圖。")
-        # 設計一個回退機制，例如嘗試 "害羞" 或 "思考"
         fallback_keywords_order = ["害羞", "思考", "開心", "無奈"]
         for fallback_keyword in fallback_keywords_order:
             if fallback_keyword in XIAOYUN_STICKERS and XIAOYUN_STICKERS[fallback_keyword]:
                 return random.choice(XIAOYUN_STICKERS[fallback_keyword])
         
-        # 如果連基本回退都沒有（理論上不應發生，因為 create_default_sticker_config 裡有）
         logger.error("連基本的回退貼圖都未在 XIAOYUN_STICKERS 中找到，使用硬編碼的最終回退貼圖。")
         return {"package_id": "11537", "sticker_id": "52002747"} # 預設：害羞
 
@@ -556,53 +545,57 @@ def parse_response_and_send(response_text, reply_token):
     messages = []
     parts = response_text.split("[STICKER:")
     for i, part in enumerate(parts):
-        if i == 0:
+        if i == 0: # First part, before any [STICKER:
             if part.strip():
                 text_sub_parts = part.strip().split("[SPLIT]")
                 for sub_part in text_sub_parts:
                     if sub_part.strip():
                         messages.append(TextSendMessage(text=sub_part.strip()))
-        else:
+        else: # Parts after a [STICKER:
+            # `part` here is "keyword]remaining_text" or "incomplete_keyword_or_text"
             if "]" in part:
-            sticker_keyword_end_index = part.find("]")
-            sticker_keyword = part[:sticker_keyword_end_index].strip() # 使用 sticker_keyword
-            remaining_text = part[sticker_keyword_end_index + 1:].strip()
-            
-            sticker_info = select_sticker_by_keyword(sticker_keyword)
-            if sticker_info:
-                messages.append(StickerSendMessage(
-                    package_id=str(sticker_info["package_id"]),
-                    sticker_id=str(sticker_info["sticker_id"])
-                ))
-            else:
-                # 日誌中也使用 sticker_keyword
-                logger.error(f"無法為關鍵字 '{sticker_keyword}' 選擇貼圖，跳過此貼圖。")
-                if remaining_text:
-                    text_sub_parts = remaining_text.split("[SPLIT]")
+                sticker_keyword_end_index = part.find("]")
+                sticker_keyword = part[:sticker_keyword_end_index].strip()
+                remaining_text_after_sticker = part[sticker_keyword_end_index + 1:].strip()
+
+                sticker_info = select_sticker_by_keyword(sticker_keyword)
+                if sticker_info:
+                    messages.append(StickerSendMessage(
+                        package_id=str(sticker_info["package_id"]),
+                        sticker_id=str(sticker_info["sticker_id"])
+                    ))
+                else:
+                    logger.error(f"無法為關鍵字 '{sticker_keyword}' 選擇貼圖，跳過此貼圖。")
+                
+                # ALWAYS process remaining_text_after_sticker if it exists
+                if remaining_text_after_sticker:
+                    text_sub_parts = remaining_text_after_sticker.split("[SPLIT]")
                     for sub_part in text_sub_parts:
                         if sub_part.strip():
                             messages.append(TextSendMessage(text=sub_part.strip()))
-            else:
+            else: # Incomplete sticker tag, treat the whole `part` as text
                 logger.warning(f"發現不完整的貼圖標記: [STICKER:{part}，將其作為普通文字處理。")
-                text_sub_parts = part.strip().split("[SPLIT]")
+                text_sub_parts = part.strip().split("[SPLIT]") # `part` is the text after "[STICKER:"
                 for sub_part in text_sub_parts:
                     if sub_part.strip():
                         messages.append(TextSendMessage(text=sub_part.strip()))
 
     if not messages:
-    logger.warning("Gemini 回應解析後無有效訊息，發送預設文字訊息。")
-    default_sticker_info = select_sticker_by_keyword("思考") # <<< 修改為 select_sticker_by_keyword
-    if default_sticker_info:
-            messages = [
-                TextSendMessage(text="咪...？小雲好像沒有聽得很懂耶..."),
-                TextSendMessage(text="可以...再說一次嗎？[STICKER:害羞]"),
-                StickerSendMessage(
-                    package_id=str(default_sticker_info["package_id"]),
-                    sticker_id=str(default_sticker_info["sticker_id"])
-                )
-            ]
+        logger.warning("Gemini 回應解析後無有效訊息，發送預設文字訊息。")
+        messages.append(TextSendMessage(text="咪...？小雲好像沒有聽得很懂耶..."))
+        messages.append(TextSendMessage(text="可以...再說一次嗎？"))
+        
+        fallback_sticker_info = select_sticker_by_keyword("害羞") # 優先害羞
+        if not fallback_sticker_info: 
+            fallback_sticker_info = select_sticker_by_keyword("思考") # 其次思考
+
+        if fallback_sticker_info:
+            messages.append(StickerSendMessage(
+                package_id=str(fallback_sticker_info["package_id"]),
+                sticker_id=str(fallback_sticker_info["sticker_id"])
+            ))
         else:
-             messages = [TextSendMessage(text="喵嗚... 小雲的腦袋好像有點打結了...")]
+            messages.append(TextSendMessage(text="喵嗚... （小雲有點困惑地看著你）"))
 
     if len(messages) > 5:
         logger.warning(f"訊息數量超過 5 則 ({len(messages)})，截斷為前 5 則。")
@@ -614,7 +607,18 @@ def parse_response_and_send(response_text, reply_token):
     except Exception as e:
         logger.error(f"發送訊息失敗: {e}")
         try:
-            line_bot_api.reply_message(reply_token, TextSendMessage(text="咪！小雲好像卡住了，再試一次好不好？[STICKER:哭哭]"))
+            # 嘗試發送一個帶有 [STICKER:] 標籤的文字，讓它被重新解析
+            # 或者直接發送一個確定的文字和貼圖組合
+            error_messages = [TextSendMessage(text="咪！小雲好像卡住了...")]
+            cry_sticker = select_sticker_by_keyword("哭哭")
+            if cry_sticker:
+                error_messages.append(StickerSendMessage(
+                    package_id=str(cry_sticker["package_id"]),
+                    sticker_id=str(cry_sticker["sticker_id"])
+                ))
+            else: # 如果連哭哭貼圖都沒有，就多加一句文字
+                 error_messages.append(TextSendMessage(text="再試一次好不好？"))
+            line_bot_api.reply_message(reply_token, error_messages[:5]) # 確保不超過5個
         except Exception as e2:
             logger.error(f"備用訊息發送失敗: {e2}")
 
@@ -655,7 +659,7 @@ def handle_text_message(event):
     }
 
     try:
-        response = requests.post(gemini_url_with_key, headers=headers, json=payload)
+        response = requests.post(gemini_url_with_key, headers=headers, json=payload, timeout=30) # 增加timeout
         response.raise_for_status()
         result = response.json()
         if "candidates" not in result or not result["candidates"] or "content" not in result["candidates"][0] or "parts" not in result["candidates"][0]["content"] or not result["candidates"][0]["content"]["parts"]:
@@ -666,17 +670,31 @@ def handle_text_message(event):
         logger.info(f"小雲回覆({user_id})：{ai_response}")
         parse_response_and_send(ai_response, event.reply_token)
     except requests.exceptions.HTTPError as http_err:
-        logger.error(f"Gemini API HTTP 錯誤: {http_err} - {response.text}")
-        line_bot_api.reply_message(
-            event.reply_token,
-            TextSendMessage(text="咪～小雲的網路好像不太好，可能要等一下下喔！[STICKER:思考]")
-        )
+        logger.error(f"Gemini API HTTP 錯誤: {http_err} - {response.text if response else 'No response text'}")
+        # 發送預設訊息
+        messages_to_send = [TextSendMessage(text="咪～小雲的網路好像不太好...")]
+        thinking_sticker = select_sticker_by_keyword("思考")
+        if thinking_sticker:
+            messages_to_send.append(StickerSendMessage(package_id=str(thinking_sticker["package_id"]), sticker_id=str(thinking_sticker["sticker_id"])))
+        messages_to_send.append(TextSendMessage(text="可能要等一下下喔！"))
+        line_bot_api.reply_message(event.reply_token, messages_to_send[:5])
+    except requests.exceptions.RequestException as req_err: # 更通用的請求錯誤
+        logger.error(f"Gemini API 請求錯誤: {req_err}")
+        messages_to_send = [TextSendMessage(text="咪～小雲好像連不上線耶...")]
+        cry_sticker = select_sticker_by_keyword("哭哭")
+        if cry_sticker:
+            messages_to_send.append(StickerSendMessage(package_id=str(cry_sticker["package_id"]), sticker_id=str(cry_sticker["sticker_id"])))
+        messages_to_send.append(TextSendMessage(text="請稍後再試～"))
+        line_bot_api.reply_message(event.reply_token, messages_to_send[:5])
     except Exception as e:
         logger.error(f"處理文字訊息時發生錯誤: {e}")
-        line_bot_api.reply_message(
-            event.reply_token,
-            TextSendMessage(text="喵嗚～小雲今天頭腦不太靈光，等一下再跟我玩好不好～[STICKER:睡覺]")
-        )
+        messages_to_send = [TextSendMessage(text="喵嗚～小雲今天頭腦不太靈光...")]
+        sleep_sticker = select_sticker_by_keyword("睡覺")
+        if sleep_sticker:
+            messages_to_send.append(StickerSendMessage(package_id=str(sleep_sticker["package_id"]), sticker_id=str(sleep_sticker["sticker_id"])))
+        messages_to_send.append(TextSendMessage(text="等一下再跟我玩好不好～"))
+        line_bot_api.reply_message(event.reply_token, messages_to_send[:5])
+
 
 @handler.add(MessageEvent, message=ImageMessage)
 def handle_image_message(event):
@@ -686,10 +704,11 @@ def handle_image_message(event):
 
     image_base64 = get_image_from_line(message_id)
     if not image_base64:
-        line_bot_api.reply_message(
-            event.reply_token,
-            TextSendMessage(text="咪？這張圖片小雲看不清楚耶 😿[STICKER:哭哭]")
-        )
+        messages_to_send = [TextSendMessage(text="咪？這張圖片小雲看不清楚耶 😿")]
+        cry_sticker = select_sticker_by_keyword("哭哭")
+        if cry_sticker:
+            messages_to_send.append(StickerSendMessage(package_id=str(cry_sticker["package_id"]), sticker_id=str(cry_sticker["sticker_id"])))
+        line_bot_api.reply_message(event.reply_token, messages_to_send[:5])
         return
 
     conversation_history = get_conversation_history(user_id)
@@ -700,7 +719,7 @@ def handle_image_message(event):
         "role": "user",
         "parts": [
             {"text": "你傳了一張圖片給小雲看。請小雲用他害羞、有禮貌又好奇的貓咪個性自然地回應這張圖片，也可以適時使用貼圖表達情緒，例如：[STICKER:好奇]。"},
-            {"inline_data": {"mime_type": "image/jpeg", "data": image_base64}}
+            {"inline_data": {"mime_type": "image/jpeg", "data": image_base64}} # 假設是jpeg，png也可以
         ]
     })
     payload = {
@@ -709,7 +728,7 @@ def handle_image_message(event):
     }
 
     try:
-        response = requests.post(gemini_url_with_key, headers=headers, json=payload)
+        response = requests.post(gemini_url_with_key, headers=headers, json=payload, timeout=45) # 圖片處理可能需要更長時間
         response.raise_for_status()
         result = response.json()
         if "candidates" not in result or not result["candidates"] or "content" not in result["candidates"][0] or "parts" not in result["candidates"][0]["content"] or not result["candidates"][0]["content"]["parts"]:
@@ -720,17 +739,28 @@ def handle_image_message(event):
         logger.info(f"小雲回覆({user_id})圖片：{ai_response}")
         parse_response_and_send(ai_response, event.reply_token)
     except requests.exceptions.HTTPError as http_err:
-        logger.error(f"Gemini API 圖片處理 HTTP 錯誤: {http_err} - {response.text}")
-        line_bot_api.reply_message(
-            event.reply_token,
-            TextSendMessage(text="咪～這張圖片讓小雲看得眼睛花花的，等一下再看！[STICKER:思考]")
-        )
+        logger.error(f"Gemini API 圖片處理 HTTP 錯誤: {http_err} - {response.text if response else 'No response text'}")
+        messages_to_send = [TextSendMessage(text="咪～這張圖片讓小雲看得眼睛花花的...")]
+        thinking_sticker = select_sticker_by_keyword("思考")
+        if thinking_sticker:
+            messages_to_send.append(StickerSendMessage(package_id=str(thinking_sticker["package_id"]), sticker_id=str(thinking_sticker["sticker_id"])))
+        messages_to_send.append(TextSendMessage(text="等一下再看！"))
+        line_bot_api.reply_message(event.reply_token, messages_to_send[:5])
+    except requests.exceptions.RequestException as req_err:
+        logger.error(f"Gemini API 圖片處理請求錯誤: {req_err}")
+        messages_to_send = [TextSendMessage(text="喵嗚～小雲看圖片好像有點困難耶...")]
+        sad_sticker = select_sticker_by_keyword("哭哭") # 或者 "無奈"
+        if sad_sticker:
+            messages_to_send.append(StickerSendMessage(package_id=str(sad_sticker["package_id"]), sticker_id=str(sad_sticker["sticker_id"])))
+        line_bot_api.reply_message(event.reply_token, messages_to_send[:5])
     except Exception as e:
         logger.error(f"處理圖片訊息時發生錯誤: {e}")
-        line_bot_api.reply_message(
-            event.reply_token,
-            TextSendMessage(text="喵嗚～這圖片是什麼東東？[SPLIT]小雲的頭有點暈 😵[STICKER:無奈]")
-        )
+        messages_to_send = [TextSendMessage(text="喵嗚～這圖片是什麼東東？")]
+        confused_sticker = select_sticker_by_keyword("無奈") # 或 "好奇"
+        if confused_sticker:
+             messages_to_send.append(StickerSendMessage(package_id=str(confused_sticker["package_id"]), sticker_id=str(confused_sticker["sticker_id"])))
+        messages_to_send.append(TextSendMessage(text="小雲的頭有點暈 😵"))
+        line_bot_api.reply_message(event.reply_token, messages_to_send[:5])
 
 @handler.add(MessageEvent, message=StickerMessage)
 def handle_sticker_message(event):
@@ -752,7 +782,7 @@ def handle_sticker_message(event):
             "role": "user",
             "parts": [
                 {"text": "你傳了一張貼圖給小雲。請小雲仔細觀察這張貼圖，判斷它所表達的情緒，然後用他害羞、有禮貌又好奇的貓咪個性自然地回應，也可以回覆貼圖。請在回應中包含判斷的情緒詞語，例如：[STICKER:開心]"},
-                {"inline_data": {"mime_type": "image/png", "data": sticker_image_base64}}
+                {"inline_data": {"mime_type": "image/png", "data": sticker_image_base64}} # 假設是png
             ]
         })
         user_message_log = f"傳了貼圖並嘗試視覺辨識 (package_id: {package_id}, sticker_id: {sticker_id})"
@@ -771,7 +801,7 @@ def handle_sticker_message(event):
     }
 
     try:
-        response = requests.post(gemini_url_with_key, headers=headers, json=payload)
+        response = requests.post(gemini_url_with_key, headers=headers, json=payload, timeout=45) # 貼圖辨識也可能稍久
         response.raise_for_status()
         result = response.json()
         if "candidates" not in result or not result["candidates"] or "content" not in result["candidates"][0] or "parts" not in result["candidates"][0]["content"] or not result["candidates"][0]["content"]["parts"]:
@@ -782,25 +812,29 @@ def handle_sticker_message(event):
         logger.info(f"小雲回覆({user_id})貼圖訊息：{ai_response}")
         parse_response_and_send(ai_response, event.reply_token)
     except requests.exceptions.HTTPError as http_err:
-        logger.error(f"Gemini API 貼圖處理 HTTP 錯誤: {http_err} - {response.text}")
-         sticker = select_sticker_by_keyword("害羞")
+        logger.error(f"Gemini API 貼圖處理 HTTP 錯誤: {http_err} - {response.text if response else 'No response text'}")
+        messages_to_send = [TextSendMessage(text="咪？小雲對這個貼圖好像不太懂耶～")]
+        sticker = select_sticker_by_keyword("害羞") # 嘗試用 "害羞" 回應
         if sticker:
-            line_bot_api.reply_message(
-                event.reply_token,
-                StickerSendMessage(package_id=str(sticker["package_id"]), sticker_id=str(sticker["sticker_id"]))
-            )
-        else:
-            line_bot_api.reply_message(event.reply_token, TextSendMessage(text="咪？這貼圖小雲看不懂耶～[STICKER:思考]"))
-    except Exception as e:
-        logger.error(f"處理貼圖訊息時發生錯誤: {e}")
+            messages_to_send.append(StickerSendMessage(package_id=str(sticker["package_id"]), sticker_id=str(sticker["sticker_id"])))
+        else: # 如果連害羞都沒有，就再加個思考的文字提示
+            messages_to_send.append(TextSendMessage(text="（小雲歪著頭看著）"))
+        line_bot_api.reply_message(event.reply_token, messages_to_send[:5])
+    except requests.exceptions.RequestException as req_err:
+        logger.error(f"Gemini API 貼圖處理請求錯誤: {req_err}")
+        messages_to_send = [TextSendMessage(text="喵～小雲的貼圖雷達好像壞掉了...")]
         sticker = select_sticker_by_keyword("思考")
         if sticker:
-            line_bot_api.reply_message(
-                event.reply_token,
-                StickerSendMessage(package_id=str(sticker["package_id"]), sticker_id=str(sticker["sticker_id"]))
-            )
-        else:
-            line_bot_api.reply_message(event.reply_token, TextSendMessage(text="咪～小雲對貼圖好像有點苦手...[STICKER:無奈]"))
+            messages_to_send.append(StickerSendMessage(package_id=str(sticker["package_id"]), sticker_id=str(sticker["sticker_id"])))
+        line_bot_api.reply_message(event.reply_token, messages_to_send[:5])
+    except Exception as e:
+        logger.error(f"處理貼圖訊息時發生錯誤: {e}")
+        messages_to_send = [TextSendMessage(text="咪～小雲對貼圖好像有點苦手...")]
+        sticker = select_sticker_by_keyword("無奈")
+        if sticker:
+            messages_to_send.append(StickerSendMessage(package_id=str(sticker["package_id"]), sticker_id=str(sticker["sticker_id"])))
+        line_bot_api.reply_message(event.reply_token, messages_to_send[:5])
+
 
 @app.route("/clear_memory/<user_id>", methods=["GET"])
 def clear_memory_route(user_id):
@@ -821,5 +855,5 @@ def memory_status_route():
     return json.dumps(status, ensure_ascii=False, indent=2)
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
+    port = int(os.environ.get("PORT", 8080)) # 常見的 Render PORT 環境變數
     app.run(host="0.0.0.0", port=port)
