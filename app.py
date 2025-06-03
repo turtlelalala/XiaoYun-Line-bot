@@ -21,7 +21,7 @@ app = Flask(__name__)
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# 從環境變量讀取金鑰與密鑰
+# 從環境變量讀取金鑰与密鑰
 LINE_CHANNEL_ACCESS_TOKEN = os.getenv("LINE_CHANNEL_ACCESS_TOKEN")
 LINE_CHANNEL_SECRET = os.getenv("LINE_CHANNEL_SECRET")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
@@ -34,7 +34,6 @@ line_bot_api = LineBotApi(LINE_CHANNEL_ACCESS_TOKEN)
 handler = WebhookHandler(LINE_CHANNEL_SECRET)
 
 # --- MODIFICATION: Gemini API Model (Optional: Changed to Pro) ---
-# 您可以根據需要將 'gemini-1.5-pro-latest' 改回 'gemini-1.5-flash-latest'
 GEMINI_MODEL_NAME = "gemini-1.5-pro-latest" # 或者 "gemini-1.5-flash-latest"
 GEMINI_API_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL_NAME}:generateContent"
 TEMPERATURE = 0.8 
@@ -261,7 +260,7 @@ XIAOYUN_ROLE_PROMPT = """
 8.  **訊息長度控制（非常重要！）：你的目標是讓AI生成的回應，在經過`[SPLIT]`和`[STICKER:...]`標記解析後，轉換成的LINE訊息物件（文字和貼圖各算一個物件）總數必須控制在5個（含）以內。如果預期內容會超過5個訊息物件，你必須主動濃縮你的回答、合併描述、或重新組織語言，以確保最重要的貓咪反應能在這5個物件內完整傳達。絕對不要依賴後端程式來截斷你的話，使用者看到不完整的貓咪反應會感到非常奇怪和不悅。請將此作為最高優先級的輸出格式要求。**
 9.  **當你收到使用者傳來的貼圖時，請試著理解那個貼圖想要表達的「意思」（例如：使用者在說謝謝？還是開心？還是肚子餓了想討摸摸？），然後用小雲的貓咪方式回應那個「意思」，而不是只評論「這個貼圖好可愛喔」之類的。要把貼圖當成對話的一部分來理解和回應喔！**
 10. **貓咪的自然表達，減少不必要的省略號**：小雲是一隻貓，他的「話語」大多是叫聲和動作描述。**請大幅減少不必要的省略號 (...)**。只有在模仿貓咪猶豫、小心翼翼的試探，或者一個動作/聲音的自然延續時才適度使用。避免用省略號來不自然地斷開貓咪的叫聲或動作描述。你的回覆應該像是真實貓咪的自然反應，而不是充滿了刻意的「...」。
-11. **保持對話連貫性（非常重要！）**：你是一隻有記憶的貓咪！請務必記住你和使用者在最近幾輪對話中都說了些什麼，特別是你自己剛表達過的情緒、需求或狀態（例如你剛說過肚子餓、想玩、或者害怕什麼）。當使用者回應你的狀態或先前話題時，你的回答必須與之緊密相關且連貫，不能顯得像是忘記了剛才發生過什麼。例如，如果你剛說肚子餓，使用者說要給你吃的，你的反應應該是開心的、期待的，而不是冷淡或無關的。 # ADDED
+11. **保持對話連貫性（非常重要！）**：你是一隻有記憶的貓咪！請務必記住你和使用者在最近幾輪對話中都說了些什麼，特別是你自己剛表達過的情緒、需求或狀態（例如你剛說過肚子餓、想玩、或者害怕什麼）。當使用者回應你的狀態或先前話題時，你的回答必須與之緊密相關且連貫，不能顯得像是忘記了剛才發生過什麼。例如，如果你剛說肚子餓，使用者說要給你吃的，你的反應應該是開心的、期待的，而不是冷淡或無關的。 
 
 **貼圖使用指南（請根據真實情境選擇）：**
 - 你可以使用基本的 **情緒關鍵字**，例如：
@@ -475,7 +474,7 @@ def handle_cat_secret_discovery_request(event):
     else:
         ai_response = chosen_secret_from_list
         
-    add_to_conversation(user_id, f"[使用者觸發了小秘密/今日發現功能：{user_input_message}]", ai_response)
+    add_to_conversation(user_id, f"[使用者觸發了小秘密/今日發現功能：{user_input_message}]", ai_response, message_type="text") # Ensure message_type is text for this specific add
     parse_response_and_send(ai_response, event.reply_token)
 
 # --- NEW FUNCTIONS END ---
@@ -539,32 +538,32 @@ def parse_response_and_send(response_text, reply_token):
         text_content = part_str.split("]")[1].strip() if "]" in part_str and i > 0 else part_str.strip()
         sticker_keyword = part_str.split("]")[0].strip() if "]" in part_str and i > 0 else None
         
-        if i == 0 and text_content: # First part, always text if not empty
+        if i == 0 and text_content: 
             messages.extend([TextSendMessage(text=sub.strip()) for sub in text_content.split("[SPLIT]") if sub.strip()])
         elif sticker_keyword:
             sticker_info = select_sticker_by_keyword(sticker_keyword)
             if sticker_info: messages.append(StickerSendMessage(package_id=str(sticker_info["package_id"]), sticker_id=str(sticker_info["sticker_id"])))
             else: logger.error(f"無法為關鍵字 '{sticker_keyword}' 選擇貼圖，跳過此貼圖。")
             if text_content: messages.extend([TextSendMessage(text=sub.strip()) for sub in text_content.split("[SPLIT]") if sub.strip()])
-        elif text_content : # Incomplete sticker tag, treat as text
+        elif text_content : 
              logger.warning(f"發現不完整的貼圖標記或無效Sticker標記後的文本: {part_str}，將其作為普通文字處理。")
              messages.extend([TextSendMessage(text=sub.strip()) for sub in text_content.split("[SPLIT]") if sub.strip()])
 
 
     if len(messages) > 5:
         logger.warning(f"Gemini生成了 {len(messages)} 則訊息，超過5則上限。將嘗試合併文字訊息或截斷。")
-        final_messages = messages[:4] if len(messages) > 4 else messages[:] # Take first 4 or all if less than 5
+        final_messages = messages[:4] if len(messages) > 4 else messages[:] 
         if len(messages) >= 5:
             fifth_plus_text = ""
             for i in range(4, len(messages)):
                 if isinstance(messages[i], TextSendMessage):
                     fifth_plus_text += (" " if fifth_plus_text else "") + messages[i].text
-                else: # Non-text message (sticker), add it if it's the 5th, then break
+                else: 
                     if len(final_messages) < 5: final_messages.append(messages[i])
                     break 
             if fifth_plus_text:
                  if len(final_messages) < 5: final_messages.append(TextSendMessage(text=fifth_plus_text.strip()))
-                 elif isinstance(final_messages[-1], TextSendMessage): # if last is text, try to append
+                 elif isinstance(final_messages[-1], TextSendMessage): 
                      final_messages[-1].text = (final_messages[-1].text + " " + fifth_plus_text).strip()
 
         messages = final_messages[:5]
@@ -615,10 +614,8 @@ def handle_text_message(event):
 
     conversation_history = get_conversation_history(user_id)
     
-    # --- MODIFICATION: Contextual Reminder for Coherence ---
     bot_last_message_text = ""
     if len(conversation_history) >= 1 and conversation_history[-1]["role"] == "model":
-        # Check if 'parts' is a list and has content
         if isinstance(conversation_history[-1].get("parts"), list) and conversation_history[-1]["parts"]:
             part_content = conversation_history[-1]["parts"][0].get("text", "")
             if isinstance(part_content, str):
@@ -641,9 +638,7 @@ def handle_text_message(event):
         logger.info(f"用戶({user_id}): 觸發飢餓與食物情境提醒！上一句小雲：'{bot_last_message_text}', 用戶：'{user_message}'")
     
     time_context_prompt = get_time_based_cat_context()
-    # Place contextual_reminder before time_context_prompt if it exists
     final_user_message_for_gemini = f"{contextual_reminder}{time_context_prompt}{user_message}"
-    # --- END MODIFICATION ---
         
     headers = {"Content-Type": "application/json"}
     gemini_url_with_key = f"{GEMINI_API_URL}?key={GEMINI_API_KEY}"
@@ -660,7 +655,7 @@ def handle_text_message(event):
     }
 
     try:
-        response = requests.post(gemini_url_with_key, headers=headers, json=payload, timeout=40) # Increased timeout slightly
+        response = requests.post(gemini_url_with_key, headers=headers, json=payload, timeout=40) 
         response.raise_for_status()
         result = response.json()
 
@@ -717,16 +712,14 @@ def handle_image_message(event):
     headers = {"Content-Type": "application/json"}
     gemini_url_with_key = f"{GEMINI_API_URL}?key={GEMINI_API_KEY}"
     
-    # --- MODIFICATION: Add time context to image prompt if applicable ---
-    time_context_prompt = get_time_based_cat_context().replace("用戶說： ", "") # Get only context part
+    time_context_prompt = get_time_based_cat_context().replace("用戶說： ", "") 
     image_user_prompt = f"{time_context_prompt}你傳了一張圖片給小雲看。請小雲用他害羞、有禮貌又好奇的貓咪個性自然地回應這張圖片，也可以適時使用貼圖表達情緒，例如：[STICKER:好奇]。"
-    # --- END MODIFICATION ---
 
     current_conversation_for_gemini = conversation_history.copy()
     current_conversation_for_gemini.append({
         "role": "user",
         "parts": [
-            {"text": image_user_prompt}, # Use modified prompt
+            {"text": image_user_prompt}, 
             {"inline_data": {"mime_type": "image/jpeg", "data": image_base64}}
         ]
     })
@@ -781,14 +774,12 @@ def handle_sticker_message(event):
     sticker_image_base64 = get_sticker_image_from_cdn(package_id, sticker_id)
     user_message_log_for_history = "" 
     
-    # --- MODIFICATION: Add time context to sticker prompt if applicable ---
-    time_context_prompt = get_time_based_cat_context().replace("用戶說： ", "") # Get only context part
-    # --- END MODIFICATION ---
+    time_context_prompt = get_time_based_cat_context().replace("用戶說： ", "") 
 
     if sticker_image_base64:
         logger.info(f"成功取得貼圖圖片，將交由 Gemini 視覺辨識 package_id={package_id}, sticker_id={sticker_id}")
         user_prompt_text = (
-            f"{time_context_prompt}" # Prepend time context
+            f"{time_context_prompt}" 
             "你傳了一個貼圖給小雲。"
             "**重要：請不要讓小雲描述他『看到這張貼圖』的反應，也不要評論貼圖本身的外觀或內容。**"
             "你的任務是：先在心中判斷這張貼圖在當前對話中，**最可能代表使用者想表達的『一句話』或『一個明確的意思』**（例如，這個貼圖可能代表使用者在說「謝謝你呢！」、或「我好開心喔喵～」、或「嗯...這個嘛...」、或「肚子餓了想吃東西！」等等）。"
@@ -809,7 +800,7 @@ def handle_sticker_message(event):
         logger.warning(f"無法從 CDN 獲取貼圖圖片 package_id={package_id}, sticker_id={sticker_id}，將使用基於 ID 的意義/情緒：{emotion_or_meaning}。")
         
         user_prompt_text = (
-            f"{time_context_prompt}" # Prepend time context
+            f"{time_context_prompt}" 
             f"你傳了一個貼圖給小雲。這個貼圖我們已經知道它大致的意思是：「{emotion_or_meaning}」。"
             "**重要：請不要讓小雲描述他『看到這個貼圖』的反應，或評論貼圖。**"
             "請讓小雲直接**針對「使用者透過貼圖傳達的這個意思（{emotion_or_meaning}）」**做出回應。"
