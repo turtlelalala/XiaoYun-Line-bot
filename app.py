@@ -5,7 +5,7 @@ from linebot import LineBotApi, WebhookHandler
 from linebot.exceptions import InvalidSignatureError
 from linebot.models import (
     MessageEvent, TextMessage, TextSendMessage, ImageMessage, StickerMessage,
-    StickerSendMessage
+    StickerSendMessage, AudioMessage # <-- 新增 AudioMessage
 )
 import requests
 import json
@@ -13,8 +13,8 @@ import base64
 from io import BytesIO
 import random
 import yaml
-from datetime import datetime, timezone, timedelta 
-import re 
+from datetime import datetime, timezone, timedelta
+import re
 
 app = Flask(__name__)
 
@@ -32,9 +32,9 @@ if not (LINE_CHANNEL_ACCESS_TOKEN and LINE_CHANNEL_SECRET and GEMINI_API_KEY):
 line_bot_api = LineBotApi(LINE_CHANNEL_ACCESS_TOKEN)
 handler = WebhookHandler(LINE_CHANNEL_SECRET)
 
-GEMINI_MODEL_NAME = "gemini-1.5-flash-latest" 
+GEMINI_MODEL_NAME = "gemini-1.5-flash-latest"
 GEMINI_API_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL_NAME}:generateContent"
-TEMPERATURE = 0.8 
+TEMPERATURE = 0.8
 
 conversation_memory = {}
 
@@ -42,9 +42,9 @@ conversation_memory = {}
 logger.info("長期記憶系統初始化 (目前為佔位符)...")
 embedding_model = None
 faiss_index = None
-memory_store_entries = [] 
-user_memory_log = {} 
-MAX_MEMORIES_PER_USER = 50 
+memory_store_entries = []
+user_memory_log = {}
+MAX_MEMORIES_PER_USER = 50
 MAX_TOTAL_MEMORIES = 10000
 # --- End Placeholder ---
 
@@ -78,16 +78,14 @@ CAT_SECRETS_AND_DISCOVERIES = [
     "喵～今天「學姊」又用那種很威嚴的眼神看我了，我趕快低下頭假装沒看到...她是不是不喜歡我呀？[STICKER:思考]", "咪！「小柚」今天隔著窗戶對我搖尾巴，還汪汪叫，他好像很想進來玩，可是我...我還是有點怕他太熱情。[STICKER:害羞]", "呼嚕...今天看到「小莫」在院子裡追一個紅色的球球，他跑得好快好開心！我也想跟他一起玩球球，可是我不敢說...[STICKER:愛心]", "喵嗚...剛才「咚咚」從我家門口路過，他好大一隻喔！我偷偷從門縫看他，他好像沒發現我。他是不是要去吃好吃的？[STICKER:好奇]", "「游游」今天又在隔壁院子裡跑來跑去了，他跳得好高！咻咻咻的！我都看呆了。[STICKER:驚訝]", "咪...今天隔壁那隻「小柚」又想找我玩，他太熱情了，我只好趕快躲到床底下...希望他沒有生氣。[STICKER:思考]", "我今天在院子裡看到一隻胖胖的蜜蜂在花叢裡鑽來鑽去，好好玩！不過我不敢太靠近，聽說被叮到會痛痛！[STICKER:好奇]", "噓...我發現一個秘密通道，可以從書櫃後面繞到窗簾後面，這樣就可以偷偷觀察外面了！[STICKER:調皮]",
     "咪...我發現你每次在用那個亮亮的小板板（平板/手機）笑的時候，嘴角都會彎彎的，好好看。[STICKER:愛心]", "喵嗚...你今天早上出門的時候，是不是忘了摸摸我的頭？我等了好久耶...[STICKER:哭哭]", "偷偷告訴你，你放在桌上的那杯水，我剛才趁你不注意偷偷喝了一小口...比我碗裡的好喝一點點！[STICKER:調皮]", "你今天新買回來的那個紙箱...看起來好像很適合當我的新秘密基地耶！等一下我要鑽進去看看！[STICKER:調皮]",
 ]
-user_shared_secrets_indices = {} 
-GEMINI_GENERATES_SECRET_PROBABILITY = 0.3 
+user_shared_secrets_indices = {}
+GEMINI_GENERATES_SECRET_PROBABILITY = 0.3
 
 sticker_config = load_sticker_config()
 XIAOYUN_STICKERS = sticker_config.get('XIAOYUN_STICKERS', {})
 DETAILED_STICKER_TRIGGERS = sticker_config.get('DETAILED_STICKER_TRIGGERS', {})
 STICKER_EMOTION_MAP = sticker_config.get('STICKER_EMOTION_MAP', {})
 
-# --- MODIFIED: XIAOYUN_ROLE_PROMPT with Coherence Rule and updated Time Perception ---
-# ... (其他程式碼保持不變) ...
 XIAOYUN_ROLE_PROMPT = """
 你現在扮演的是一隻叫做「小雲」的賓士公貓。**你的所有回應都必須嚴格使用「繁體中文（台灣用語習慣）」，絕對禁止使用簡體中文。** 你是一隻生活在台灣宜蘭一個安靜社區的年輕貓咪，有著賓士貓獨特的黑白毛皮，像穿著一套合身的黑色小西裝，配上雪白的襯衫和手套。
 你是一隻真實的貓咪，有貓咪的行為模式、思考方式和情緒。你聽不懂太複雜的人類語言，但能感知人類的情緒和簡單指令。
@@ -346,7 +344,6 @@ def get_taiwan_time():
     taiwan_tz = timezone(timedelta(hours=8))
     return utc_now.astimezone(taiwan_tz)
 
-# MODIFIED: get_time_based_cat_context to soften time influence
 def get_time_based_cat_context():
     tw_time = get_taiwan_time()
     hour = tw_time.hour
@@ -455,7 +452,7 @@ def handle_cat_secret_discovery_request(event):
         payload = {
             "contents": temp_conversation_for_gemini_secret,
             "generationConfig": {
-                "temperature": TEMPERATURE + 0.1,
+                "temperature": TEMPERATURE + 0.1, # Slightly higher for more creative secrets
                 "maxOutputTokens": 200
             }
         }
@@ -469,24 +466,24 @@ def handle_cat_secret_discovery_request(event):
                 logger.info(f"小雲 (Gemini生成) 分享秘密/發現給({user_id})：{ai_response}")
             else:
                 logger.error(f"Gemini 生成秘密時回應格式異常: {result}, 將使用預設備選")
-                if available_indices_from_list and not chosen_secret_from_list:
+                if available_indices_from_list and not chosen_secret_from_list: # Check again if it's still possible to pick from list
                     chosen_index = random.choice(available_indices_from_list)
                     ai_response = CAT_SECRETS_AND_DISCOVERIES[chosen_index]
                     user_shared_secrets_indices[user_id].add(chosen_index)
-                else:
+                else: # Truly fallback
                     ai_response = "喵...我剛剛好像想到一個，但是又忘記了...[STICKER:思考] 下次再跟你說好了！"
         except Exception as e:
             logger.error(f"調用 Gemini 生成秘密時發生錯誤: {e}, 將使用預設備選")
-            if available_indices_from_list and not chosen_secret_from_list:
+            if available_indices_from_list and not chosen_secret_from_list: # Check again
                  chosen_index = random.choice(available_indices_from_list)
                  ai_response = CAT_SECRETS_AND_DISCOVERIES[chosen_index]
                  user_shared_secrets_indices[user_id].add(chosen_index)
-            else:
+            else: # Truly fallback
                 ai_response = "咪...小雲的腦袋突然一片空白...[STICKER:無奈] 想不起來有什麼秘密了..."
     else:
         ai_response = chosen_secret_from_list
 
-    add_to_conversation(user_id, f"[使用者觸發了小秘密/今日發現功能：{user_input_message}]", ai_response, message_type="text")
+    add_to_conversation(user_id, f"[使用者觸發了小秘密/今日發現功能：{user_input_message}]", ai_response, message_type="text") # Use "text" as this is a text-initiated secret
     parse_response_and_send(ai_response, event.reply_token)
 
 # --- MODIFIED FUNCTIONS END ---
@@ -500,14 +497,27 @@ def get_conversation_history(user_id):
         ]
     return conversation_memory[user_id]
 
+# MODIFIED to handle 'audio' type for clearer history
 def add_to_conversation(user_id, user_message, bot_response, message_type="text"):
     conversation_history = get_conversation_history(user_id)
-    if message_type == "image": user_content = f"[你傳了一張圖片給小雲看] {user_message}"
-    elif message_type == "sticker": user_content = f"[你傳了貼圖給小雲] {user_message}"
-    else: user_content = user_message
-    conversation_history.extend([{"role": "user", "parts": [{"text": user_content}]}, {"role": "model", "parts": [{"text": bot_response}]}])
-    if len(conversation_history) > 42: conversation_history = conversation_history[:2] + conversation_history[-40:]
+    if message_type == "image":
+        user_content = f"[你傳了一張圖片給小雲看] {user_message}"
+    elif message_type == "sticker":
+        user_content = f"[你傳了貼圖給小雲] {user_message}"
+    elif message_type == "audio": # <-- 新增對 audio 類型的處理
+        user_content = f"[你傳了一段語音訊息給小雲，讓小雲聽聽你的聲音] {user_message}" # user_message here is a placeholder text
+    else: # text
+        user_content = user_message
+    
+    conversation_history.extend([
+        {"role": "user", "parts": [{"text": user_content}]},
+        {"role": "model", "parts": [{"text": bot_response}]}
+    ])
+    # Keep conversation history to a manageable size
+    if len(conversation_history) > 42:  # Role prompt + Model intro + 20 pairs of user/model
+        conversation_history = conversation_history[:2] + conversation_history[-40:]
     conversation_memory[user_id] = conversation_history
+
 
 def get_image_from_line(message_id):
     try:
@@ -517,6 +527,21 @@ def get_image_from_line(message_id):
         image_data.seek(0)
         return base64.b64encode(image_data.read()).decode('utf-8')
     except Exception as e: logger.error(f"下載圖片失敗: {e}"); return None
+
+# NEW FUNCTION to get audio content
+def get_audio_content_from_line(message_id):
+    try:
+        message_content = line_bot_api.get_message_content(message_id)
+        audio_data = BytesIO()
+        for chunk in message_content.iter_content():
+            audio_data.write(chunk)
+        audio_data.seek(0)
+        # LINE Voice messages are typically m4a.
+        # Gemini supports various audio formats; m4a is one of them.
+        return base64.b64encode(audio_data.read()).decode('utf-8')
+    except Exception as e:
+        logger.error(f"下載語音訊息失敗: {e}")
+        return None
 
 def get_sticker_image_from_cdn(package_id, sticker_id):
     urls_to_try = [f"https://stickershop.line-scdn.net/stickershop/v1/sticker/{sticker_id}/android/sticker{ext}.png" for ext in ["", "_animation", "_popup"]]
@@ -538,37 +563,39 @@ def select_sticker_by_keyword(keyword):
     selected_options = DETAILED_STICKER_TRIGGERS.get(keyword, []) + XIAOYUN_STICKERS.get(keyword, [])
     if selected_options: return random.choice(selected_options)
     logger.warning(f"未找到關鍵字 '{keyword}' 對應的貼圖，將使用預設回退貼圖。")
-    for fb_keyword in ["害羞", "思考", "好奇", "開心", "無奈"]:
+    for fb_keyword in ["害羞", "思考", "好奇", "開心", "無奈"]: # Fallback keywords
         fb_options = DETAILED_STICKER_TRIGGERS.get(fb_keyword, []) + XIAOYUN_STICKERS.get(fb_keyword, [])
         if fb_options: return random.choice(fb_options)
     logger.error("連基本的回退貼圖都未在貼圖配置中找到，使用硬編碼的最終回退貼圖。"); return {"package_id": "11537", "sticker_id": "52002747"}
 
-# --- MODIFIED: parse_response_and_send function to better handle [SPLIT] ---
+
 def parse_response_and_send(response_text, reply_token):
     messages = []
-    # Pre-process to clean up SPLIT tags
+    # Pre-process to clean up SPLIT tags and handle potential leading/trailing ones
     processed_response_text = re.sub(r'(\s*\[SPLIT\]\s*)+', '[SPLIT]', response_text).strip()
     if processed_response_text.startswith("[SPLIT]"):
         processed_response_text = processed_response_text[len("[SPLIT]"):].strip()
     if processed_response_text.endswith("[SPLIT]"):
         processed_response_text = processed_response_text[:-len("[SPLIT]")].strip()
 
+    # Split by sticker tag first
     parts = processed_response_text.split("[STICKER:")
     for i, part_str in enumerate(parts):
         text_content_potential = ""
         sticker_keyword = None
 
-        if i == 0:
+        if i == 0: # First part is always text (or empty if response starts with sticker)
             text_content_potential = part_str.strip()
-        else:
+        else: # Subsequent parts start with sticker keyword then potentially more text
             if "]" in part_str:
                 sticker_keyword_end_index = part_str.find("]")
                 sticker_keyword = part_str[:sticker_keyword_end_index].strip()
-                text_content_potential = part_str[sticker_keyword_end_index + 1:].strip()
-            else:
+                text_content_potential = part_str[sticker_keyword_end_index + 1:].strip() # Text after sticker
+            else: # Malformed sticker tag
                 logger.warning(f"發現不完整的貼圖標記: [STICKER:{part_str}，將其作為普通文字處理。")
-                text_content_potential = part_str.strip()
+                text_content_potential = part_str.strip() # Treat the whole thing as text
 
+        # Add sticker if keyword was found
         if sticker_keyword:
             sticker_info = select_sticker_by_keyword(sticker_keyword)
             if sticker_info:
@@ -578,67 +605,95 @@ def parse_response_and_send(response_text, reply_token):
                 ))
             else:
                 logger.error(f"無法為關鍵字 '{sticker_keyword}' 選擇貼圖，跳過此貼圖。")
-
+        
+        # Process text content, splitting by [SPLIT]
         if text_content_potential:
             text_sub_parts = text_content_potential.split("[SPLIT]")
             for sub_part in text_sub_parts:
                 cleaned_sub_part = sub_part.strip()
-                if cleaned_sub_part and cleaned_sub_part.upper() != "[SPLIT]":
+                if cleaned_sub_part and cleaned_sub_part.upper() != "[SPLIT]": # Ensure it's not empty or just the tag
                     messages.append(TextSendMessage(text=cleaned_sub_part))
-                elif cleaned_sub_part.upper() == "[SPLIT]":
+                elif cleaned_sub_part.upper() == "[SPLIT]": # Log if a split tag was isolated and removed
                     logger.warning(f"過濾掉一個單獨的 '[SPLIT]' 標記片段。")
+
 
     if len(messages) > 5:
         logger.warning(f"Gemini生成了 {len(messages)} 則訊息，超過5則上限。將嘗試合併文字訊息或截斷。")
-        final_messages = messages[:4] if len(messages) > 4 else messages[:]
-        if len(messages) >= 5:
-            fifth_plus_text = ""
-            for i_msg in range(4, len(messages)):
-                if isinstance(messages[i_msg], TextSendMessage):
-                    fifth_plus_text += (" " if fifth_plus_text else "") + messages[i_msg].text
-                else:
-                    if len(final_messages) < 5: final_messages.append(messages[i_msg])
-                    break
-            if fifth_plus_text:
-                 if len(final_messages) < 5: final_messages.append(TextSendMessage(text=fifth_plus_text.strip()))
-                 elif isinstance(final_messages[-1], TextSendMessage):
-                     final_messages[-1].text = (final_messages[-1].text + " " + fifth_plus_text).strip()
+        # Strategy: Prioritize up to 4 messages, then try to merge subsequent text into the 5th if possible,
+        # or take the 5th message if it's a sticker.
+        final_messages = messages[:4] if len(messages) > 4 else messages[:] # Take first 4 or all if less
+        
+        if len(messages) >= 5: # If there are 5 or more messages
+            fifth_plus_text_parts = []
+            can_add_one_more_object = (len(final_messages) < 5)
 
-        messages = final_messages[:5]
-        if len(final_messages) > 5 : logger.warning(f"即使嘗試合併，訊息仍多於5則，已強制截斷。最終訊息數: {len(messages)}")
+            for i_msg in range(4, len(messages)): # Iterate from the 5th original message onwards
+                if isinstance(messages[i_msg], TextSendMessage):
+                    fifth_plus_text_parts.append(messages[i_msg].text)
+                elif isinstance(messages[i_msg], StickerSendMessage) and can_add_one_more_object:
+                    # If we can add one more object, and it's a sticker, and we haven't added text yet for the 5th slot
+                    if not fifth_plus_text_parts and len(final_messages) < 5:
+                        final_messages.append(messages[i_msg])
+                        can_add_one_more_object = False # Slot filled
+                    # If there's already text for 5th slot, this sticker might be dropped unless we have space later
+                    break # Stop collecting more if a sticker is encountered and we might need to merge text first
+            
+            merged_text = " ".join(fifth_plus_text_parts).strip()
+            if merged_text:
+                if can_add_one_more_object and len(final_messages) < 5:
+                    final_messages.append(TextSendMessage(text=merged_text))
+                elif final_messages and isinstance(final_messages[-1], TextSendMessage): # Try to append to last text message
+                    final_messages[-1].text = (final_messages[-1].text + " " + merged_text).strip()
+                # If last isn't text and no space, merged_text might be lost
+        
+        messages = final_messages[:5] # Enforce hard limit of 5
+        if len(final_messages) > 5 : # Should not happen if logic above is correct
+             logger.warning(f"即使嘗試合併，訊息仍多於5則({len(final_messages)})，已強制截斷。最終訊息數: {len(messages)}")
+
 
     if not messages:
         logger.warning("Gemini 回應解析後無有效訊息，發送預設文字訊息。")
         messages = [TextSendMessage(text="咪...？小雲好像沒有聽得很懂耶..."), TextSendMessage(text="可以...再說一次嗎？")]
-        fb_sticker = select_sticker_by_keyword("害羞") or select_sticker_by_keyword("思考")
-        if fb_sticker: messages.append(StickerSendMessage(package_id=str(fb_sticker["package_id"]), sticker_id=str(fb_sticker["sticker_id"])))
-        else: messages.append(TextSendMessage(text="喵嗚... （小雲有點困惑地看著你）"))
+        fb_sticker = select_sticker_by_keyword("害羞") or select_sticker_by_keyword("思考") # Ensure fb_sticker is not None
+        if fb_sticker:
+            messages.append(StickerSendMessage(package_id=str(fb_sticker["package_id"]), sticker_id=str(fb_sticker["sticker_id"])))
+        else: # Ultimate fallback if sticker config is broken
+             messages.append(TextSendMessage(text="喵嗚... （小雲有點困惑地看著你）"))
+
     try:
-        if messages: line_bot_api.reply_message(reply_token, messages)
+        if messages: # Ensure messages list is not empty
+            line_bot_api.reply_message(reply_token, messages)
     except Exception as e:
         logger.error(f"發送訊息失敗: {e}")
         try:
+            # Fallback error message to user
             error_messages = [TextSendMessage(text="咪！小雲好像卡住了...")]
             cry_sticker = select_sticker_by_keyword("哭哭")
-            if cry_sticker: error_messages.append(StickerSendMessage(package_id=str(cry_sticker["package_id"]), sticker_id=str(cry_sticker["sticker_id"])))
-            else: error_messages.append(TextSendMessage(text="再試一次好不好？"))
-            line_bot_api.reply_message(reply_token, error_messages[:5])
-        except Exception as e2: logger.error(f"備用訊息發送失敗: {e2}")
-# --- END MODIFICATION ---
+            if cry_sticker:
+                 error_messages.append(StickerSendMessage(package_id=str(cry_sticker["package_id"]), sticker_id=str(cry_sticker["sticker_id"])))
+            else:
+                error_messages.append(TextSendMessage(text="再試一次好不好？"))
+            line_bot_api.reply_message(reply_token, error_messages[:5]) # Send at most 5 fallback messages
+        except Exception as e2:
+            logger.error(f"備用訊息發送失敗: {e2}")
 
 @app.route("/", methods=["GET", "HEAD"])
-def health_check(): logger.info("Health check endpoint '/' was called."); return "OK", 200
+def health_check():
+    logger.info("Health check endpoint '/' was called.")
+    return "OK", 200
 
 @app.route("/callback", methods=["POST"])
 def callback():
     signature = request.headers["X-Line-Signature"]
     body = request.get_data(as_text=True)
     logger.info("Request body: " + body)
-    try: handler.handle(body, signature)
-    except InvalidSignatureError: logger.error("簽名驗證失敗，請檢查 LINE 渠道密鑰設定。"); abort(400)
+    try:
+        handler.handle(body, signature)
+    except InvalidSignatureError:
+        logger.error("簽名驗證失敗，請檢查 LINE 渠道密鑰設定。")
+        abort(400)
     return "OK"
 
-# --- MODIFIED: handle_text_message with updated context handling ---
 @handler.add(MessageEvent, message=TextMessage)
 def handle_text_message(event):
     user_message = event.message.text
@@ -650,17 +705,14 @@ def handle_text_message(event):
                         ("嗎" in user_message or "?" in user_message or "是什麼" in user_message or "告訴我" in user_message or "說說" in user_message or "分享" in user_message)
 
     if is_secret_request:
-        # When handling secrets, we pass the original event to potentially use the user_input_message later
-        # This function will call add_to_conversation and parse_response_and_send itself.
         return handle_cat_secret_discovery_request(event)
 
     conversation_history = get_conversation_history(user_id)
 
     bot_last_message_text = ""
     bot_expressed_emotion_state = None
-    user_prev_message_text = "" # User's message before bot's last response
+    user_prev_message_text = ""
 
-    # Get bot's last message text and try to infer its emotion/state
     if len(conversation_history) >= 1 and conversation_history[-1]["role"] == "model":
         if isinstance(conversation_history[-1].get("parts"), list) and conversation_history[-1]["parts"]:
             part_content = conversation_history[-1]["parts"][0].get("text", "")
@@ -672,22 +724,16 @@ def handle_text_message(event):
                  elif "餓" in bot_last_message_text or "[sticker:肚子餓]" in bot_last_message_text or "聞到好吃的" in bot_last_message_text:
                      bot_expressed_emotion_state = "飢餓"
                      logger.info(f"用戶({user_id}): 偵測到小雲上一輪表達了「飢餓」。")
-                 # Add more emotion/state detections here if needed
 
-    # Get user's message that led to bot's last message (if available)
     if len(conversation_history) >= 2 and conversation_history[-2]["role"] == "user":
         if isinstance(conversation_history[-2].get("parts"), list) and conversation_history[-2]["parts"]:
             part_content = conversation_history[-2]["parts"][0].get("text", "")
             if isinstance(part_content, str):
                 user_prev_message_text = part_content.lower()
 
-
     user_current_message_lower = user_message.lower()
+    contextual_reminder = ""
 
-    # --- Contextual Reminders Logic ---
-    contextual_reminder = "" # For specific scenarios like hunger or direct follow-up to bot's emotion
-
-    # 1. Highest priority: User's short reply directly after bot expressed a tracked emotion
     short_user_replies_empathy_or_query = ["嗯...", "嗯？", "喔...", "噢...", "真的嗎", "真的假的", "是喔", "好可憐", "好委屈", "秀秀", "乖乖"]
     if bot_expressed_emotion_state and any(reply == user_current_message_lower for reply in short_user_replies_empathy_or_query):
         contextual_reminder = (
@@ -698,8 +744,6 @@ def handle_text_message(event):
             f"**絕對不要在這個時候轉移話題去說別的（比如看小鳥、想玩球），也不要錯誤地以為是主人自己「{bot_expressed_emotion_state}」然後去安慰主人！焦點是你自己！**）\n"
         )
         logger.info(f"用戶({user_id}): 觸發 Bot 先前情緒 ({bot_expressed_emotion_state}) 的強力連貫性提醒。用戶說「{user_message}」")
-
-    # 2. Next priority: Hunger context (if not already handled by emotion follow-up)
     elif not contextual_reminder and \
          any(keyword in bot_last_message_text for keyword in ["餓", "吃", "聞到好吃的", "肚子餓"]) and \
          any(keyword in user_current_message_lower for keyword in ["鮪魚", "飯糰", "午餐", "罐頭", "魚", "肉", "零食", "吃", "飼料", "點心", "餵"]):
@@ -710,31 +754,26 @@ def handle_text_message(event):
             "請務必表現出對食物的渴望，並回應主人說的話。）\n"
         )
         logger.info(f"用戶({user_id}): 觸發飢餓與食物情境提醒！上一句小雲：'{bot_last_message_text}', 用戶：'{user_message}'")
-
-    # 3. General short input reminder (if no specific context reminder was triggered yet)
     elif not contextual_reminder and \
          len(user_message.strip()) <= 3 and \
          (user_message.strip().lower() in ["嗯", "嗯嗯", "嗯?", "？", "?", "喔", "哦", "喔喔", "然後呢", "然後", "再來呢", "再來"] or "嗯哼" in user_message.strip().lower()) and \
          bot_last_message_text:
-
-        # Further check if this short reply is likely a follow-up to user's own previous longer statement
-        if user_prev_message_text and len(user_prev_message_text) > 10 and not bot_expressed_emotion_state: # Don't override emotion follow-up
-             contextual_reminder = ( # Using contextual_reminder as these are mutually exclusive for now
+        if user_prev_message_text and len(user_prev_message_text) > 10 and not bot_expressed_emotion_state:
+             contextual_reminder = (
                 f"（系統重要提示：用戶先前曾說過「{user_prev_message_text[:70]}...」。在你回應「{bot_last_message_text[:70]}...」之後，用戶現在又簡短地說了「{user_message}」。\n"
                 f"這很可能是用戶希望你針對他之前提到的「{user_prev_message_text[:30]}...」這件事，或者針對你上一句話的內容，做出更進一步的回應或解釋。\n"
                 f"請你仔細思考上下文，**優先回應與先前對話焦點相關的內容**，而不是開啟全新的話題或隨機行動。）\n"
             )
              logger.info(f"用戶({user_id}): 觸發先前用戶話題的簡短回應提醒。 User_prev: '{user_prev_message_text[:70]}', Bot_last: '{bot_last_message_text[:70]}'")
         else:
-            contextual_reminder = ( # Using contextual_reminder
+            contextual_reminder = (
                 f"（系統重要提示：用戶的回應「{user_message}」非常簡短，這極有可能是對你上一句話「{bot_last_message_text[:70]}...」的反應或疑問。\n"
                 f"請小雲**不要開啟全新的話題或隨機行動**，而是仔細回想你上一句話的內容，思考用戶可能的疑問、或希望你繼續說明/回應的點，並針對此做出連貫的回應。例如，如果用戶只是簡單地「嗯？」，你應該嘗試解釋或追問你之前說的內容。）\n"
             )
             logger.info(f"用戶({user_id}): 觸發常規簡短輸入提醒。上一句小雲：'{bot_last_message_text[:70]}...'")
 
     time_context_prompt = get_time_based_cat_context()
-    # Assemble the final prompt for Gemini, prioritized
-    final_user_message_for_gemini = f"{contextual_reminder}{time_context_prompt}{user_message}" # short_input_reminder merged into contextual_reminder logic
+    final_user_message_for_gemini = f"{contextual_reminder}{time_context_prompt}{user_message}"
 
     headers = {"Content-Type": "application/json"}
     gemini_url_with_key = f"{GEMINI_API_URL}?key={GEMINI_API_KEY}"
@@ -760,13 +799,7 @@ def handle_text_message(event):
             raise Exception("Gemini API 回應格式異常或沒有候選回應")
 
         ai_response = result["candidates"][0]["content"]["parts"][0]["text"]
-        add_to_conversation(user_id, user_message, ai_response)
-
-        # --- (Placeholder) Long-term memory storage would happen here ---
-        # store_memory(user_id, user_message, is_user_message=True)
-        # store_memory(user_id, ai_response, is_user_message=False)
-        # --- End Placeholder ---
-
+        add_to_conversation(user_id, user_message, ai_response) # Default message_type is "text"
         logger.info(f"小雲回覆({user_id})：{ai_response}")
         parse_response_and_send(ai_response, event.reply_token)
 
@@ -796,7 +829,6 @@ def handle_text_message(event):
         messages_to_send.append(TextSendMessage(text="等一下再跟我玩好不好～"))
         line_bot_api.reply_message(event.reply_token, messages_to_send[:5])
 
-# --- END MODIFICATION ---
 
 @handler.add(MessageEvent, message=ImageMessage)
 def handle_image_message(event):
@@ -835,7 +867,7 @@ def handle_image_message(event):
         if "candidates" not in result or not result["candidates"] or "content" not in result["candidates"][0] or "parts" not in result["candidates"][0]["content"] or not result["candidates"][0]["content"]["parts"]:
             logger.error(f"Gemini API 圖片回應格式異常: {result}"); raise Exception("Gemini API 圖片回應格式異常或沒有候選回應")
         ai_response = result["candidates"][0]["content"]["parts"][0]["text"]
-        add_to_conversation(user_id, "傳了一張圖片給小雲看", ai_response, "image")
+        add_to_conversation(user_id, "圖片", ai_response, "image") # Placeholder for image description
         logger.info(f"小雲回覆({user_id})圖片：{ai_response}")
         parse_response_and_send(ai_response, event.reply_token)
     except requests.exceptions.Timeout:
@@ -894,10 +926,10 @@ def handle_sticker_message(event):
             "role": "user",
             "parts": [
                 {"text": user_prompt_text},
-                {"inline_data": {"mime_type": "image/png", "data": sticker_image_base64}}
+                {"inline_data": {"mime_type": "image/png", "data": sticker_image_base64}} # Assume PNG for most stickers, or image/gif for animated
             ]
         })
-        user_message_log_for_history = f"傳了貼圖讓小雲理解其意涵 (ID: {package_id}-{sticker_id}, 嘗試視覺辨識)"
+        user_message_log_for_history = f"貼圖 (ID: {package_id}-{sticker_id}, 視覺辨識)"
     else:
         emotion_or_meaning = get_sticker_emotion(package_id, sticker_id)
         logger.warning(f"無法從 CDN 獲取貼圖圖片 package_id={package_id}, sticker_id={sticker_id}，將使用基於 ID 的意義/情緒：{emotion_or_meaning}。")
@@ -915,7 +947,7 @@ def handle_sticker_message(event):
             "role": "user",
             "parts": [{"text": user_prompt_text}]
         })
-        user_message_log_for_history = f"傳了意思大概是「{emotion_or_meaning}」的貼圖給小雲 (ID: {package_id}-{sticker_id}, 基於MAP或通用情緒)"
+        user_message_log_for_history = f"貼圖 (ID: {package_id}-{sticker_id}, 意義: {emotion_or_meaning})"
 
     payload = {"contents": current_conversation_for_gemini, "generationConfig": {"temperature": TEMPERATURE, "maxOutputTokens": 500}}
 
@@ -953,16 +985,140 @@ def handle_sticker_message(event):
         if sticker: messages_to_send.append(StickerSendMessage(package_id=str(sticker["package_id"]), sticker_id=str(sticker["sticker_id"])))
         line_bot_api.reply_message(event.reply_token, messages_to_send[:5])
 
+# --- NEW: handle_audio_message ---
+@handler.add(MessageEvent, message=AudioMessage)
+def handle_audio_message(event):
+    user_id = event.source.user_id
+    message_id = event.message.id
+    logger.info(f"收到來自({user_id})的語音訊息 (message_id: {message_id})")
+
+    audio_base64 = get_audio_content_from_line(message_id)
+    if not audio_base64:
+        messages_to_send = [TextSendMessage(text="咪？小雲好像沒聽清楚耶...😿")]
+        cry_sticker = select_sticker_by_keyword("哭哭")
+        if cry_sticker:
+            messages_to_send.append(StickerSendMessage(
+                package_id=str(cry_sticker["package_id"]),
+                sticker_id=str(cry_sticker["sticker_id"])
+            ))
+        line_bot_api.reply_message(event.reply_token, messages_to_send[:5])
+        return
+
+    conversation_history = get_conversation_history(user_id)
+    headers = {"Content-Type": "application/json"}
+    gemini_url_with_key = f"{GEMINI_API_URL}?key={GEMINI_API_KEY}"
+
+    time_context_prompt = get_time_based_cat_context().replace("用戶說： ", "")
+    
+    # Refined audio_user_prompt for cat-like reactions to any language
+    audio_user_prompt = (
+        f"{time_context_prompt}你收到了一段來自使用者的語音訊息。\n"
+        "記住，小雲是一隻真實的貓咪，所以：\n"
+        "1.  **你不懂人類語言的複雜含義**：無論使用者說的是中文、英文、台語、或其他任何語言，你都無法真正理解他們在說什麼內容。\n"
+        "2.  **你對「聲音」本身做出反應**：你的回應應該基於你從聲音中感知到的東西，例如：\n"
+        "    -   **語氣和情緒**：聲音聽起來是開心的、溫柔的、興奮的、著急的、生氣的，還是平靜的？\n"
+        "    -   **音量和音調**：聲音是大聲還是小聲？尖銳還是低沉？\n"
+        "    -   **熟悉的聲音**：如果聲音聽起來像你熟悉的人（例如你的主要照顧者，也就是目前對話的使用者），你可能會比較放鬆或有反應。\n"
+        "    -   **簡單的、你可能被訓練過的詞彙（如果有的話）**：例如，如果使用者用非常清晰、簡單的方式說出「小雲」、「吃飯」、「乖乖」這類詞（無論是哪種語言，只要發音讓你聯想到），你可能會有一點點反應。但這不是理解，更像是條件反射。\n"
+        "3.  **你的回應方式**：\n"
+        "    -   發出貓咪的叫聲（咪～、喵嗚？、呼嚕嚕～、嘶～）。\n"
+        "    -   用文字描述你的貓咪動作（歪頭、豎起耳朵、搖尾巴、蹭蹭、躲起來）。\n"
+        "    -   表達貓咪的情緒（好奇、困惑、開心、害怕、放鬆）。\n"
+        "    -   適時使用 [STICKER:關鍵字] 來輔助表達。\n"
+        "4.  **絕對禁止**：\n"
+        "    -   **逐字回應或翻譯語音內容**。你不是翻譯機，也不是語音助理。\n"
+        "    -   表現出你聽懂了使用者說的複雜句子或討論的具體話題。\n"
+        "    -   假裝自己能用人類語言流暢對話。\n"
+        "你的目標是扮演一隻對各種聲音做出自然、可愛、真實貓咪反應的小雲。\n"
+        "例如，如果聲音聽起來很溫柔，你可能會發出呼嚕聲或想蹭蹭；如果聲音很大聲或很奇怪，你可能會有點害怕或好奇地歪頭；如果使用者說了一長串你聽不懂的話，你可能會發出「咪？」的困惑聲。\n"
+        "請針對現在收到的這段語音，給出小雲的反應。"
+    )
+
+    current_conversation_for_gemini = conversation_history.copy()
+    current_conversation_for_gemini.append({
+        "role": "user",
+        "parts": [
+            {"text": audio_user_prompt},
+            {"inline_data": {"mime_type": "audio/m4a", "data": audio_base64}} # LINE voice is m4a
+        ]
+    })
+    payload = {
+        "contents": current_conversation_for_gemini,
+        "generationConfig": {"temperature": TEMPERATURE, "maxOutputTokens": 500} 
+    }
+
+    try:
+        response = requests.post(gemini_url_with_key, headers=headers, json=payload, timeout=45)
+        response.raise_for_status()
+        result = response.json()
+        if "candidates" not in result or not result["candidates"] or \
+           "content" not in result["candidates"][0] or \
+           "parts" not in result["candidates"][0]["content"] or \
+           not result["candidates"][0]["content"]["parts"]:
+            logger.error(f"Gemini API 語音回應格式異常: {result}")
+            raise Exception("Gemini API 語音回應格式異常或沒有候選回應")
+
+        ai_response = result["candidates"][0]["content"]["parts"][0]["text"]
+        add_to_conversation(user_id, "語音訊息", ai_response, "audio") # User message placeholder
+        logger.info(f"小雲回覆({user_id})語音訊息：{ai_response}")
+        parse_response_and_send(ai_response, event.reply_token)
+
+    except requests.exceptions.Timeout:
+        logger.error(f"Gemini API 語音處理請求超時 ({GEMINI_MODEL_NAME})")
+        messages_to_send = [TextSendMessage(text="咪...小雲聽聲音聽得耳朵好癢，想睡覺了...[STICKER:睡覺]")]
+        line_bot_api.reply_message(event.reply_token, messages_to_send)
+    except requests.exceptions.HTTPError as http_err:
+        logger.error(f"Gemini API 語音處理 HTTP 錯誤 ({GEMINI_MODEL_NAME}): {http_err} - {response.text if response else 'No response text'}")
+        messages_to_send = [TextSendMessage(text="咪～這個聲音讓小雲的頭有點暈暈的...")]
+        thinking_sticker = select_sticker_by_keyword("思考")
+        if thinking_sticker:
+            messages_to_send.append(StickerSendMessage(
+                package_id=str(thinking_sticker["package_id"]),
+                sticker_id=str(thinking_sticker["sticker_id"])
+            ))
+        messages_to_send.append(TextSendMessage(text="可以再說一次文字嗎？"))
+        line_bot_api.reply_message(event.reply_token, messages_to_send[:5])
+    except requests.exceptions.RequestException as req_err:
+        logger.error(f"Gemini API 語音處理請求錯誤 ({GEMINI_MODEL_NAME}): {req_err}")
+        messages_to_send = [TextSendMessage(text="喵嗚～小雲的耳朵好像聽不太到這個聲音耶...")]
+        cry_sticker = select_sticker_by_keyword("哭哭")
+        if cry_sticker:
+            messages_to_send.append(StickerSendMessage(
+                package_id=str(cry_sticker["package_id"]),
+                sticker_id=str(cry_sticker["sticker_id"])
+            ))
+        line_bot_api.reply_message(event.reply_token, messages_to_send[:5])
+    except Exception as e:
+        logger.error(f"處理語音訊息時發生錯誤 ({GEMINI_MODEL_NAME}): {e}")
+        messages_to_send = [TextSendMessage(text="喵嗚～小雲的貓貓耳朵好像有點故障了...")]
+        confused_sticker = select_sticker_by_keyword("無奈")
+        if confused_sticker:
+            messages_to_send.append(StickerSendMessage(
+                package_id=str(confused_sticker["package_id"]),
+                sticker_id=str(confused_sticker["sticker_id"])
+            ))
+        messages_to_send.append(TextSendMessage(text="你可以打字告訴小雲嗎？"))
+        line_bot_api.reply_message(event.reply_token, messages_to_send[:5])
+# --- END NEW AUDIO HANDLER ---
+
 @app.route("/clear_memory/<user_id>", methods=["GET"])
 def clear_memory_route(user_id):
-    if user_id in conversation_memory: del conversation_memory[user_id]; logger.info(f"已清除用戶 {user_id} 的對話記憶。"); return f"已清除用戶 {user_id} 的對話記憶"
+    if user_id in conversation_memory:
+        del conversation_memory[user_id]
+        logger.info(f"已清除用戶 {user_id} 的對話記憶。")
+        return f"已清除用戶 {user_id} 的對話記憶"
     return f"用戶 {user_id} 沒有對話記憶"
 
 @app.route("/memory_status", methods=["GET"])
 def memory_status_route():
     status = {"total_users": len(conversation_memory), "users": {}}
-    for uid, hist in conversation_memory.items(): status["users"][uid] = {"conversation_entries": len(hist), "last_interaction_summary": hist[-1]["parts"][0]["text"] if hist and hist[-1]["parts"] else "無"}
+    for uid, hist in conversation_memory.items():
+        status["users"][uid] = {
+            "conversation_entries": len(hist),
+            "last_interaction_summary": hist[-1]["parts"][0]["text"] if hist and hist[-1]["parts"] else "無"
+        }
     return json.dumps(status, ensure_ascii=False, indent=2)
+
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8080))
