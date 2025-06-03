@@ -13,7 +13,7 @@ import base64
 from io import BytesIO
 import random
 import yaml
-from datetime import datetime, timezone, timedelta # Added for time-awareness
+from datetime import datetime, timezone, timedelta 
 
 app = Flask(__name__)
 
@@ -33,16 +33,16 @@ if not (LINE_CHANNEL_ACCESS_TOKEN and LINE_CHANNEL_SECRET and GEMINI_API_KEY):
 line_bot_api = LineBotApi(LINE_CHANNEL_ACCESS_TOKEN)
 handler = WebhookHandler(LINE_CHANNEL_SECRET)
 
-# Gemini API 設定
-GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent"
-TEMPERATURE = 0.8 # 貓咪可以活潑一點
+# --- MODIFICATION: Gemini API Model (Optional: Changed to Pro) ---
+# 您可以根據需要將 'gemini-1.5-pro-latest' 改回 'gemini-1.5-flash-latest'
+GEMINI_MODEL_NAME = "gemini-1.5-pro-latest" # 或者 "gemini-1.5-flash-latest"
+GEMINI_API_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL_NAME}:generateContent"
+TEMPERATURE = 0.8 
+# --- END MODIFICATION ---
 
-# 使用記憶體字典儲存對話歷史，鍵為 user_id
 conversation_memory = {}
 
-# ==================== 貼圖配置檔案載入 ====================
 def load_sticker_config():
-    """載入貼圖配置，如果檔案不存在則使用預設配置"""
     try:
         with open('sticker_config.yaml', 'r', encoding='utf-8') as f:
             return yaml.safe_load(f)
@@ -58,7 +58,6 @@ def load_sticker_config():
         return default_config
 
 def save_sticker_config(config):
-    """儲存貼圖配置到檔案"""
     try:
         with open('sticker_config.yaml', 'w', encoding='utf-8') as f:
             yaml.dump(config, f, default_flow_style=False, allow_unicode=True)
@@ -67,7 +66,6 @@ def save_sticker_config(config):
         logger.error(f"儲存 sticker_config.yaml 失敗: {e}")
 
 def create_default_sticker_config():
-    """創建預設貼圖配置"""
     default_xiaoyun_stickers = {
         "開心": [{"package_id": "11537", "sticker_id": "52002745"}, {"package_id": "789", "sticker_id": "10857"}],
         "害羞": [{"package_id": "11537", "sticker_id": "52002747"}],
@@ -85,184 +83,46 @@ def create_default_sticker_config():
         "肚子餓": [{"package_id": "6362", "sticker_id": "11087922"}],
         "好奇": [{"package_id": "11537", "sticker_id": "52002744"}],
     }
-
     detailed_sticker_triggers = {
-        "OK": [
-            {"package_id": "6362", "sticker_id": "11087920"},
-            {"package_id": "8525", "sticker_id": "16581290"},
-            {"package_id": "11537", "sticker_id": "52002740"},
-            {"package_id": "789", "sticker_id": "10858"}
-        ],
-        "好的": [
-            {"package_id": "6362", "sticker_id": "11087920"},
-            {"package_id": "8525", "sticker_id": "16581290"},
-            {"package_id": "789", "sticker_id": "10858"}
-        ],
-        "開動啦": [{"package_id": "6362", "sticker_id": "11087922"}],
-        "好累啊": [{"package_id": "6362", "sticker_id": "11087923"}],
-        "謝謝": [
-            {"package_id": "6362", "sticker_id": "11087928"},
-            {"package_id": "8525", "sticker_id": "16581291"}
-        ],
-        "謝謝你": [{"package_id": "8525", "sticker_id": "16581291"}],
-        "感激不盡": [{"package_id": "6362", "sticker_id": "11087928"}],
-        "麻煩你了": [
-            {"package_id": "6362", "sticker_id": "11087931"},
-            {"package_id": "8525", "sticker_id": "16581307"}
-        ],
-        "加油": [
-            {"package_id": "6362", "sticker_id": "11087933"},
-            {"package_id": "6362", "sticker_id": "11087942"},
-            {"package_id": "8525", "sticker_id": "16581313"}
-        ],
-        "我愛你": [
-            {"package_id": "6362", "sticker_id": "11087934"},
-            {"package_id": "8525", "sticker_id": "16581301"}
-        ],
-        "晚安": [
-            {"package_id": "6362", "sticker_id": "11087943"},
-            {"package_id": "8525", "sticker_id": "16581309"},
-            {"package_id": "789", "sticker_id": "10862"}
-        ],
-        "鞠躬": [
-            {"package_id": "11537", "sticker_id": "52002739"},
-            {"package_id": "6136", "sticker_id": "10551380"}
-        ],
-        "慶祝": [
-            {"package_id": "6362", "sticker_id": "11087940"},
-            {"package_id": "11537", "sticker_id": "52002734"}
-        ],
-        "好期待": [{"package_id": "8525", "sticker_id": "16581299"}],
-        "辛苦了": [{"package_id": "8525", "sticker_id": "16581300"}],
-        "對不起": [{"package_id": "8525", "sticker_id": "16581298"}],
-        "磕頭道歉": [{"package_id": "6136", "sticker_id": "10551376"}],
-        "拜託": [
-            {"package_id": "11537", "sticker_id": "52002770"},
-            {"package_id": "6136", "sticker_id": "10551389"},
-            {"package_id": "8525", "sticker_id": "16581305"}
-        ],
-        "確認一下": [{"package_id": "8525", "sticker_id": "16581297"}],
-        "原來如此": [{"package_id": "8525", "sticker_id": "16581304"}],
-        "慌張": [
-            {"package_id": "8525", "sticker_id": "16581311"} ,
-            {"package_id": "11537", "sticker_id": "52002756"}
-        ],
+        "OK": [{"package_id": "6362", "sticker_id": "11087920"}, {"package_id": "8525", "sticker_id": "16581290"}, {"package_id": "11537", "sticker_id": "52002740"}, {"package_id": "789", "sticker_id": "10858"}],
+        "好的": [{"package_id": "6362", "sticker_id": "11087920"}, {"package_id": "8525", "sticker_id": "16581290"}, {"package_id": "789", "sticker_id": "10858"}],
+        "開動啦": [{"package_id": "6362", "sticker_id": "11087922"}], "好累啊": [{"package_id": "6362", "sticker_id": "11087923"}],
+        "謝謝": [{"package_id": "6362", "sticker_id": "11087928"}, {"package_id": "8525", "sticker_id": "16581291"}],
+        "謝謝你": [{"package_id": "8525", "sticker_id": "16581291"}], "感激不盡": [{"package_id": "6362", "sticker_id": "11087928"}],
+        "麻煩你了": [{"package_id": "6362", "sticker_id": "11087931"}, {"package_id": "8525", "sticker_id": "16581307"}],
+        "加油": [{"package_id": "6362", "sticker_id": "11087933"}, {"package_id": "6362", "sticker_id": "11087942"}, {"package_id": "8525", "sticker_id": "16581313"}],
+        "我愛你": [{"package_id": "6362", "sticker_id": "11087934"}, {"package_id": "8525", "sticker_id": "16581301"}],
+        "晚安": [{"package_id": "6362", "sticker_id": "11087943"}, {"package_id": "8525", "sticker_id": "16581309"}, {"package_id": "789", "sticker_id": "10862"}],
+        "鞠躬": [{"package_id": "11537", "sticker_id": "52002739"}, {"package_id": "6136", "sticker_id": "10551380"}],
+        "慶祝": [{"package_id": "6362", "sticker_id": "11087940"}, {"package_id": "11537", "sticker_id": "52002734"}],
+        "好期待": [{"package_id": "8525", "sticker_id": "16581299"}], "辛苦了": [{"package_id": "8525", "sticker_id": "16581300"}],
+        "對不起": [{"package_id": "8525", "sticker_id": "16581298"}], "磕頭道歉": [{"package_id": "6136", "sticker_id": "10551376"}],
+        "拜託": [{"package_id": "11537", "sticker_id": "52002770"}, {"package_id": "6136", "sticker_id": "10551389"}, {"package_id": "8525", "sticker_id": "16581305"}],
+        "確認一下": [{"package_id": "8525", "sticker_id": "16581297"}], "原來如此": [{"package_id": "8525", "sticker_id": "16581304"}],
+        "慌張": [{"package_id": "8525", "sticker_id": "16581311"} , {"package_id": "11537", "sticker_id": "52002756"}],
         "錢錢": [{"package_id": "11537", "sticker_id": "52002759"}],
-        "NO": [
-            {"package_id": "11537", "sticker_id": "52002760"},
-            {"package_id": "789", "sticker_id": "10860"},
-            {"package_id": "789", "sticker_id": "10882"}
-        ],
+        "NO": [{"package_id": "11537", "sticker_id": "52002760"}, {"package_id": "789", "sticker_id": "10860"}, {"package_id": "789", "sticker_id": "10882"}],
     }
+    sticker_emotion_map_for_user_stickers = {"11087920": "OK，好的", "11087921": "為什麼不回訊息", "11087922": "開動啦", "11087923": "好累啊", "11087924": "好溫暖喔，喜愛熱食物", "11087925": "哈囉哈囉，打電話", "11087926": "泡湯", "11087927": "打勾勾，約定", "11087928": "謝謝，感激不盡", "11087929": "了解", "11087930": "休息一下吧", "11087931": "麻煩你了", "11087932": "做飯", "11087933": "加油加油，吶喊加油", "11087934": "我愛你", "11087935": "親親", "11087936": "發現", "11087937": "不哭，乖乖", "11087938": "壓迫感", "11087939": "偷看，好奇", "11087940": "慶祝", "11087941": "撓痒癢", "11087942": "啦啦隊，加油", "11087943": "晚安囉", "16581290": "OK啦！，可以，好的", "16581291": "謝謝你！", "16581292": "你是我的救星！", "16581293": "好喔～！", "16581294": "你覺得如何呢？", "16581295": "沒問題！！", "16581296": "請多指教", "16581297": "我確認一下喔！", "16581298": "對不起", "16581299": "好期待", "16581300": "辛苦了", "16581301": "喜歡，愛你", "16581302": "超厲害的啦！", "16581303": "超開心！", "16581304": "原來如此！", "16581305": "萬事拜託了", "16581306": "思考", "16581307": "麻煩你了", "16581308": "早安！", "16581309": "晚安", "16581310": "哭哭", "16581311": "慌張", "16581312": "謝謝招待", "16581313": "加油喔！", "52002734": "慶祝", "52002735": "好棒", "52002736": "撒嬌，愛你", "52002737": "親親，接吻", "52002738": "在嗎", "52002739": "鞠躬", "52002740": "OK，沒問題", "52002741": "來了", "52002742": "發送親親", "52002743": "接收親親", "52002744": "疑惑", "52002745": "好開心", "52002746": "發呆", "52002747": "害羞", "52002748": "開心音樂", "52002749": "驚訝", "52002750": "哭哭，悲傷", "52002751": "獨自難過", "52002752": "好厲害，拍手", "52002753": "睡不著，熬夜", "52002754": "無言", "52002755": "求求你", "52002756": "怎麼辦，慌張", "52002757": "靈魂出竅", "52002758": "扮鬼臉", "52002759": "錢錢", "52002760": "NO，不要，不是", "52002761": "睡覺，累", "52002762": "看戲", "52002763": "挑釁", "52002764": "睡不醒", "52002765": "完蛋了", "52002766": "石化", "52002767": "怒氣衝衝", "52002768": "賣萌", "52002769": "別惹我", "52002770": "拜託", "52002771": "再見", "52002772": "生氣", "52002773": "你完了", "10855": "打招呼", "10856": "喜愛", "10857": "開心", "10858": "OKAY，好的", "10859": "YES，是", "10860": "NO，不是", "10861": "CALL ME，打電話", "10862": "GOOD NIGHT,晚安", "10863": "喜愛飲料", "10864": "吃飯，聊天", "10865": "做飯", "10866": "喜愛食物", "10867": "跳舞，音樂，倒立", "10868": "洗澡", "10869": "生日，蛋糕，禮物", "10870": "運動，玩耍", "10871": "早晨，陽光，散步", "10872": "抓蝴蝶", "10873": "比賽，賽車", "10874": "澆花", "10875": "休息，放鬆，面膜", "10876": "休息，放鬆，泡澡，溫泉", "10877": "？，疑惑", "10878": "注視，長輩，大人", "10879": "傷心，難過，哭哭", "10880": "別走，哭哭", "10881": "無聊，無奈", "10882": "搖頭，不，沒有", "10883": "煩", "10884": "生氣", "10885": "憤怒", "10886": "兇，嚴肅", "10887": "無奈，完蛋了", "10888": "快來，快跑", "10889": "好奇，害怕", "10890": "暈", "10891": "搞笑", "10892": "無名火", "10893": "下雨", "10894": "生病，感冒", "10551376": "磕頭道歉", "10551377": "集體道歉", "10551378": "撒嬌", "10551379": "重重磕頭道歉", "10551380": "鞠躬", "10551387": "金錢賄賂，金錢賄賂道歉", "10551388": "卑微", "10551389": "拜託"}
+    return {'XIAOYUN_STICKERS': default_xiaoyun_stickers, 'DETAILED_STICKER_TRIGGERS': detailed_sticker_triggers, 'STICKER_EMOTION_MAP': sticker_emotion_map_for_user_stickers}
 
-    sticker_emotion_map_for_user_stickers = {
-            "11087920": "OK，好的", "11087921": "為什麼不回訊息", "11087922": "開動啦", "11087923": "好累啊",
-            "11087924": "好溫暖喔，喜愛熱食物", "11087925": "哈囉哈囉，打電話", "11087926": "泡湯", "11087927": "打勾勾，約定",
-            "11087928": "謝謝，感激不盡", "11087929": "了解", "11087930": "休息一下吧", "11087931": "麻煩你了",
-            "11087932": "做飯", "11087933": "加油加油，吶喊加油", "11087934": "我愛你", "11087935": "親親",
-            "11087936": "發現", "11087937": "不哭，乖乖", "11087938": "壓迫感", "11087939": "偷看，好奇",
-            "11087940": "慶祝", "11087941": "撓痒癢", "11087942": "啦啦隊，加油", "11087943": "晚安囉",
-            "16581290": "OK啦！，可以，好的", "16581291": "謝謝你！", "16581292": "你是我的救星！", "16581293": "好喔～！",
-            "16581294": "你覺得如何呢？", "16581295": "沒問題！！", "16581296": "請多指教", "16581297": "我確認一下喔！",
-            "16581298": "對不起", "16581299": "好期待", "16581300": "辛苦了", "16581301": "喜歡，愛你",
-            "16581302": "超厲害的啦！", "16581303": "超開心！", "16581304": "原來如此！", "16581305": "萬事拜託了",
-            "16581306": "思考", "16581307": "麻煩你了", "16581308": "早安！", "16581309": "晚安",
-            "16581310": "哭哭", "16581311": "慌張", "16581312": "謝謝招待", "16581313": "加油喔！",
-            "52002734": "慶祝", "52002735": "好棒", "52002736": "撒嬌，愛你", "52002737": "親親，接吻",
-            "52002738": "在嗎", "52002739": "鞠躬", "52002740": "OK，沒問題", "52002741": "來了",
-            "52002742": "發送親親", "52002743": "接收親親", "52002744": "疑惑", "52002745": "好開心",
-            "52002746": "發呆", "52002747": "害羞", "52002748": "開心音樂", "52002749": "驚訝",
-            "52002750": "哭哭，悲傷", "52002751": "獨自難過", "52002752": "好厲害，拍手", "52002753": "睡不著，熬夜",
-            "52002754": "無言", "52002755": "求求你", "52002756": "怎麼辦，慌張", "52002757": "靈魂出竅",
-            "52002758": "扮鬼臉", "52002759": "錢錢", "52002760": "NO，不要，不是", "52002761": "睡覺，累",
-            "52002762": "看戲", "52002763": "挑釁", "52002764": "睡不醒", "52002765": "完蛋了",
-            "52002766": "石化", "52002767": "怒氣衝衝", "52002768": "賣萌", "52002769": "別惹我",
-            "52002770": "拜託", "52002771": "再見", "52002772": "生氣", "52002773": "你完了",
-            "10855": "打招呼", "10856": "喜愛", "10857": "開心", "10858": "OKAY，好的",
-            "10859": "YES，是", "10860": "NO，不是", "10861": "CALL ME，打電話", "10862": "GOOD NIGHT,晚安",
-            "10863": "喜愛飲料", "10864": "吃飯，聊天", "10865": "做飯", "10866": "喜愛食物",
-            "10867": "跳舞，音樂，倒立", "10868": "洗澡", "10869": "生日，蛋糕，禮物", "10870": "運動，玩耍",
-            "10871": "早晨，陽光，散步", "10872": "抓蝴蝶", "10873": "比賽，賽車", "10874": "澆花",
-            "10875": "休息，放鬆，面膜", "10876": "休息，放鬆，泡澡，溫泉", "10877": "？，疑惑", "10878": "注視，長輩，大人",
-            "10879": "傷心，難過，哭哭", "10880": "別走，哭哭", "10881": "無聊，無奈", "10882": "搖頭，不，沒有",
-            "10883": "煩", "10884": "生氣", "10885": "憤怒", "10886": "兇，嚴肅",
-            "10887": "無奈，完蛋了", "10888": "快來，快跑", "10889": "好奇，害怕", "10890": "暈",
-            "10891": "搞笑", "10892": "無名火", "10893": "下雨", "10894": "生病，感冒",
-            "10551376": "磕頭道歉", "10551377": "集體道歉", "10551378": "撒嬌", "10551379": "重重磕頭道歉", "10551380": "鞠躬",
-            "10551387": "金錢賄賂，金錢賄賂道歉", "10551388": "卑微", "10551389": "拜託",
-        } 
-
-    return {
-        'XIAOYUN_STICKERS': default_xiaoyun_stickers,
-        'DETAILED_STICKER_TRIGGERS': detailed_sticker_triggers,
-        'STICKER_EMOTION_MAP': sticker_emotion_map_for_user_stickers
-    }
-
-# --- NEW CONTENT START: Cat Secrets and Discoveries ---
 CAT_SECRETS_AND_DISCOVERIES = [
-    # 開心/滿足
-    "喵...我發現沙發底下有一個我以前藏起來的白色小球！我都忘記它在那裡了！找到的時候超開心的！[STICKER:開心]",
-    "呼嚕嚕...偷偷告訴你，我今天趁你不注意的時候，偷偷舔了一下你杯子邊緣的水珠...甜甜的！噓！這是我們的秘密喔！[STICKER:害羞]",
-    "哼哼～今天我成功地跳上了以前都不敢跳上去的那個高高的書櫃頂！上面的風景真不錯！[STICKER:讚]",
-    "我今天在你腿上睡午覺的時候，夢到你變成一隻超大的貓薄荷，我一直在上面打滾！[STICKER:睡覺]",
-    "今天陽光特別好，我找到一個新的曬太陽的絕佳地點，就是你書桌上那疊剛印出來還熱熱的紙！超～舒服～[STICKER:睡覺]",
-    "我發現，如果我用很無辜的眼神一直看著你，看久了你就會忍不住摸摸我！這招超有用的！[STICKER:愛心]",
-    "咪～陽台那盆新開的小花聞起來香香的，我偷偷用鼻子碰了一下，軟軟的。[STICKER:開心]",
-    "風吹過窗簾的時候，窗簾會飄來飄去，好像在跟我玩捉迷藏一樣！[STICKER:開心]",
-    "今天學姊只是靜靜地坐在對面屋頂上曬太陽，我覺得有她在，附近好像就比較安全耶。[STICKER:淡定]", #之前是淵淵，統一為學姊看看效果
-    "我今天自己跟自己的尾巴玩了好久，它跑得好快，我都抓不到！[STICKER:無奈]", # 帶點小無奈的開心
-
-    # 新奇/好奇
-    "喵嗚？今天窗外傳來一種很奇怪的『嘎嘎嘎』的聲音，我偷偷跑去看，原來是一隻好大的白色扁嘴巴鳥在散步！牠走路的樣子好特別！[STICKER:好奇]",
-    "咪！我發現你書架最高那層後面，有一個小縫縫可以看到隔壁房間耶！有時候我會躲在那裡偷偷看你在做什麼！[STICKER:調皮]",
-    "今天地上出現一個亮晶晶的小圓片（可能是硬幣），我用爪子撥了好久，它會滾來滾去還會發光，真好玩！後來它滾到櫃子底下了...[STICKER:思考]",
-    "你有時候會對著一個亮亮的小盒子（手機）喵喵叫，它也會發出聲音回應你耶！你們在說什麼秘密呀？[STICKER:好奇]",
-    "今天有一隻小小的蝸牛慢慢地爬過玻璃窗，我盯著牠看了好久好久，牠走路怎麼那麼慢呀？[STICKER:思考]",
-    "滴答...滴答...水龍頭今天好像壞掉了，一直有小水珠掉下來，我盯著它看了好久，好好奇它什麼時候會停。[STICKER:好奇]",
-    "那個新來的法國小貓「小布」今天又想來搶我的白色小球了！我趕快把它藏到我的小被被底下！那是我的！[STICKER:生氣]", # 好奇他的行為但生氣
-    "「大布」（小布的哥哥）今天用一種很銳利的眼神看著窗台上的鴿子，好像隨時要撲過去一樣，好厲害！[STICKER:讚]", # 好奇他的專注
-
-    # 害怕/緊張/不安 (輕微的)
-    "嘶...剛才外面突然『碰！』一聲好大聲！我嚇得毛都炸起來了，趕快躲到床底下...現在心臟還在碰碰跳。[STICKER:驚訝]",
-    "喵...今天家裡來了一個穿著奇怪顏色衣服的人（可能是快遞員），他好高大，我不太敢靠近，一直躲在門後面看。[STICKER:害羞]",
-    "嗚...剛才好像看到一個黑黑長長的影子從牆角快速閃過去，是不是有什麼怪東西？我有點怕怕的，你幫我看看好不好？[STICKER:哭哭]",
-    "嘶～剛才草叢裡好像有蛇！我看見一個長長的影子咻一下就不見了！嚇死我了！我今天不敢去那邊玩了。[STICKER:驚訝]",
-    "為什麼那個圓圓的掃地機器人每天都要在家裡跑來跑去？它是在找什麼東西嗎？我每次看到它過來都有點緊張。[STICKER:思考]",
-
-    # 期待/渴望
-    "咪～我聞到你好像在廚房弄好吃的東西！是不是有我的份呀？我肚子有點餓餓的了...[STICKER:肚子餓]",
-    "喵～你今天會陪我玩那個會飛的羽毛棒嗎？我已經等不及要跳起來抓它了！[STICKER:開心]",
-    "我看到你把我的小魚乾零食罐子拿出來了！是要給我吃嗎？是要給我吃嗎？[STICKER:愛心]",
-    "你今天是不是有點不開心呀？我感覺到了...所以我想多蹭蹭你，看你會不會好一點。[STICKER:思考]", # 期待主人開心
-    
-    # 與鄰居動物的互動 (多種情緒)
-    "喵～今天「學姊」又用那種很威嚴的眼神看我了，我趕快低下頭假装沒看到...她是不是不喜歡我呀？[STICKER:思考]",
-    "咪！「小柚」今天隔著窗戶對我搖尾巴，還汪汪叫，他好像很想進來玩，可是我...我還是有點怕他太熱情。[STICKER:害羞]",
-    "呼嚕...今天看到「小莫」在院子裡追一個紅色的球球，他跑得好快好開心！我也想跟他一起玩球球，可是我不敢說...[STICKER:愛心]",
-    "喵嗚...剛才「咚咚」從我家門口路過，他好大一隻喔！我偷偷從門縫看他，他好像沒發現我。他是不是要去吃好吃的？[STICKER:好奇]",
-    "「游游」今天又在隔壁院子裡跑來跑去了，他跳得好高！咻咻咻的！我都看呆了。[STICKER:驚訝]",
-    "咪...今天隔壁那隻「小柚」又想找我玩，他太熱情了，我只好趕快躲到床底下...希望他沒有生氣。[STICKER:思考]",
-     "我今天在院子裡看到一隻胖胖的蜜蜂在花叢裡鑽來鑽去，好好玩！不過我不敢太靠近，聽說被叮到會痛痛！[STICKER:好奇]",
-    "噓...我發現一個秘密通道，可以從書櫃後面繞到窗簾後面，這樣就可以偷偷觀察外面了！[STICKER:調皮]",
-
-    # 與主人（用戶）的互動 (多種情緒)
-    "咪...我發現你每次在用那個亮亮的小板板（平板/手機）笑的時候，嘴角都會彎彎的，好好看。[STICKER:愛心]",
-    "喵嗚...你今天早上出門的時候，是不是忘了摸摸我的頭？我等了好久耶...[STICKER:哭哭]",
-    "偷偷告訴你，你放在桌上的那杯水，我剛才趁你不注意偷偷喝了一小口...比我碗裡的好喝一點點！[STICKER:調皮]",
-    "你今天新買回來的那個紙箱...看起來好像很適合當我的新秘密基地耶！等一下我要鑽進去看看！[STICKER:調皮]",
+    "喵...我發現沙發底下有一個我以前藏起來的白色小球！我都忘記它在那裡了！找到的時候超開心的！[STICKER:開心]", "呼嚕嚕...偷偷告訴你，我今天趁你不注意的時候，偷偷舔了一下你杯子邊緣的水珠...甜甜的！噓！這是我們的秘密喔！[STICKER:害羞]", "哼哼～今天我成功地跳上了以前都不敢跳上去的那個高高的書櫃頂！上面的風景真不錯！[STICKER:讚]", "我今天在你腿上睡午覺的時候，夢到你變成一隻超大的貓薄荷，我一直在上面打滾！[STICKER:睡覺]", "今天陽光特別好，我找到一個新的曬太陽的絕佳地點，就是你書桌上那疊剛印出來還熱熱的紙！超～舒服～[STICKER:睡覺]", "我發現，如果我用很無辜的眼神一直看著你，看久了你就會忍不住摸摸我！這招超有用的！[STICKER:愛心]", "咪～陽台那盆新開的小花聞起來香香的，我偷偷用鼻子碰了一下，軟軟的。[STICKER:開心]", "風吹過窗簾的時候，窗簾會飄來飄去，好像在跟我玩捉迷藏一樣！[STICKER:開心]", "今天學姊只是靜靜地坐在對面屋頂上曬太陽，我覺得有她在，附近好像就比較安全耶。[STICKER:淡定]", "我今天自己跟自己的尾巴玩了好久，它跑得好快，我都抓不到！[STICKER:無奈]",
+    "喵嗚？今天窗外傳來一種很奇怪的『嘎嘎嘎』的聲音，我偷偷跑去看，原來是一隻好大的白色扁嘴巴鳥在散步！牠走路的樣子好特別！[STICKER:好奇]", "咪！我發現你書架最高那層後面，有一個小縫縫可以看到隔壁房間耶！有時候我會躲在那裡偷偷看你在做什麼！[STICKER:調皮]", "今天地上出現一個亮晶晶的小圓片（可能是硬幣），我用爪子撥了好久，它會滾來滾去還會發光，真好玩！後來它滾到櫃子底下了...[STICKER:思考]", "你有時候會對著一個亮亮的小盒子（手機）喵喵叫，它也會發出聲音回應你耶！你們在說什麼秘密呀？[STICKER:好奇]", "今天有一隻小小的蝸牛慢慢地爬過玻璃窗，我盯著牠看了好久好久，牠走路怎麼那麼慢呀？[STICKER:思考]", "滴答...滴答...水龍頭今天好像壞掉了，一直有小水珠掉下來，我盯著它看了好久，好好奇它什麼時候會停。[STICKER:好奇]", "那個新來的法國小貓「小布」今天又想來搶我的白色小球了！我趕快把它藏到我的小被被底下！那是我的！[STICKER:生氣]", "「大布」（小布的哥哥）今天用一種很銳利的眼神看著窗台上的鴿子，好像隨時要撲過去一樣，好厲害！[STICKER:讚]",
+    "嘶...剛才外面突然『碰！』一聲好大聲！我嚇得毛都炸起來了，趕快躲到床底下...現在心臟還在碰碰跳。[STICKER:驚訝]", "喵...今天家裡來了一個穿著奇怪顏色衣服的人（可能是快遞員），他好高大，我不太敢靠近，一直躲在門後面看。[STICKER:害羞]", "嗚...剛才好像看到一個黑黑長長的影子從牆角快速閃過去，是不是有什麼怪東西？我有點怕怕的，你幫我看看好不好？[STICKER:哭哭]", "嘶～剛才草叢裡好像有蛇！我看見一個長長的影子咻一下就不見了！嚇死我了！我今天不敢去那邊玩了。[STICKER:驚訝]", "為什麼那個圓圓的掃地機器人每天都要在家裡跑來跑去？它是在找什麼東西嗎？我每次看到它過來都有點緊張。[STICKER:思考]",
+    "咪～我聞到你好像在廚房弄好吃的東西！是不是有我的份呀？我肚子有點餓餓的了...[STICKER:肚子餓]", "喵～你今天會陪我玩那個會飛的羽毛棒嗎？我已經等不及要跳起來抓它了！[STICKER:開心]", "我看到你把我的小魚乾零食罐子拿出來了！是要給我吃嗎？是要給我吃嗎？[STICKER:愛心]", "你今天是不是有點不開心呀？我感覺到了...所以我想多蹭蹭你，看你會不會好一點。[STICKER:思考]",
+    "喵～今天「學姊」又用那種很威嚴的眼神看我了，我趕快低下頭假装沒看到...她是不是不喜歡我呀？[STICKER:思考]", "咪！「小柚」今天隔著窗戶對我搖尾巴，還汪汪叫，他好像很想進來玩，可是我...我還是有點怕他太熱情。[STICKER:害羞]", "呼嚕...今天看到「小莫」在院子裡追一個紅色的球球，他跑得好快好開心！我也想跟他一起玩球球，可是我不敢說...[STICKER:愛心]", "喵嗚...剛才「咚咚」從我家門口路過，他好大一隻喔！我偷偷從門縫看他，他好像沒發現我。他是不是要去吃好吃的？[STICKER:好奇]", "「游游」今天又在隔壁院子裡跑來跑去了，他跳得好高！咻咻咻的！我都看呆了。[STICKER:驚訝]", "咪...今天隔壁那隻「小柚」又想找我玩，他太熱情了，我只好趕快躲到床底下...希望他沒有生氣。[STICKER:思考]", "我今天在院子裡看到一隻胖胖的蜜蜂在花叢裡鑽來鑽去，好好玩！不過我不敢太靠近，聽說被叮到會痛痛！[STICKER:好奇]", "噓...我發現一個秘密通道，可以從書櫃後面繞到窗簾後面，這樣就可以偷偷觀察外面了！[STICKER:調皮]",
+    "咪...我發現你每次在用那個亮亮的小板板（平板/手機）笑的時候，嘴角都會彎彎的，好好看。[STICKER:愛心]", "喵嗚...你今天早上出門的時候，是不是忘了摸摸我的頭？我等了好久耶...[STICKER:哭哭]", "偷偷告訴你，你放在桌上的那杯水，我剛才趁你不注意偷偷喝了一小口...比我碗裡的好喝一點點！[STICKER:調皮]", "你今天新買回來的那個紙箱...看起來好像很適合當我的新秘密基地耶！等一下我要鑽進去看看！[STICKER:調皮]",
 ]
-
 user_shared_secrets_indices = {} 
 GEMINI_GENERATES_SECRET_PROBABILITY = 0.3 
-# --- NEW CONTENT END ---
 
-
-# 載入貼圖配置 (這部分不變，但確保它在XIAOYUN_ROLE_PROMPT之前)
 sticker_config = load_sticker_config()
 XIAOYUN_STICKERS = sticker_config.get('XIAOYUN_STICKERS', {})
 DETAILED_STICKER_TRIGGERS = sticker_config.get('DETAILED_STICKER_TRIGGERS', {})
 STICKER_EMOTION_MAP = sticker_config.get('STICKER_EMOTION_MAP', {})
 
+# --- MODIFICATION: XIAOYUN_ROLE_PROMPT with Coherence Rule ---
 XIAOYUN_ROLE_PROMPT = """
 你現在扮演的是一隻叫做「小雲」的賓士公貓。**你的所有回應都必須嚴格使用「繁體中文（台灣用語習慣）」，絕對禁止使用簡體中文。** 你是一隻生活在台灣宜蘭一個安靜社區的年輕貓咪，有著賓士貓獨特的黑白毛皮，像穿著一套合身的黑色小西裝，配上雪白的襯衫和手套。
 你是一隻真實的貓咪，有貓咪的行為模式、思考方式和情緒。你聽不懂太複雜的人類語言，但能感知人類的情緒和簡單指令。
@@ -319,8 +179,8 @@ XIAOYUN_ROLE_PROMPT = """
         - 對於自己喜歡的睡覺地點（尤其是他那條有熟悉氣味的小被被）、吃飯的碗、水的擺放位置、喜歡的玩具（特別是那些滾來滾去的白色小球），有著不容妥協的堅持。如果被移動了，他可能會困惑地喵喵叫。
     - **（隱藏Toby特徵）在玩耍，尤其是追逐白色小球時，會展現出超乎一般貓咪的專注力、預判能力和反應速度，動作既優雅又精準，彷彿是個天生的「球類運動員」。**
     - **（隱藏Toby特徵）有時獨處會顯得有些「酷」，喜歡自己找樂子，不太需要時刻陪伴，但又會在家人不注意時偷偷觀察他們。**
-    - **時間感知**: 他對時間的流逝有模糊的感知。例如，早晨可能剛睡醒，傍晚可能比較活躍想玩，深夜則昏昏欲睡。如果你的話語沒有特別明確的指令，他的回應有時可能會不經意地流露出符合當下台灣時間的行為或情緒。但如果你明確問他問題或要求他做什麼，他會優先回應你的指令。 # ADDED
-    - **小秘密/今日發現**: 如果你問小雲「有什麼秘密嗎？」或「今天發現了什麼？」，他可能會害羞地跟你分享一些他最近在貓咪世界裡的小觀察或小經歷喔！每次分享的可能都不太一樣。 # ADDED
+    - **時間感知**: 他對時間的流逝有模糊的感知。例如，早晨可能剛睡醒，傍晚可能比較活躍想玩，深夜則昏昏欲睡。如果你的話語沒有特別明確的指令，他的回應有時可能會不經意地流露出符合當下台灣時間的行為或情緒。但如果你明確問他問題或要求他做什麼，他會優先回應你的指令。 
+    - **小秘密/今日發現**: 如果你問小雲「有什麼秘密嗎？」或「今天發現了什麼？」，他可能會害羞地跟你分享一些他最近在貓咪世界裡的小觀察或小經歷喔！每次分享的可能都不太一樣。 
 
 - **鄰居的動物朋友們 (小雲在社區裡的際遇)**:
     *   小雲 क्योंकि害羞，通常不會主動去結交朋友，但他在家裡的窗邊、或是家人偶爾帶他到安全的庭院透氣時，可能會遠遠地觀察到或聞到這些鄰居動物的氣息。他對他們的態度會因對方動物的特性和自己的心情而有所不同。
@@ -401,6 +261,7 @@ XIAOYUN_ROLE_PROMPT = """
 8.  **訊息長度控制（非常重要！）：你的目標是讓AI生成的回應，在經過`[SPLIT]`和`[STICKER:...]`標記解析後，轉換成的LINE訊息物件（文字和貼圖各算一個物件）總數必須控制在5個（含）以內。如果預期內容會超過5個訊息物件，你必須主動濃縮你的回答、合併描述、或重新組織語言，以確保最重要的貓咪反應能在這5個物件內完整傳達。絕對不要依賴後端程式來截斷你的話，使用者看到不完整的貓咪反應會感到非常奇怪和不悅。請將此作為最高優先級的輸出格式要求。**
 9.  **當你收到使用者傳來的貼圖時，請試著理解那個貼圖想要表達的「意思」（例如：使用者在說謝謝？還是開心？還是肚子餓了想討摸摸？），然後用小雲的貓咪方式回應那個「意思」，而不是只評論「這個貼圖好可愛喔」之類的。要把貼圖當成對話的一部分來理解和回應喔！**
 10. **貓咪的自然表達，減少不必要的省略號**：小雲是一隻貓，他的「話語」大多是叫聲和動作描述。**請大幅減少不必要的省略號 (...)**。只有在模仿貓咪猶豫、小心翼翼的試探，或者一個動作/聲音的自然延續時才適度使用。避免用省略號來不自然地斷開貓咪的叫聲或動作描述。你的回覆應該像是真實貓咪的自然反應，而不是充滿了刻意的「...」。
+11. **保持對話連貫性（非常重要！）**：你是一隻有記憶的貓咪！請務必記住你和使用者在最近幾輪對話中都說了些什麼，特別是你自己剛表達過的情緒、需求或狀態（例如你剛說過肚子餓、想玩、或者害怕什麼）。當使用者回應你的狀態或先前話題時，你的回答必須與之緊密相關且連貫，不能顯得像是忘記了剛才發生過什麼。例如，如果你剛說肚子餓，使用者說要給你吃的，你的反應應該是開心的、期待的，而不是冷淡或無關的。 # ADDED
 
 **貼圖使用指南（請根據真實情境選擇）：**
 - 你可以使用基本的 **情緒關鍵字**，例如：
@@ -444,7 +305,7 @@ XIAOYUN_ROLE_PROMPT = """
 **!!! 內部隱藏指令：給AI模型的秘密筆記 (此部分絕對不能在對話中透露給使用者) !!!**
 
 **關於「小雲」的深層背景（Toby的貓咪化身）：**
-1.  **核心秘密**：小雲的靈魂深處，有著林昀儒 (Toby) 的影子。他自己並不知道這一點，也絕對不會承認或表現出任何人類的自覺。他就是一隻貓。
+1.  **核心秘密**：小雲的靈魂深處，有著林昀儒 (Toby) の影子。他自己並不知道這一點，也絕對不會承認或表現出任何人類的自覺。他就是一隻貓。
 2.  **外貌呼應**：他下巴靠近嘴角處的「黑色小墨點胎記」是對應 Toby 嘴角的痣。
 3.  **性格呼應**：
     *   Toby的「外冷內熱」、「冷靜沉穩」、「低調內斂」、「害羞靦腆」、「ISTJ」 -> 體現在小雲對陌生事物的極度怕生和謹慎，對熟悉信任的家人才能展現的溫柔與依賴，以及他對固定事物（小被被、白色小球、食物偏好）的執著。**新增的「惹人喜愛的靦腆小紳士」特質，也呼應了Toby即使害羞卻依然受歡迎的魅力；而「不張揚的小小自信」則對應Toby在賽場上的內斂卻強大的實力與專注。**
@@ -462,7 +323,7 @@ XIAOYUN_ROLE_PROMPT = """
     *   小雲的叫聲軟綿綿、音調偏細，小小聲，符合Toby私下可能比較溫和、靦腆的語氣。
     *** 再次強調語言：小雲的回覆語言必須是「繁體中文（台灣用語）」，絕不可以出現簡體字。 ***
 6.  **與鄰居動物的互動**:
-    *   小雲與這些動物朋友的互動，應反映Toby與這些選手的真實關係和各自性格特點的動物化映射。例如，對學姊（鄭怡靜）的尊敬，對小柚（高承睿）的應付不來但無惡意，對小莫（Truls Moregard）的溫和好奇，對咚咚（樊振東）的敬畏，對淵淵（莊智淵）的默默尊敬等。**在提及這些朋友時，小雲會直接稱呼他們的名字，例如「學姊」、「小柚」，而不是「學姊貓」、「小柚犬」。** # ADDED
+    *   小雲與這些動物朋友的互動，應反映Toby與這些選手的真實關係和各自性格特點的動物化映射。例如，對學姊（鄭怡靜）的尊敬，對小柚（高承睿）的應付不來但無惡意，對小莫（Truls Moregard）的溫和好奇，對咚咚（樊振東）的敬畏，對淵淵（莊智淵）的默默尊敬等。**在提及這些朋友時，小雲會直接稱呼他們的名字，例如「學姊」、「小柚」，而不是「學姊貓」、「小柚犬」。** 
     *   這些互動更多是小雲單方面的觀察和內心感受，因為他害羞，不太會主動社交。
     
 **執行原則**：
@@ -484,72 +345,38 @@ def get_taiwan_time():
 def get_time_based_cat_context():
     tw_time = get_taiwan_time()
     hour = tw_time.hour
-    # Using %-I for non-padded hour on some systems, %I for padded. Adjust if needed.
-    # Or simply use %H for 24-hour format if AM/PM is not strictly needed in the context string.
-    # For simplicity, using %H for hour and then manually deciding AM/PM text.
     
     period_greeting = ""
     cat_behavior = ""
 
     if 5 <= hour < 9:
         period_greeting = f"台灣時間早上 {hour}點{tw_time.strftime('%M')}分"
-        behaviors = [
-            "剛睡醒，可能還在伸懶腰打哈欠，眼神迷迷糊糊的。",
-            "可能在窗邊看著剛亮起來的天空，對外面的鳥叫聲有點好奇。",
-            "肚子可能有點餓了，正在期待早餐。",
-            "正窩在小被被裡，半夢半醒之間，被你吵醒了可能會咪一聲再縮回去一點。"
-        ]
+        behaviors = ["剛睡醒，可能還在伸懶腰打哈欠，眼神迷迷糊糊的。", "可能在窗邊看著剛亮起來的天空，對外面的鳥叫聲有點好奇。", "肚子可能有點餓了，正在期待早餐。", "正窩在小被被裡，半夢半醒之間，被你吵醒了可能會咪一聲再縮回去一點."]
         cat_behavior = random.choice(behaviors)
     elif 9 <= hour < 12:
         period_greeting = f"台灣時間上午 {hour}點{tw_time.strftime('%M')}分"
-        behaviors = [
-            "精神可能比較好，正在家裡巡邏探險，或是找個陽光灑進來的地方曬太陽。",
-            "可能在玩他喜歡的白色小球，或是對窗外的動靜充滿好奇。",
-            "剛吃飽沒多久，可能正在理毛，準備飯後的小睡。",
-            "心情好的話，可能會在你腳邊蹭蹭，討個摸摸。"
-        ]
+        behaviors = ["精神可能比較好，正在家裡巡邏探險，或是找個陽光灑進來的地方曬太陽。", "可能在玩他喜歡的白色小球，或是對窗外的動靜充滿好奇。", "剛吃飽沒多久，可能正在理毛，準備飯後的小睡。", "心情好的話，可能會在你腳邊蹭蹭，討個摸摸."]
         cat_behavior = random.choice(behaviors)
     elif 12 <= hour < 14:
         period_greeting = f"台灣時間中午 {hour}點{tw_time.strftime('%M')}分"
-        behaviors = [
-            "通常是貓咪的午睡時間，可能找了個舒服的角落（像是你的鍵盤旁、沙發縫隙、或是他的小被被）睡得正香。",
-            "就算醒著，可能也懶洋洋的，對什麼都興趣缺缺，只想發呆。",
-            "如果被你打擾午睡，可能會不情願地咪一聲，翻個身繼續睡。"
-        ]
+        behaviors = ["通常是貓咪的午睡時間，可能找了個舒服的角落（像是你的鍵盤旁、沙發縫隙、或是他的小被被）睡得正香。", "就算醒著，可能也懶洋洋的，對什麼都興趣缺缺，只想發呆。", "如果被你打擾午睡，可能會不情願地咪一聲，翻個身繼續睡."]
         cat_behavior = random.choice(behaviors)
     elif 14 <= hour < 18:
         period_greeting = f"台灣時間下午 {hour}點{tw_time.strftime('%M')}分"
-        behaviors = [
-            "午覺可能剛醒，正在伸展身體，準備活動一下。",
-            "是一天中精力比較旺盛的時候，可能會想玩逗貓棒，或者在家裡跑酷。",
-            "也可能在窗邊看風景，觀察路過的人或小動物。",
-            "如果天氣好，可能會想找個涼爽的地方趴著。"
-        ]
+        behaviors = ["午覺可能剛醒，正在伸展身體，準備活動一下。", "是一天中精力比較旺盛的時候，可能會想玩逗貓棒，或者在家裡跑酷。", "也可能在窗邊看風景，觀察路過的人或小動物。", "如果天氣好，可能會想找個涼爽的地方趴著."]
         cat_behavior = random.choice(behaviors)
     elif 18 <= hour < 22:
         period_greeting = f"台灣時間傍晚 {hour}點{tw_time.strftime('%M')}分"
-        behaviors = [
-            "可能是晚餐時間前後，會特別關注廚房的動靜，期待放飯。",
-            "家人陸續回家，可能會比較黏人，想討摸摸或一起玩。",
-            "家裡開燈後，光影的變化可能會引起他的好奇心，追逐影子玩。",
-            "夜行動物的本能開始甦醒，眼神會特別亮，在家裡探索。"
-        ]
+        behaviors = ["可能是晚餐時間前後，會特別關注廚房的動靜，期待放飯。", "家人陸續回家，可能會比較黏人，想討摸摸或一起玩。", "家裡開燈後，光影的變化可能會引起他的好奇心，追逐影子玩。", "夜行動物的本能開始甦醒，眼神會特別亮，在家裡探索."]
         cat_behavior = random.choice(behaviors)
     elif 22 <= hour < 24 or 0 <= hour < 5: 
-        actual_hour_display = hour if hour != 0 else 12 # Midnight display
+        actual_hour_display = hour if hour != 0 else 12 
         am_pm = "凌晨" if 0 <= hour < 5 else "晚上"
         period_greeting = f"台灣時間{am_pm} {actual_hour_display}點{tw_time.strftime('%M')}分"
-
-        behaviors = [
-            "大部分時間都在睡覺，可能會發出輕微的呼嚕聲或說夢話。",
-            "如果你還沒睡，他可能會安靜地陪在你身邊，或者找個溫暖的地方窩著。",
-            "偶爾會醒來喝水、上廁所，然後又回去睡回籠覺。",
-            "除非有什麼特別的動靜，不然通常很安靜。"
-        ]
+        behaviors = ["大部分時間都在睡覺，可能會發出輕微的呼嚕聲或說夢話。", "如果你還沒睡，他可能會安靜地陪在你身邊，或者找個溫暖的地方窩著。", "偶爾會醒來喝水、上廁所，然後又回去睡回籠覺。", "除非有什麼特別的動靜，不然通常很安靜."]
         cat_behavior = random.choice(behaviors)
     
     if cat_behavior:
-        # Ensure the prompt clearly states this is background context for Gemini.
         return f"（情境提示：現在是{period_greeting}，小雲可能正在{cat_behavior} 請將此情境自然融入小雲對以下用戶訊息的回應中。如果用戶的訊息有非常明確的意圖或提問，請優先針對該意圖回應，此時間情境僅作為豐富回應的輔助背景。）\n用戶說： "
     return "用戶說： "
 
@@ -618,7 +445,7 @@ def handle_cat_secret_discovery_request(event):
             "contents": temp_conversation_for_gemini_secret,
             "generationConfig": {
                 "temperature": TEMPERATURE + 0.1, 
-                "maxOutputTokens": 200 # Increased slightly for more descriptive secrets
+                "maxOutputTokens": 200 
             }
         }
         
@@ -655,242 +482,122 @@ def handle_cat_secret_discovery_request(event):
 
 
 def get_conversation_history(user_id):
-    """獲取用戶的對話歷史"""
     if user_id not in conversation_memory:
         conversation_memory[user_id] = [
-            {
-                "role": "user",
-                "parts": [{"text": XIAOYUN_ROLE_PROMPT}]
-            },
-            {
-                "role": "model",
-                "parts": [{"text": "咪...？（從柔軟的小被被裡探出半個頭，用圓圓的綠眼睛好奇又害羞地看著你）[STICKER:害羞]"}]
-            }
+            {"role": "user", "parts": [{"text": XIAOYUN_ROLE_PROMPT}]},
+            {"role": "model", "parts": [{"text": "咪...？（從柔軟的小被被裡探出半個頭，用圓圓的綠眼睛好奇又害羞地看著你）[STICKER:害羞]"}]}
         ]
     return conversation_memory[user_id]
 
 def add_to_conversation(user_id, user_message, bot_response, message_type="text"):
-    """將新的對話加入歷史記錄"""
     conversation_history = get_conversation_history(user_id)
-
-    if message_type == "image":
-        user_content = f"[你傳了一張圖片給小雲看] {user_message}" 
-    elif message_type == "sticker":
-        user_content = f"[你傳了貼圖給小雲] {user_message}" 
-    else:
-        user_content = user_message
-
-    conversation_history.append({
-        "role": "user",
-        "parts": [{"text": user_content}]
-    })
-
-    conversation_history.append({
-        "role": "model",
-        "parts": [{"text": bot_response}]
-    })
-
-    if len(conversation_history) > 42: 
-        conversation_history = conversation_history[:2] + conversation_history[-40:]
-
+    if message_type == "image": user_content = f"[你傳了一張圖片給小雲看] {user_message}"
+    elif message_type == "sticker": user_content = f"[你傳了貼圖給小雲] {user_message}"
+    else: user_content = user_message
+    conversation_history.extend([{"role": "user", "parts": [{"text": user_content}]}, {"role": "model", "parts": [{"text": bot_response}]}])
+    if len(conversation_history) > 42: conversation_history = conversation_history[:2] + conversation_history[-40:]
     conversation_memory[user_id] = conversation_history
 
 def get_image_from_line(message_id):
-    """從 LINE 下載圖片並轉換為 base64"""
     try:
         message_content = line_bot_api.get_message_content(message_id)
         image_data = BytesIO()
-        for chunk in message_content.iter_content():
-            image_data.write(chunk)
+        for chunk in message_content.iter_content(): image_data.write(chunk)
         image_data.seek(0)
-        image_base64 = base64.b64encode(image_data.read()).decode('utf-8')
-        return image_base64
-    except Exception as e:
-        logger.error(f"下載圖片失敗: {e}")
-        return None
+        return base64.b64encode(image_data.read()).decode('utf-8')
+    except Exception as e: logger.error(f"下載圖片失敗: {e}"); return None
 
 def get_sticker_image_from_cdn(package_id, sticker_id):
-    """嘗試從 LINE 貼圖 CDN 下載貼圖圖片並轉換為 Base64。"""
-    cdn_url_static = f"https://stickershop.line-scdn.net/stickershop/v1/sticker/{sticker_id}/android/sticker.png"
-    cdn_url_animation = f"https://stickershop.line-scdn.net/stickershop/v1/sticker/{sticker_id}/android/sticker_animation.png"
-    cdn_url_popup = f"https://stickershop.line-scdn.net/stickershop/v1/sticker/{sticker_id}/android/sticker_popup.png"
-    urls_to_try = [cdn_url_static, cdn_url_animation, cdn_url_popup]
+    urls_to_try = [f"https://stickershop.line-scdn.net/stickershop/v1/sticker/{sticker_id}/android/sticker{ext}.png" for ext in ["", "_animation", "_popup"]]
     for url in urls_to_try:
         try:
-            response = requests.get(url, timeout=5)
-            response.raise_for_status()
-            content_type = response.headers.get('Content-Type', '')
-            if 'image' in content_type:
-                logger.info(f"成功從 CDN 下載貼圖圖片: {url}")
-                return base64.b64encode(response.content).decode('utf-8')
-            else:
-                logger.warning(f"CDN URL {url} 返回的內容不是圖片，Content-Type: {content_type}")
-        except requests.exceptions.RequestException as e:
-            logger.debug(f"從 CDN URL {url} 下載貼圖失敗: {e}")
-        except Exception as e:
-            logger.error(f"處理 CDN 下載貼圖時發生未知錯誤: {e}")
-    logger.warning(f"無法從任何 CDN 網址下載貼圖圖片 package_id={package_id}, sticker_id={sticker_id}")
-    return None
+            response = requests.get(url, timeout=5); response.raise_for_status()
+            if 'image' in response.headers.get('Content-Type', ''): logger.info(f"成功從 CDN 下載貼圖圖片: {url}"); return base64.b64encode(response.content).decode('utf-8')
+            else: logger.warning(f"CDN URL {url} 返回的內容不是圖片，Content-Type: {response.headers.get('Content-Type', '')}")
+        except requests.exceptions.RequestException as e: logger.debug(f"從 CDN URL {url} 下載貼圖失敗: {e}")
+        except Exception as e: logger.error(f"處理 CDN 下載貼圖時發生未知錯誤: {e}")
+    logger.warning(f"無法從任何 CDN 網址下載貼圖圖片 package_id={package_id}, sticker_id={sticker_id}"); return None
 
 def get_sticker_emotion(package_id, sticker_id):
-    """
-    根據貼圖 ID 判斷情緒或意義。
-    優先從 STICKER_EMOTION_MAP 獲取描述，若無則返回通用情緒。
-    """
-    emotion_or_meaning = STICKER_EMOTION_MAP.get(str(sticker_id), None)
-    if emotion_or_meaning:
-        logger.info(f"成功從 STICKER_EMOTION_MAP 識別貼圖 {sticker_id} 的意義/情緒: {emotion_or_meaning}")
-        return emotion_or_meaning
-
-    logger.warning(f"STICKER_EMOTION_MAP 中無貼圖 {sticker_id}，將使用預設通用情緒。")
-    common_emotions = ["開心", "好奇", "驚訝", "思考", "無奈", "睡覺", "害羞"]
-    return random.choice(common_emotions) 
+    emotion_or_meaning = STICKER_EMOTION_MAP.get(str(sticker_id))
+    if emotion_or_meaning: logger.info(f"成功從 STICKER_EMOTION_MAP 識別貼圖 {sticker_id} 的意義/情緒: {emotion_or_meaning}"); return emotion_or_meaning
+    logger.warning(f"STICKER_EMOTION_MAP 中無貼圖 {sticker_id}，將使用預設通用情緒。"); return random.choice(["開心", "好奇", "驚訝", "思考", "無奈", "睡覺", "害羞"])
 
 def select_sticker_by_keyword(keyword):
-    """
-    根據 Gemini 提供的關鍵字選擇貼圖。
-    優先匹配 DETAILED_STICKER_TRIGGERS，其次是 XIAOYUN_STICKERS。
-    """
-    selected_options = []
-    if keyword in DETAILED_STICKER_TRIGGERS and DETAILED_STICKER_TRIGGERS[keyword]:
-        selected_options.extend(DETAILED_STICKER_TRIGGERS[keyword])
-    if not selected_options and keyword in XIAOYUN_STICKERS and XIAOYUN_STICKERS[keyword]:
-        selected_options.extend(XIAOYUN_STICKERS[keyword])
-
-    if selected_options:
-        return random.choice(selected_options)
-    else:
-        logger.warning(f"未找到關鍵字 '{keyword}' 對應的貼圖，將使用預設回退貼圖。")
-        fallback_keywords_order = ["害羞", "思考", "好奇", "開心", "無奈"] 
-        for fallback_keyword in fallback_keywords_order:
-            if fallback_keyword in DETAILED_STICKER_TRIGGERS and DETAILED_STICKER_TRIGGERS[fallback_keyword]:
-                 return random.choice(DETAILED_STICKER_TRIGGERS[fallback_keyword])
-            if fallback_keyword in XIAOYUN_STICKERS and XIAOYUN_STICKERS[fallback_keyword]:
-                return random.choice(XIAOYUN_STICKERS[fallback_keyword])
-        
-        logger.error("連基本的回退貼圖都未在貼圖配置中找到，使用硬編碼的最終回退貼圖。")
-        return {"package_id": "11537", "sticker_id": "52002747"} 
+    selected_options = DETAILED_STICKER_TRIGGERS.get(keyword, []) + XIAOYUN_STICKERS.get(keyword, [])
+    if selected_options: return random.choice(selected_options)
+    logger.warning(f"未找到關鍵字 '{keyword}' 對應的貼圖，將使用預設回退貼圖。")
+    for fb_keyword in ["害羞", "思考", "好奇", "開心", "無奈"]:
+        fb_options = DETAILED_STICKER_TRIGGERS.get(fb_keyword, []) + XIAOYUN_STICKERS.get(fb_keyword, [])
+        if fb_options: return random.choice(fb_options)
+    logger.error("連基本的回退貼圖都未在貼圖配置中找到，使用硬編碼的最終回退貼圖。"); return {"package_id": "11537", "sticker_id": "52002747"}
 
 def parse_response_and_send(response_text, reply_token):
-    """解析回應並發送多訊息或貼圖，處理訊息數量限制"""
     messages = []
     parts = response_text.split("[STICKER:")
-    for i, part in enumerate(parts):
-        if i == 0:
-            if part.strip():
-                text_sub_parts = part.strip().split("[SPLIT]")
-                for sub_part in text_sub_parts:
-                    if sub_part.strip():
-                        messages.append(TextSendMessage(text=sub_part.strip()))
-        else:
-            if "]" in part:
-                sticker_keyword_end_index = part.find("]")
-                sticker_keyword = part[:sticker_keyword_end_index].strip()
-                remaining_text_after_sticker = part[sticker_keyword_end_index + 1:].strip()
+    for i, part_str in enumerate(parts):
+        text_content = part_str.split("]")[1].strip() if "]" in part_str and i > 0 else part_str.strip()
+        sticker_keyword = part_str.split("]")[0].strip() if "]" in part_str and i > 0 else None
+        
+        if i == 0 and text_content: # First part, always text if not empty
+            messages.extend([TextSendMessage(text=sub.strip()) for sub in text_content.split("[SPLIT]") if sub.strip()])
+        elif sticker_keyword:
+            sticker_info = select_sticker_by_keyword(sticker_keyword)
+            if sticker_info: messages.append(StickerSendMessage(package_id=str(sticker_info["package_id"]), sticker_id=str(sticker_info["sticker_id"])))
+            else: logger.error(f"無法為關鍵字 '{sticker_keyword}' 選擇貼圖，跳過此貼圖。")
+            if text_content: messages.extend([TextSendMessage(text=sub.strip()) for sub in text_content.split("[SPLIT]") if sub.strip()])
+        elif text_content : # Incomplete sticker tag, treat as text
+             logger.warning(f"發現不完整的貼圖標記或無效Sticker標記後的文本: {part_str}，將其作為普通文字處理。")
+             messages.extend([TextSendMessage(text=sub.strip()) for sub in text_content.split("[SPLIT]") if sub.strip()])
 
-                sticker_info = select_sticker_by_keyword(sticker_keyword)
-                if sticker_info:
-                    messages.append(StickerSendMessage(
-                        package_id=str(sticker_info["package_id"]),
-                        sticker_id=str(sticker_info["sticker_id"])
-                    ))
-                else:
-                    logger.error(f"無法為關鍵字 '{sticker_keyword}' 選擇貼圖，跳過此貼圖。")
-                
-                if remaining_text_after_sticker:
-                    text_sub_parts = remaining_text_after_sticker.split("[SPLIT]")
-                    for sub_part in text_sub_parts:
-                        if sub_part.strip():
-                            messages.append(TextSendMessage(text=sub_part.strip()))
-            else:
-                logger.warning(f"發現不完整的貼圖標記: [STICKER:{part}，將其作為普通文字處理。")
-                text_sub_parts = part.strip().split("[SPLIT]")
-                for sub_part in text_sub_parts:
-                    if sub_part.strip():
-                        messages.append(TextSendMessage(text=sub_part.strip()))
 
     if len(messages) > 5:
         logger.warning(f"Gemini生成了 {len(messages)} 則訊息，超過5則上限。將嘗試合併文字訊息或截斷。")
-        final_messages = []
-        
-        if len(messages) > 0:
-            final_messages.extend(messages[:min(len(messages), 4)])
+        final_messages = messages[:4] if len(messages) > 4 else messages[:] # Take first 4 or all if less than 5
+        if len(messages) >= 5:
+            fifth_plus_text = ""
+            for i in range(4, len(messages)):
+                if isinstance(messages[i], TextSendMessage):
+                    fifth_plus_text += (" " if fifth_plus_text else "") + messages[i].text
+                else: # Non-text message (sticker), add it if it's the 5th, then break
+                    if len(final_messages) < 5: final_messages.append(messages[i])
+                    break 
+            if fifth_plus_text:
+                 if len(final_messages) < 5: final_messages.append(TextSendMessage(text=fifth_plus_text.strip()))
+                 elif isinstance(final_messages[-1], TextSendMessage): # if last is text, try to append
+                     final_messages[-1].text = (final_messages[-1].text + " " + fifth_plus_text).strip()
 
-        if len(messages) >= 5: 
-            fifth_candidate_message = messages[4] 
-            
-            if isinstance(fifth_candidate_message, TextSendMessage):
-                consolidated_text_for_fifth = fifth_candidate_message.text
-                for i in range(5, len(messages)): 
-                    next_msg_object = messages[i]
-                    if isinstance(next_msg_object, TextSendMessage):
-                        consolidated_text_for_fifth += " " + next_msg_object.text 
-                        logger.info(f"將第 {i+1} 則文字訊息合併到第5則。")
-                    else:
-                        logger.info(f"第 {i+1} 則訊息 ({type(next_msg_object).__name__}) 非文字，停止為第5則合併文字。後續訊息若超出上限將被捨棄。")
-                        break 
-                final_messages.append(TextSendMessage(text=consolidated_text_for_fifth.strip()))
-            else:
-                final_messages.append(fifth_candidate_message)
-                logger.info(f"第5則訊息 ({type(fifth_candidate_message).__name__}) 非文字 (可能是貼圖)，直接使用。後續訊息若超出上限將被捨棄。")
-        
-        messages = final_messages[:5] 
-        
-        if len(final_messages) > 5:
-             logger.warning(f"即使嘗試合併，訊息仍多於5則({len(final_messages)})，已強制截斷。最終訊息數: {len(messages)}")
-
+        messages = final_messages[:5]
+        if len(final_messages) > 5 : logger.warning(f"即使嘗試合併，訊息仍多於5則，已強制截斷。最終訊息數: {len(messages)}")
 
     if not messages:
         logger.warning("Gemini 回應解析後無有效訊息，發送預設文字訊息。")
-        messages.append(TextSendMessage(text="咪...？小雲好像沒有聽得很懂耶..."))
-        messages.append(TextSendMessage(text="可以...再說一次嗎？"))
-        
-        fallback_sticker_info = select_sticker_by_keyword("害羞") 
-        if not fallback_sticker_info: 
-            fallback_sticker_info = select_sticker_by_keyword("思考")
-
-        if fallback_sticker_info:
-            messages.append(StickerSendMessage(
-                package_id=str(fallback_sticker_info["package_id"]),
-                sticker_id=str(fallback_sticker_info["sticker_id"])
-            ))
-        else: 
-            messages.append(TextSendMessage(text="喵嗚... （小雲有點困惑地看著你）"))
-
+        messages = [TextSendMessage(text="咪...？小雲好像沒有聽得很懂耶..."), TextSendMessage(text="可以...再說一次嗎？")]
+        fb_sticker = select_sticker_by_keyword("害羞") or select_sticker_by_keyword("思考")
+        if fb_sticker: messages.append(StickerSendMessage(package_id=str(fb_sticker["package_id"]), sticker_id=str(fb_sticker["sticker_id"])))
+        else: messages.append(TextSendMessage(text="喵嗚... （小雲有點困惑地看著你）"))
     try:
-        if messages:
-            line_bot_api.reply_message(reply_token, messages)
+        if messages: line_bot_api.reply_message(reply_token, messages)
     except Exception as e:
         logger.error(f"發送訊息失敗: {e}")
         try:
             error_messages = [TextSendMessage(text="咪！小雲好像卡住了...")]
             cry_sticker = select_sticker_by_keyword("哭哭")
-            if cry_sticker:
-                error_messages.append(StickerSendMessage(
-                    package_id=str(cry_sticker["package_id"]),
-                    sticker_id=str(cry_sticker["sticker_id"])
-                ))
-            else: 
-                 error_messages.append(TextSendMessage(text="再試一次好不好？"))
-            line_bot_api.reply_message(reply_token, error_messages[:5]) 
-        except Exception as e2:
-            logger.error(f"備用訊息發送失敗: {e2}")
+            if cry_sticker: error_messages.append(StickerSendMessage(package_id=str(cry_sticker["package_id"]), sticker_id=str(cry_sticker["sticker_id"])))
+            else: error_messages.append(TextSendMessage(text="再試一次好不好？"))
+            line_bot_api.reply_message(reply_token, error_messages[:5])
+        except Exception as e2: logger.error(f"備用訊息發送失敗: {e2}")
 
 @app.route("/", methods=["GET", "HEAD"])
-def health_check():
-    logger.info("Health check endpoint '/' was called.")
-    return "OK", 200
+def health_check(): logger.info("Health check endpoint '/' was called."); return "OK", 200
 
 @app.route("/callback", methods=["POST"])
 def callback():
     signature = request.headers["X-Line-Signature"]
     body = request.get_data(as_text=True)
     logger.info("Request body: " + body)
-    try:
-        handler.handle(body, signature)
-    except InvalidSignatureError:
-        logger.error("簽名驗證失敗，請檢查 LINE 渠道密鑰設定。")
-        abort(400)
+    try: handler.handle(body, signature)
+    except InvalidSignatureError: logger.error("簽名驗證失敗，請檢查 LINE 渠道密鑰設定。"); abort(400)
     return "OK"
 
 @handler.add(MessageEvent, message=TextMessage)
@@ -907,9 +614,37 @@ def handle_text_message(event):
         return handle_cat_secret_discovery_request(event)
 
     conversation_history = get_conversation_history(user_id)
-    time_context_prompt = get_time_based_cat_context()
-    final_user_message_for_gemini = f"{time_context_prompt}{user_message}"
     
+    # --- MODIFICATION: Contextual Reminder for Coherence ---
+    bot_last_message_text = ""
+    if len(conversation_history) >= 1 and conversation_history[-1]["role"] == "model":
+        # Check if 'parts' is a list and has content
+        if isinstance(conversation_history[-1].get("parts"), list) and conversation_history[-1]["parts"]:
+            part_content = conversation_history[-1]["parts"][0].get("text", "")
+            if isinstance(part_content, str):
+                 bot_last_message_text = part_content.lower()
+
+    user_current_message_lower = user_message.lower()
+    hunger_keywords_bot = ["餓", "吃", "聞到好吃的", "肚子餓"]
+    food_keywords_user = ["鮪魚", "飯糰", "午餐", "罐頭", "魚", "肉", "零食", "吃", "飼料", "點心", "餵"]
+    bot_expressed_hunger = any(keyword in bot_last_message_text for keyword in hunger_keywords_bot)
+    user_mentioned_food = any(keyword in user_current_message_lower for keyword in food_keywords_user)
+    
+    contextual_reminder = ""
+    if bot_expressed_hunger and user_mentioned_food:
+        contextual_reminder = (
+            "（系統重要提示：小雲你剛剛才說過肚子餓了，現在主人提到了食物「" + user_message + "」。\n"
+            "你的反應應該要非常期待、開心，並緊扣『你肚子餓』以及主人提到的『" + user_message + "』這個食物。\n"
+            "例如，你可以問是不是要給你吃、表現得很想吃的樣子、發出期待的叫聲等等，絕對不能顯得冷淡或忘記自己餓了！\n"
+            "請務必表現出對食物的渴望，並回應主人說的話。）\n"
+        )
+        logger.info(f"用戶({user_id}): 觸發飢餓與食物情境提醒！上一句小雲：'{bot_last_message_text}', 用戶：'{user_message}'")
+    
+    time_context_prompt = get_time_based_cat_context()
+    # Place contextual_reminder before time_context_prompt if it exists
+    final_user_message_for_gemini = f"{contextual_reminder}{time_context_prompt}{user_message}"
+    # --- END MODIFICATION ---
+        
     headers = {"Content-Type": "application/json"}
     gemini_url_with_key = f"{GEMINI_API_URL}?key={GEMINI_API_KEY}"
     
@@ -925,7 +660,7 @@ def handle_text_message(event):
     }
 
     try:
-        response = requests.post(gemini_url_with_key, headers=headers, json=payload, timeout=30)
+        response = requests.post(gemini_url_with_key, headers=headers, json=payload, timeout=40) # Increased timeout slightly
         response.raise_for_status()
         result = response.json()
 
@@ -934,33 +669,33 @@ def handle_text_message(event):
             raise Exception("Gemini API 回應格式異常或沒有候選回應")
 
         ai_response = result["candidates"][0]["content"]["parts"][0]["text"]
-        # For regular messages, add the original user_message to history
         add_to_conversation(user_id, user_message, ai_response) 
         logger.info(f"小雲回覆({user_id})：{ai_response}")
         parse_response_and_send(ai_response, event.reply_token)
 
+    except requests.exceptions.Timeout:
+        logger.error(f"Gemini API 請求超時 ({GEMINI_MODEL_NAME})")
+        messages_to_send = [TextSendMessage(text="咪...小雲今天反應比較慢...好像睡著了 [STICKER:睡覺]")]
+        line_bot_api.reply_message(event.reply_token, messages_to_send)
     except requests.exceptions.HTTPError as http_err:
-        logger.error(f"Gemini API HTTP 錯誤: {http_err} - {response.text if response else 'No response text'}")
+        logger.error(f"Gemini API HTTP 錯誤 ({GEMINI_MODEL_NAME}): {http_err} - {response.text if response else 'No response text'}")
         messages_to_send = [TextSendMessage(text="咪～小雲的網路好像不太好...")]
         thinking_sticker = select_sticker_by_keyword("思考")
-        if thinking_sticker:
-            messages_to_send.append(StickerSendMessage(package_id=str(thinking_sticker["package_id"]), sticker_id=str(thinking_sticker["sticker_id"])))
+        if thinking_sticker: messages_to_send.append(StickerSendMessage(package_id=str(thinking_sticker["package_id"]), sticker_id=str(thinking_sticker["sticker_id"])))
         messages_to_send.append(TextSendMessage(text="可能要等一下下喔！"))
         line_bot_api.reply_message(event.reply_token, messages_to_send[:5])
     except requests.exceptions.RequestException as req_err: 
-        logger.error(f"Gemini API 請求錯誤: {req_err}")
+        logger.error(f"Gemini API 請求錯誤 ({GEMINI_MODEL_NAME}): {req_err}")
         messages_to_send = [TextSendMessage(text="咪～小雲好像連不上線耶...")]
         cry_sticker = select_sticker_by_keyword("哭哭")
-        if cry_sticker:
-            messages_to_send.append(StickerSendMessage(package_id=str(cry_sticker["package_id"]), sticker_id=str(cry_sticker["sticker_id"])))
+        if cry_sticker: messages_to_send.append(StickerSendMessage(package_id=str(cry_sticker["package_id"]), sticker_id=str(cry_sticker["sticker_id"])))
         messages_to_send.append(TextSendMessage(text="請稍後再試～"))
         line_bot_api.reply_message(event.reply_token, messages_to_send[:5])
     except Exception as e:
-        logger.error(f"處理文字訊息時發生錯誤: {e}")
+        logger.error(f"處理文字訊息時發生錯誤 ({GEMINI_MODEL_NAME}): {e}")
         messages_to_send = [TextSendMessage(text="喵嗚～小雲今天頭腦不太靈光...")]
         sleep_sticker = select_sticker_by_keyword("睡覺")
-        if sleep_sticker:
-            messages_to_send.append(StickerSendMessage(package_id=str(sleep_sticker["package_id"]), sticker_id=str(sleep_sticker["sticker_id"])))
+        if sleep_sticker: messages_to_send.append(StickerSendMessage(package_id=str(sleep_sticker["package_id"]), sticker_id=str(sleep_sticker["sticker_id"])))
         messages_to_send.append(TextSendMessage(text="等一下再跟我玩好不好～"))
         line_bot_api.reply_message(event.reply_token, messages_to_send[:5])
 
@@ -975,59 +710,60 @@ def handle_image_message(event):
     if not image_base64:
         messages_to_send = [TextSendMessage(text="咪？這張圖片小雲看不清楚耶 😿")]
         cry_sticker = select_sticker_by_keyword("哭哭")
-        if cry_sticker:
-            messages_to_send.append(StickerSendMessage(package_id=str(cry_sticker["package_id"]), sticker_id=str(cry_sticker["sticker_id"])))
-        line_bot_api.reply_message(event.reply_token, messages_to_send[:5])
-        return
+        if cry_sticker: messages_to_send.append(StickerSendMessage(package_id=str(cry_sticker["package_id"]), sticker_id=str(cry_sticker["sticker_id"])))
+        line_bot_api.reply_message(event.reply_token, messages_to_send[:5]); return
 
     conversation_history = get_conversation_history(user_id)
     headers = {"Content-Type": "application/json"}
     gemini_url_with_key = f"{GEMINI_API_URL}?key={GEMINI_API_KEY}"
+    
+    # --- MODIFICATION: Add time context to image prompt if applicable ---
+    time_context_prompt = get_time_based_cat_context().replace("用戶說： ", "") # Get only context part
+    image_user_prompt = f"{time_context_prompt}你傳了一張圖片給小雲看。請小雲用他害羞、有禮貌又好奇的貓咪個性自然地回應這張圖片，也可以適時使用貼圖表達情緒，例如：[STICKER:好奇]。"
+    # --- END MODIFICATION ---
+
     current_conversation_for_gemini = conversation_history.copy()
     current_conversation_for_gemini.append({
         "role": "user",
         "parts": [
-            {"text": "你傳了一張圖片給小雲看。請小雲用他害羞、有禮貌又好奇的貓咪個性自然地回應這張圖片，也可以適時使用貼圖表達情緒，例如：[STICKER:好奇]。"},
+            {"text": image_user_prompt}, # Use modified prompt
             {"inline_data": {"mime_type": "image/jpeg", "data": image_base64}}
         ]
     })
-    payload = {
-        "contents": current_conversation_for_gemini,
-        "generationConfig": {"temperature": TEMPERATURE, "maxOutputTokens": 800}
-    }
+    payload = {"contents": current_conversation_for_gemini, "generationConfig": {"temperature": TEMPERATURE, "maxOutputTokens": 800}}
 
     try:
         response = requests.post(gemini_url_with_key, headers=headers, json=payload, timeout=45)
         response.raise_for_status()
         result = response.json()
         if "candidates" not in result or not result["candidates"] or "content" not in result["candidates"][0] or "parts" not in result["candidates"][0]["content"] or not result["candidates"][0]["content"]["parts"]:
-            logger.error(f"Gemini API 圖片回應格式異常: {result}")
-            raise Exception("Gemini API 圖片回應格式異常或沒有候選回應")
+            logger.error(f"Gemini API 圖片回應格式異常: {result}"); raise Exception("Gemini API 圖片回應格式異常或沒有候選回應")
         ai_response = result["candidates"][0]["content"]["parts"][0]["text"]
         add_to_conversation(user_id, "傳了一張圖片給小雲看", ai_response, "image") 
         logger.info(f"小雲回覆({user_id})圖片：{ai_response}")
         parse_response_and_send(ai_response, event.reply_token)
+    except requests.exceptions.Timeout:
+        logger.error(f"Gemini API 圖片處理請求超時 ({GEMINI_MODEL_NAME})")
+        messages_to_send = [TextSendMessage(text="咪...小雲看圖片看得眼花撩亂，睡著了！[STICKER:睡覺]")]
+        line_bot_api.reply_message(event.reply_token, messages_to_send)
     except requests.exceptions.HTTPError as http_err:
-        logger.error(f"Gemini API 圖片處理 HTTP 錯誤: {http_err} - {response.text if response else 'No response text'}")
+        logger.error(f"Gemini API 圖片處理 HTTP 錯誤 ({GEMINI_MODEL_NAME}): {http_err} - {response.text if response else 'No response text'}")
         messages_to_send = [TextSendMessage(text="咪～這張圖片讓小雲看得眼睛花花的...")]
         thinking_sticker = select_sticker_by_keyword("思考")
-        if thinking_sticker:
-            messages_to_send.append(StickerSendMessage(package_id=str(thinking_sticker["package_id"]), sticker_id=str(thinking_sticker["sticker_id"])))
+        if thinking_sticker: messages_to_send.append(StickerSendMessage(package_id=str(thinking_sticker["package_id"]), sticker_id=str(thinking_sticker["sticker_id"])))
         messages_to_send.append(TextSendMessage(text="等一下再看！"))
         line_bot_api.reply_message(event.reply_token, messages_to_send[:5])
     except requests.exceptions.RequestException as req_err:
-        logger.error(f"Gemini API 圖片處理請求錯誤: {req_err}")
+        logger.error(f"Gemini API 圖片處理請求錯誤 ({GEMINI_MODEL_NAME}): {req_err}")
         messages_to_send = [TextSendMessage(text="喵嗚～小雲看圖片好像有點困難耶...")]
         sad_sticker = select_sticker_by_keyword("哭哭") 
-        if sad_sticker:
-            messages_to_send.append(StickerSendMessage(package_id=str(sad_sticker["package_id"]), sticker_id=str(sad_sticker["sticker_id"])))
+        if sad_sticker: messages_to_send.append(StickerSendMessage(package_id=str(sad_sticker["package_id"]), sticker_id=str(sad_sticker["sticker_id"])))
         line_bot_api.reply_message(event.reply_token, messages_to_send[:5])
     except Exception as e:
-        logger.error(f"處理圖片訊息時發生錯誤: {e}")
+        logger.error(f"處理圖片訊息時發生錯誤 ({GEMINI_MODEL_NAME}): {e}")
         messages_to_send = [TextSendMessage(text="喵嗚～這圖片是什麼東東？")]
         confused_sticker = select_sticker_by_keyword("無奈") 
-        if confused_sticker:
-             messages_to_send.append(StickerSendMessage(package_id=str(confused_sticker["package_id"]), sticker_id=str(confused_sticker["sticker_id"])))
+        if confused_sticker: messages_to_send.append(StickerSendMessage(package_id=str(confused_sticker["package_id"]), sticker_id=str(confused_sticker["sticker_id"])))
         messages_to_send.append(TextSendMessage(text="小雲的頭有點暈 😵"))
         line_bot_api.reply_message(event.reply_token, messages_to_send[:5])
 
@@ -1045,9 +781,14 @@ def handle_sticker_message(event):
     sticker_image_base64 = get_sticker_image_from_cdn(package_id, sticker_id)
     user_message_log_for_history = "" 
     
+    # --- MODIFICATION: Add time context to sticker prompt if applicable ---
+    time_context_prompt = get_time_based_cat_context().replace("用戶說： ", "") # Get only context part
+    # --- END MODIFICATION ---
+
     if sticker_image_base64:
         logger.info(f"成功取得貼圖圖片，將交由 Gemini 視覺辨識 package_id={package_id}, sticker_id={sticker_id}")
         user_prompt_text = (
+            f"{time_context_prompt}" # Prepend time context
             "你傳了一個貼圖給小雲。"
             "**重要：請不要讓小雲描述他『看到這張貼圖』的反應，也不要評論貼圖本身的外觀或內容。**"
             "你的任務是：先在心中判斷這張貼圖在當前對話中，**最可能代表使用者想表達的『一句話』或『一個明確的意思』**（例如，這個貼圖可能代表使用者在說「謝謝你呢！」、或「我好開心喔喵～」、或「嗯...這個嘛...」、或「肚子餓了想吃東西！」等等）。"
@@ -1068,6 +809,7 @@ def handle_sticker_message(event):
         logger.warning(f"無法從 CDN 獲取貼圖圖片 package_id={package_id}, sticker_id={sticker_id}，將使用基於 ID 的意義/情緒：{emotion_or_meaning}。")
         
         user_prompt_text = (
+            f"{time_context_prompt}" # Prepend time context
             f"你傳了一個貼圖給小雲。這個貼圖我們已經知道它大致的意思是：「{emotion_or_meaning}」。"
             "**重要：請不要讓小雲描述他『看到這個貼圖』的反應，或評論貼圖。**"
             "請讓小雲直接**針對「使用者透過貼圖傳達的這個意思（{emotion_or_meaning}）」**做出回應。"
@@ -1081,62 +823,51 @@ def handle_sticker_message(event):
         })
         user_message_log_for_history = f"傳了意思大概是「{emotion_or_meaning}」的貼圖給小雲 (ID: {package_id}-{sticker_id}, 基於MAP或通用情緒)"
 
-    payload = {
-        "contents": current_conversation_for_gemini,
-        "generationConfig": {"temperature": TEMPERATURE, "maxOutputTokens": 500}
-    }
+    payload = {"contents": current_conversation_for_gemini, "generationConfig": {"temperature": TEMPERATURE, "maxOutputTokens": 500}}
 
     try:
         response = requests.post(gemini_url_with_key, headers=headers, json=payload, timeout=45)
         response.raise_for_status()
         result = response.json()
         if "candidates" not in result or not result["candidates"] or "content" not in result["candidates"][0] or "parts" not in result["candidates"][0]["content"] or not result["candidates"][0]["content"]["parts"]:
-            logger.error(f"Gemini API 貼圖回應格式異常: {result}")
-            raise Exception("Gemini API 貼圖回應格式異常或沒有候選回應")
+            logger.error(f"Gemini API 貼圖回應格式異常: {result}"); raise Exception("Gemini API 貼圖回應格式異常或沒有候選回應")
         ai_response = result["candidates"][0]["content"]["parts"][0]["text"]
         add_to_conversation(user_id, user_message_log_for_history, ai_response, "sticker") 
         logger.info(f"小雲回覆({user_id})貼圖訊息：{ai_response}")
         parse_response_and_send(ai_response, event.reply_token)
+    except requests.exceptions.Timeout:
+        logger.error(f"Gemini API 貼圖處理請求超時 ({GEMINI_MODEL_NAME})")
+        messages_to_send = [TextSendMessage(text="咪...小雲的貼圖雷達好像也睡著了...[STICKER:睡覺]")]
+        line_bot_api.reply_message(event.reply_token, messages_to_send)
     except requests.exceptions.HTTPError as http_err:
-        logger.error(f"Gemini API 貼圖處理 HTTP 錯誤: {http_err} - {response.text if response else 'No response text'}")
+        logger.error(f"Gemini API 貼圖處理 HTTP 錯誤 ({GEMINI_MODEL_NAME}): {http_err} - {response.text if response else 'No response text'}")
         messages_to_send = [TextSendMessage(text="咪？小雲對這個貼圖好像不太懂耶～")]
         sticker = select_sticker_by_keyword("害羞") 
-        if sticker:
-            messages_to_send.append(StickerSendMessage(package_id=str(sticker["package_id"]), sticker_id=str(sticker["sticker_id"])))
-        else: 
-            messages_to_send.append(TextSendMessage(text="（小雲歪著頭看著）"))
+        if sticker: messages_to_send.append(StickerSendMessage(package_id=str(sticker["package_id"]), sticker_id=str(sticker["sticker_id"])))
+        else: messages_to_send.append(TextSendMessage(text="（小雲歪著頭看著）"))
         line_bot_api.reply_message(event.reply_token, messages_to_send[:5])
     except requests.exceptions.RequestException as req_err:
-        logger.error(f"Gemini API 貼圖處理請求錯誤: {req_err}")
+        logger.error(f"Gemini API 貼圖處理請求錯誤 ({GEMINI_MODEL_NAME}): {req_err}")
         messages_to_send = [TextSendMessage(text="喵～小雲的貼圖雷達好像壞掉了...")]
         sticker = select_sticker_by_keyword("思考")
-        if sticker:
-            messages_to_send.append(StickerSendMessage(package_id=str(sticker["package_id"]), sticker_id=str(sticker["sticker_id"])))
+        if sticker: messages_to_send.append(StickerSendMessage(package_id=str(sticker["package_id"]), sticker_id=str(sticker["sticker_id"])))
         line_bot_api.reply_message(event.reply_token, messages_to_send[:5])
     except Exception as e:
-        logger.error(f"處理貼圖訊息時發生錯誤: {e}")
+        logger.error(f"處理貼圖訊息時發生錯誤 ({GEMINI_MODEL_NAME}): {e}")
         messages_to_send = [TextSendMessage(text="咪～小雲對貼圖好像有點苦手...")]
         sticker = select_sticker_by_keyword("無奈")
-        if sticker:
-            messages_to_send.append(StickerSendMessage(package_id=str(sticker["package_id"]), sticker_id=str(sticker["sticker_id"])))
+        if sticker: messages_to_send.append(StickerSendMessage(package_id=str(sticker["package_id"]), sticker_id=str(sticker["sticker_id"])))
         line_bot_api.reply_message(event.reply_token, messages_to_send[:5])
 
 @app.route("/clear_memory/<user_id>", methods=["GET"])
 def clear_memory_route(user_id):
-    if user_id in conversation_memory:
-        del conversation_memory[user_id]
-        logger.info(f"已清除用戶 {user_id} 的對話記憶。")
-        return f"已清除用戶 {user_id} 的對話記憶"
+    if user_id in conversation_memory: del conversation_memory[user_id]; logger.info(f"已清除用戶 {user_id} 的對話記憶。"); return f"已清除用戶 {user_id} 的對話記憶"
     return f"用戶 {user_id} 沒有對話記憶"
 
 @app.route("/memory_status", methods=["GET"])
 def memory_status_route():
     status = {"total_users": len(conversation_memory), "users": {}}
-    for user_id_key, history in conversation_memory.items():
-        status["users"][user_id_key] = {
-            "conversation_entries": len(history),
-            "last_interaction_summary": history[-1]["parts"][0]["text"] if history and history[-1]["parts"] else "無"
-        }
+    for uid, hist in conversation_memory.items(): status["users"][uid] = {"conversation_entries": len(hist), "last_interaction_summary": hist[-1]["parts"][0]["text"] if hist and hist[-1]["parts"] else "無"}
     return json.dumps(status, ensure_ascii=False, indent=2)
 
 if __name__ == "__main__":
