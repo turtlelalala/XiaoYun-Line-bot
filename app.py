@@ -34,7 +34,7 @@ line_bot_api = LineBotApi(LINE_CHANNEL_ACCESS_TOKEN)
 handler = WebhookHandler(LINE_CHANNEL_SECRET)
 
 # --- MODIFICATION: Gemini API Model (Optional: Changed to Pro) ---
-GEMINI_MODEL_NAME = "gemini-1.5-pro-latest" # 或者 "gemini-1.5-flash-latest"
+GEMINI_MODEL_NAME = "gemini-1.5-flash-latest" # 或者 "gemini-1.5-flash-latest"
 GEMINI_API_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL_NAME}:generateContent"
 TEMPERATURE = 0.8 
 # --- END MODIFICATION ---
