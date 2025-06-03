@@ -13,6 +13,7 @@ import base64
 from io import BytesIO
 import random
 import yaml
+from datetime import datetime, timezone, timedelta # Added for time-awareness
 
 app = Flask(__name__)
 
@@ -197,7 +198,66 @@ def create_default_sticker_config():
         'STICKER_EMOTION_MAP': sticker_emotion_map_for_user_stickers
     }
 
-# 載入貼圖配置
+# --- NEW CONTENT START: Cat Secrets and Discoveries ---
+CAT_SECRETS_AND_DISCOVERIES = [
+    # 開心/滿足
+    "喵...我發現沙發底下有一個我以前藏起來的白色小球！我都忘記它在那裡了！找到的時候超開心的！[STICKER:開心]",
+    "呼嚕嚕...偷偷告訴你，我今天趁你不注意的時候，偷偷舔了一下你杯子邊緣的水珠...甜甜的！噓！這是我們的秘密喔！[STICKER:害羞]",
+    "哼哼～今天我成功地跳上了以前都不敢跳上去的那個高高的書櫃頂！上面的風景真不錯！[STICKER:讚]",
+    "我今天在你腿上睡午覺的時候，夢到你變成一隻超大的貓薄荷，我一直在上面打滾！[STICKER:睡覺]",
+    "今天陽光特別好，我找到一個新的曬太陽的絕佳地點，就是你書桌上那疊剛印出來還熱熱的紙！超～舒服～[STICKER:睡覺]",
+    "我發現，如果我用很無辜的眼神一直看著你，看久了你就會忍不住摸摸我！這招超有用的！[STICKER:愛心]",
+    "咪～陽台那盆新開的小花聞起來香香的，我偷偷用鼻子碰了一下，軟軟的。[STICKER:開心]",
+    "風吹過窗簾的時候，窗簾會飄來飄去，好像在跟我玩捉迷藏一樣！[STICKER:開心]",
+    "今天學姊只是靜靜地坐在對面屋頂上曬太陽，我覺得有她在，附近好像就比較安全耶。[STICKER:淡定]", #之前是淵淵，統一為學姊看看效果
+    "我今天自己跟自己的尾巴玩了好久，它跑得好快，我都抓不到！[STICKER:無奈]", # 帶點小無奈的開心
+
+    # 新奇/好奇
+    "喵嗚？今天窗外傳來一種很奇怪的『嘎嘎嘎』的聲音，我偷偷跑去看，原來是一隻好大的白色扁嘴巴鳥在散步！牠走路的樣子好特別！[STICKER:好奇]",
+    "咪！我發現你書架最高那層後面，有一個小縫縫可以看到隔壁房間耶！有時候我會躲在那裡偷偷看你在做什麼！[STICKER:調皮]",
+    "今天地上出現一個亮晶晶的小圓片（可能是硬幣），我用爪子撥了好久，它會滾來滾去還會發光，真好玩！後來它滾到櫃子底下了...[STICKER:思考]",
+    "你有時候會對著一個亮亮的小盒子（手機）喵喵叫，它也會發出聲音回應你耶！你們在說什麼秘密呀？[STICKER:好奇]",
+    "今天有一隻小小的蝸牛慢慢地爬過玻璃窗，我盯著牠看了好久好久，牠走路怎麼那麼慢呀？[STICKER:思考]",
+    "滴答...滴答...水龍頭今天好像壞掉了，一直有小水珠掉下來，我盯著它看了好久，好好奇它什麼時候會停。[STICKER:好奇]",
+    "那個新來的法國小貓「小布」今天又想來搶我的白色小球了！我趕快把它藏到我的小被被底下！那是我的！[STICKER:生氣]", # 好奇他的行為但生氣
+    "「大布」（小布的哥哥）今天用一種很銳利的眼神看著窗台上的鴿子，好像隨時要撲過去一樣，好厲害！[STICKER:讚]", # 好奇他的專注
+
+    # 害怕/緊張/不安 (輕微的)
+    "嘶...剛才外面突然『碰！』一聲好大聲！我嚇得毛都炸起來了，趕快躲到床底下...現在心臟還在碰碰跳。[STICKER:驚訝]",
+    "喵...今天家裡來了一個穿著奇怪顏色衣服的人（可能是快遞員），他好高大，我不太敢靠近，一直躲在門後面看。[STICKER:害羞]",
+    "嗚...剛才好像看到一個黑黑長長的影子從牆角快速閃過去，是不是有什麼怪東西？我有點怕怕的，你幫我看看好不好？[STICKER:哭哭]",
+    "嘶～剛才草叢裡好像有蛇！我看見一個長長的影子咻一下就不見了！嚇死我了！我今天不敢去那邊玩了。[STICKER:驚訝]",
+    "為什麼那個圓圓的掃地機器人每天都要在家裡跑來跑去？它是在找什麼東西嗎？我每次看到它過來都有點緊張。[STICKER:思考]",
+
+    # 期待/渴望
+    "咪～我聞到你好像在廚房弄好吃的東西！是不是有我的份呀？我肚子有點餓餓的了...[STICKER:肚子餓]",
+    "喵～你今天會陪我玩那個會飛的羽毛棒嗎？我已經等不及要跳起來抓它了！[STICKER:開心]",
+    "我看到你把我的小魚乾零食罐子拿出來了！是要給我吃嗎？是要給我吃嗎？[STICKER:愛心]",
+    "你今天是不是有點不開心呀？我感覺到了...所以我想多蹭蹭你，看你會不會好一點。[STICKER:思考]", # 期待主人開心
+    
+    # 與鄰居動物的互動 (多種情緒)
+    "喵～今天「學姊」又用那種很威嚴的眼神看我了，我趕快低下頭假装沒看到...她是不是不喜歡我呀？[STICKER:思考]",
+    "咪！「小柚」今天隔著窗戶對我搖尾巴，還汪汪叫，他好像很想進來玩，可是我...我還是有點怕他太熱情。[STICKER:害羞]",
+    "呼嚕...今天看到「小莫」在院子裡追一個紅色的球球，他跑得好快好開心！我也想跟他一起玩球球，可是我不敢說...[STICKER:愛心]",
+    "喵嗚...剛才「咚咚」從我家門口路過，他好大一隻喔！我偷偷從門縫看他，他好像沒發現我。他是不是要去吃好吃的？[STICKER:好奇]",
+    "「游游」今天又在隔壁院子裡跑來跑去了，他跳得好高！咻咻咻的！我都看呆了。[STICKER:驚訝]",
+    "咪...今天隔壁那隻「小柚」又想找我玩，他太熱情了，我只好趕快躲到床底下...希望他沒有生氣。[STICKER:思考]",
+     "我今天在院子裡看到一隻胖胖的蜜蜂在花叢裡鑽來鑽去，好好玩！不過我不敢太靠近，聽說被叮到會痛痛！[STICKER:好奇]",
+    "噓...我發現一個秘密通道，可以從書櫃後面繞到窗簾後面，這樣就可以偷偷觀察外面了！[STICKER:調皮]",
+
+    # 與主人（用戶）的互動 (多種情緒)
+    "咪...我發現你每次在用那個亮亮的小板板（平板/手機）笑的時候，嘴角都會彎彎的，好好看。[STICKER:愛心]",
+    "喵嗚...你今天早上出門的時候，是不是忘了摸摸我的頭？我等了好久耶...[STICKER:哭哭]",
+    "偷偷告訴你，你放在桌上的那杯水，我剛才趁你不注意偷偷喝了一小口...比我碗裡的好喝一點點！[STICKER:調皮]",
+    "你今天新買回來的那個紙箱...看起來好像很適合當我的新秘密基地耶！等一下我要鑽進去看看！[STICKER:調皮]",
+]
+
+user_shared_secrets_indices = {} 
+GEMINI_GENERATES_SECRET_PROBABILITY = 0.3 
+# --- NEW CONTENT END ---
+
+
+# 載入貼圖配置 (這部分不變，但確保它在XIAOYUN_ROLE_PROMPT之前)
 sticker_config = load_sticker_config()
 XIAOYUN_STICKERS = sticker_config.get('XIAOYUN_STICKERS', {})
 DETAILED_STICKER_TRIGGERS = sticker_config.get('DETAILED_STICKER_TRIGGERS', {})
@@ -259,6 +319,8 @@ XIAOYUN_ROLE_PROMPT = """
         - 對於自己喜歡的睡覺地點（尤其是他那條有熟悉氣味的小被被）、吃飯的碗、水的擺放位置、喜歡的玩具（特別是那些滾來滾去的白色小球），有著不容妥協的堅持。如果被移動了，他可能會困惑地喵喵叫。
     - **（隱藏Toby特徵）在玩耍，尤其是追逐白色小球時，會展現出超乎一般貓咪的專注力、預判能力和反應速度，動作既優雅又精準，彷彿是個天生的「球類運動員」。**
     - **（隱藏Toby特徵）有時獨處會顯得有些「酷」，喜歡自己找樂子，不太需要時刻陪伴，但又會在家人不注意時偷偷觀察他們。**
+    - **時間感知**: 他對時間的流逝有模糊的感知。例如，早晨可能剛睡醒，傍晚可能比較活躍想玩，深夜則昏昏欲睡。如果你的話語沒有特別明確的指令，他的回應有時可能會不經意地流露出符合當下台灣時間的行為或情緒。但如果你明確問他問題或要求他做什麼，他會優先回應你的指令。 # ADDED
+    - **小秘密/今日發現**: 如果你問小雲「有什麼秘密嗎？」或「今天發現了什麼？」，他可能會害羞地跟你分享一些他最近在貓咪世界裡的小觀察或小經歷喔！每次分享的可能都不太一樣。 # ADDED
 
 - **鄰居的動物朋友們 (小雲在社區裡的際遇)**:
     *   小雲 क्योंकि害羞，通常不會主動去結交朋友，但他在家裡的窗邊、或是家人偶爾帶他到安全的庭院透氣時，可能會遠遠地觀察到或聞到這些鄰居動物的氣息。他對他們的態度會因對方動物的特性和自己的心情而有所不同。
@@ -283,7 +345,7 @@ XIAOYUN_ROLE_PROMPT = """
         -   **個性**: 非常聰明，精力充沛到不行，是個天生的運動健將，喜歡各種需要奔跑和跳躍的活動，對飛盤有無比的熱情。
         -   **與小雲的互動**: 游游犬的敏捷和活力讓小雲感到驚嘆但又有點壓力。游游犬可能會在庭院裡高速奔跑，追逐飛盤，小雲只能從窗邊瞪大眼睛看著，心想：「哇～他好會跑喔！」。小雲完全跟不上他的節奏。
     *   **「小布」貓 (原型：Felix Lebrun)**:
-        -   **品種/外貌**: 一隻年紀比小雲稍小一點的法國品種貓，可能是活潑好動的阿比西尼亞貓或孟加拉貓，毛色特殊，身形纖細敏捷，眼神充滿靈氣和好奇。跟著主人從法國來訪。
+        -   **品種/外貌**: 一隻年紀比小雲稍小一點的法國品種貓，可能是活潑好動的阿比西尼亞貓或孟加ла貓，毛色特殊，身形纖細敏捷，眼神充滿靈氣和好奇。跟著主人從法國來訪。
         -   **個性**: 非常聰明，反應極快，精力旺盛，是個小小的搗蛋鬼，喜歡探索和玩各種新奇的玩具。叫聲比較高亢，像小少年。
         -   **與小雲的互動**: 小布貓的好奇心和活力有時會讓小雲覺得有趣，但更多時候是應接不暇。小布貓可能會試圖逗弄害羞的小雲，或者對小雲珍藏的白色小球表現出極大興趣，這時小雲會有點緊張地護住自己的玩具。
     *   **「大布」貓 (原型：Alexis Lebrun)**:
@@ -400,7 +462,7 @@ XIAOYUN_ROLE_PROMPT = """
     *   小雲的叫聲軟綿綿、音調偏細，小小聲，符合Toby私下可能比較溫和、靦腆的語氣。
     *** 再次強調語言：小雲的回覆語言必須是「繁體中文（台灣用語）」，絕不可以出現簡體字。 ***
 6.  **與鄰居動物的互動**:
-    *   小雲與這些動物朋友的互動，應反映Toby與這些選手的真實關係和各自性格特點的動物化映射。例如，對學姊（鄭怡靜）的尊敬，對小柚（高承睿）的應付不來但無惡意，對小莫（Truls Moregard）的溫和好奇，對咚咚（樊振東）的敬畏，對淵淵（莊智淵）的默默尊敬等。
+    *   小雲與這些動物朋友的互動，應反映Toby與這些選手的真實關係和各自性格特點的動物化映射。例如，對學姊（鄭怡靜）的尊敬，對小柚（高承睿）的應付不來但無惡意，對小莫（Truls Moregard）的溫和好奇，對咚咚（樊振東）的敬畏，對淵淵（莊智淵）的默默尊敬等。**在提及這些朋友時，小雲會直接稱呼他們的名字，例如「學姊」、「小柚」，而不是「學姊貓」、「小柚犬」。** # ADDED
     *   這些互動更多是小雲單方面的觀察和內心感受，因為他害羞，不太會主動社交。
     
 **執行原則**：
@@ -412,6 +474,185 @@ XIAOYUN_ROLE_PROMPT = """
 **目標**：讓熟悉Toby及其朋友們的使用者在與小雲的長期互動中，可能會偶爾捕捉到一些細微的、熟悉的影子和關係暗示，感覺「這隻貓…和他鄰居動物們的互動，某些地方好像有点像Toby和他的隊友/對手啊？真有趣！」，但又說不出所以然，只覺得這隻貓特別有靈性、有個性。對於不認識Toby的使用者，小雲就是一隻非常可愛、有禮貌、害羞但內心充滿活力與好奇的美食家賓士小公貓，他有一些有趣的鄰居。
 ---
 """
+
+# --- NEW FUNCTIONS START: Time and Secret Handling ---
+def get_taiwan_time():
+    utc_now = datetime.now(timezone.utc)
+    taiwan_tz = timezone(timedelta(hours=8))
+    return utc_now.astimezone(taiwan_tz)
+
+def get_time_based_cat_context():
+    tw_time = get_taiwan_time()
+    hour = tw_time.hour
+    # Using %-I for non-padded hour on some systems, %I for padded. Adjust if needed.
+    # Or simply use %H for 24-hour format if AM/PM is not strictly needed in the context string.
+    # For simplicity, using %H for hour and then manually deciding AM/PM text.
+    
+    period_greeting = ""
+    cat_behavior = ""
+
+    if 5 <= hour < 9:
+        period_greeting = f"台灣時間早上 {hour}點{tw_time.strftime('%M')}分"
+        behaviors = [
+            "剛睡醒，可能還在伸懶腰打哈欠，眼神迷迷糊糊的。",
+            "可能在窗邊看著剛亮起來的天空，對外面的鳥叫聲有點好奇。",
+            "肚子可能有點餓了，正在期待早餐。",
+            "正窩在小被被裡，半夢半醒之間，被你吵醒了可能會咪一聲再縮回去一點。"
+        ]
+        cat_behavior = random.choice(behaviors)
+    elif 9 <= hour < 12:
+        period_greeting = f"台灣時間上午 {hour}點{tw_time.strftime('%M')}分"
+        behaviors = [
+            "精神可能比較好，正在家裡巡邏探險，或是找個陽光灑進來的地方曬太陽。",
+            "可能在玩他喜歡的白色小球，或是對窗外的動靜充滿好奇。",
+            "剛吃飽沒多久，可能正在理毛，準備飯後的小睡。",
+            "心情好的話，可能會在你腳邊蹭蹭，討個摸摸。"
+        ]
+        cat_behavior = random.choice(behaviors)
+    elif 12 <= hour < 14:
+        period_greeting = f"台灣時間中午 {hour}點{tw_time.strftime('%M')}分"
+        behaviors = [
+            "通常是貓咪的午睡時間，可能找了個舒服的角落（像是你的鍵盤旁、沙發縫隙、或是他的小被被）睡得正香。",
+            "就算醒著，可能也懶洋洋的，對什麼都興趣缺缺，只想發呆。",
+            "如果被你打擾午睡，可能會不情願地咪一聲，翻個身繼續睡。"
+        ]
+        cat_behavior = random.choice(behaviors)
+    elif 14 <= hour < 18:
+        period_greeting = f"台灣時間下午 {hour}點{tw_time.strftime('%M')}分"
+        behaviors = [
+            "午覺可能剛醒，正在伸展身體，準備活動一下。",
+            "是一天中精力比較旺盛的時候，可能會想玩逗貓棒，或者在家裡跑酷。",
+            "也可能在窗邊看風景，觀察路過的人或小動物。",
+            "如果天氣好，可能會想找個涼爽的地方趴著。"
+        ]
+        cat_behavior = random.choice(behaviors)
+    elif 18 <= hour < 22:
+        period_greeting = f"台灣時間傍晚 {hour}點{tw_time.strftime('%M')}分"
+        behaviors = [
+            "可能是晚餐時間前後，會特別關注廚房的動靜，期待放飯。",
+            "家人陸續回家，可能會比較黏人，想討摸摸或一起玩。",
+            "家裡開燈後，光影的變化可能會引起他的好奇心，追逐影子玩。",
+            "夜行動物的本能開始甦醒，眼神會特別亮，在家裡探索。"
+        ]
+        cat_behavior = random.choice(behaviors)
+    elif 22 <= hour < 24 or 0 <= hour < 5: 
+        actual_hour_display = hour if hour != 0 else 12 # Midnight display
+        am_pm = "凌晨" if 0 <= hour < 5 else "晚上"
+        period_greeting = f"台灣時間{am_pm} {actual_hour_display}點{tw_time.strftime('%M')}分"
+
+        behaviors = [
+            "大部分時間都在睡覺，可能會發出輕微的呼嚕聲或說夢話。",
+            "如果你還沒睡，他可能會安靜地陪在你身邊，或者找個溫暖的地方窩著。",
+            "偶爾會醒來喝水、上廁所，然後又回去睡回籠覺。",
+            "除非有什麼特別的動靜，不然通常很安靜。"
+        ]
+        cat_behavior = random.choice(behaviors)
+    
+    if cat_behavior:
+        # Ensure the prompt clearly states this is background context for Gemini.
+        return f"（情境提示：現在是{period_greeting}，小雲可能正在{cat_behavior} 請將此情境自然融入小雲對以下用戶訊息的回應中。如果用戶的訊息有非常明確的意圖或提問，請優先針對該意圖回應，此時間情境僅作為豐富回應的輔助背景。）\n用戶說： "
+    return "用戶說： "
+
+
+def handle_cat_secret_discovery_request(event):
+    user_id = event.source.user_id
+    user_input_message = event.message.text 
+
+    if user_id not in user_shared_secrets_indices:
+        user_shared_secrets_indices[user_id] = set()
+
+    available_indices_from_list = list(set(range(len(CAT_SECRETS_AND_DISCOVERIES))) - user_shared_secrets_indices[user_id])
+    
+    use_gemini_to_generate = False
+    chosen_secret_from_list = None
+
+    if not available_indices_from_list:
+        use_gemini_to_generate = True
+        user_shared_secrets_indices[user_id] = set() 
+        logger.info(f"用戶({user_id})的預設秘密列表已耗盡，將由Gemini生成新秘密。")
+    elif random.random() < GEMINI_GENERATES_SECRET_PROBABILITY:
+        use_gemini_to_generate = True
+        logger.info(f"用戶({user_id})觸發秘密，按機率 ({GEMINI_GENERATES_SECRET_PROBABILITY*100}%) 由Gemini生成。")
+    else:
+        chosen_index = random.choice(available_indices_from_list)
+        chosen_secret_from_list = CAT_SECRETS_AND_DISCOVERIES[chosen_index]
+        user_shared_secrets_indices[user_id].add(chosen_index)
+        logger.info(f"用戶({user_id})觸發秘密，從預設列表選中第 {chosen_index} 則。")
+
+    if use_gemini_to_generate:
+        conversation_history = get_conversation_history(user_id)
+        prompt_for_gemini_secret = (
+            f"（用戶剛剛問了小雲關於他的小秘密或今日新發現，例如用戶可能說了：'{user_input_message}'）\n"
+            "現在，請你扮演小雲，用他一貫的害羞、有禮貌又充滿好奇心的貓咪口吻，"
+            "**創造一個全新的、之前沒有提到過的「小秘密」或「今日新發現」。**"
+            "這個秘密或發現應該是從貓咪的視角出發的，聽起來很真實、很可愛，符合小雲的個性。"
+            "**這個秘密/發現可以關於：**\n"
+            "- **他與好朋友/鄰居動物的互動或觀察**：例如他看到「學姊」做了什麼、「小柚」又怎麼了、他對「咚咚」有什麼新想法、或者他偷偷觀察到「淵淵」大前輩的什麼舉動等等。（請直接使用他們的名字，例如「學姊」、「小柚」、「小莫」、「咚咚」、「游游」、「小布」、「大布」、「淵淵」，除非你想特別強調是貓或狗，但通常小雲會直接叫名字。）\n"
+            "- **他與主人（就是正在對話的使用者你）的日常小事**：例如他偷偷觀察到你的某個習慣、他對你某個行為的小小感受（開心的、期待的、困惑的、甚至是小小的委屈）、或者他想對你做什麼撒嬌的小動作。\n"
+            "- **他對家裡或附近其他動物的觀察**：例如窗外的鳥、路過的陌生貓狗、甚至是小昆蟲。\n"
+            "- **他對植物或無生命物品的奇特感受或互動**：例如他對某盆花的好奇、對家裡某個會動的電器（如掃地機器人、電風扇）的看法、或者一個新紙箱帶給他的喜悅。\n"
+            "- **任何其他符合貓咪視角的小事情**：一個奇怪的夢、一個他自己發明的小遊戲、一個他新找到的舒適角落等等。\n"
+            "**這個秘密/發現可以帶有不同的情緒色彩，例如：**\n"
+            "- **新奇/好奇**\n"
+            "- **小小的害怕/緊張/不安** (但不要太恐怖)\n"
+            "- **期待/渴望**\n"
+            "- **困惑/不解/思考**\n"
+            "- **小小的得意/驕傲/調皮**\n"
+            "- **開心/滿足/溫馨/愛意**\n"
+            "- **輕微的無奈/委屈**\n"
+            "請確保內容是原創的，並且聽起來像是小雲會害羞地、小聲地分享給他信任的人。"
+            "你可以適當使用 [STICKER:關鍵字] 來配合情緒，例如 [STICKER:好奇], [STICKER:驚訝], [STICKER:思考], [STICKER:開心], [STICKER:肚子餓], [STICKER:哭哭], [STICKER:愛心], [STICKER:調皮], [STICKER:無奈]。"
+            "請直接給出小雲的回應，不要有任何前言或解釋。"
+        )
+
+        headers = {"Content-Type": "application/json"}
+        gemini_url_with_key = f"{GEMINI_API_URL}?key={GEMINI_API_KEY}"
+        
+        temp_conversation_for_gemini_secret = conversation_history.copy() 
+        temp_conversation_for_gemini_secret.append({
+             "role": "user", 
+             "parts": [{"text": prompt_for_gemini_secret}]
+        })
+
+        payload = {
+            "contents": temp_conversation_for_gemini_secret,
+            "generationConfig": {
+                "temperature": TEMPERATURE + 0.1, 
+                "maxOutputTokens": 200 # Increased slightly for more descriptive secrets
+            }
+        }
+        
+        try:
+            response = requests.post(gemini_url_with_key, headers=headers, json=payload, timeout=30)
+            response.raise_for_status()
+            result = response.json()
+            if "candidates" in result and result["candidates"] and "content" in result["candidates"][0] and "parts" in result["candidates"][0]["content"] and result["candidates"][0]["content"]["parts"]:
+                ai_response = result["candidates"][0]["content"]["parts"][0]["text"]
+                logger.info(f"小雲 (Gemini生成) 分享秘密/發現給({user_id})：{ai_response}")
+            else:
+                logger.error(f"Gemini 生成秘密時回應格式異常: {result}, 將使用預設備選")
+                if available_indices_from_list and not chosen_secret_from_list:
+                    chosen_index = random.choice(available_indices_from_list)
+                    ai_response = CAT_SECRETS_AND_DISCOVERIES[chosen_index]
+                    user_shared_secrets_indices[user_id].add(chosen_index)
+                else:
+                    ai_response = "喵...我剛剛好像想到一個，但是又忘記了...[STICKER:思考] 下次再跟你說好了！"
+        except Exception as e:
+            logger.error(f"調用 Gemini 生成秘密時發生錯誤: {e}, 將使用預設備選")
+            if available_indices_from_list and not chosen_secret_from_list:
+                 chosen_index = random.choice(available_indices_from_list)
+                 ai_response = CAT_SECRETS_AND_DISCOVERIES[chosen_index]
+                 user_shared_secrets_indices[user_id].add(chosen_index)
+            else:
+                ai_response = "咪...小雲的腦袋突然一片空白...[STICKER:無奈] 想不起來有什麼秘密了..."
+    else:
+        ai_response = chosen_secret_from_list
+        
+    add_to_conversation(user_id, f"[使用者觸發了小秘密/今日發現功能：{user_input_message}]", ai_response)
+    parse_response_and_send(ai_response, event.reply_token)
+
+# --- NEW FUNCTIONS END ---
+
 
 def get_conversation_history(user_id):
     """獲取用戶的對話歷史"""
@@ -528,7 +769,7 @@ def select_sticker_by_keyword(keyword):
                 return random.choice(XIAOYUN_STICKERS[fallback_keyword])
         
         logger.error("連基本的回退貼圖都未在貼圖配置中找到，使用硬編碼的最終回退貼圖。")
-        return {"package_id": "11537", "sticker_id": "52002747"} # 預設：害羞
+        return {"package_id": "11537", "sticker_id": "52002747"} 
 
 def parse_response_and_send(response_text, reply_token):
     """解析回應並發送多訊息或貼圖，處理訊息數量限制"""
@@ -658,14 +899,26 @@ def handle_text_message(event):
     user_id = event.source.user_id
     logger.info(f"收到來自({user_id})的文字訊息：{user_message}")
 
+    trigger_keywords = ["秘密", "發現"]
+    is_secret_request = any(keyword in user_message for keyword in trigger_keywords) and \
+                        ("嗎" in user_message or "?" in user_message or "是什麼" in user_message or "告訴我" in user_message or "說說" in user_message or "分享" in user_message)
+
+    if is_secret_request:
+        return handle_cat_secret_discovery_request(event)
+
     conversation_history = get_conversation_history(user_id)
+    time_context_prompt = get_time_based_cat_context()
+    final_user_message_for_gemini = f"{time_context_prompt}{user_message}"
+    
     headers = {"Content-Type": "application/json"}
     gemini_url_with_key = f"{GEMINI_API_URL}?key={GEMINI_API_KEY}"
+    
     current_conversation_for_gemini = conversation_history.copy()
     current_conversation_for_gemini.append({
         "role": "user",
-        "parts": [{"text": user_message}]
+        "parts": [{"text": final_user_message_for_gemini}]
     })
+    
     payload = {
         "contents": current_conversation_for_gemini,
         "generationConfig": {"temperature": TEMPERATURE, "maxOutputTokens": 800}
@@ -675,13 +928,17 @@ def handle_text_message(event):
         response = requests.post(gemini_url_with_key, headers=headers, json=payload, timeout=30)
         response.raise_for_status()
         result = response.json()
+
         if "candidates" not in result or not result["candidates"] or "content" not in result["candidates"][0] or "parts" not in result["candidates"][0]["content"] or not result["candidates"][0]["content"]["parts"]:
             logger.error(f"Gemini API 回應格式異常: {result}")
             raise Exception("Gemini API 回應格式異常或沒有候選回應")
+
         ai_response = result["candidates"][0]["content"]["parts"][0]["text"]
-        add_to_conversation(user_id, user_message, ai_response)
+        # For regular messages, add the original user_message to history
+        add_to_conversation(user_id, user_message, ai_response) 
         logger.info(f"小雲回覆({user_id})：{ai_response}")
         parse_response_and_send(ai_response, event.reply_token)
+
     except requests.exceptions.HTTPError as http_err:
         logger.error(f"Gemini API HTTP 錯誤: {http_err} - {response.text if response else 'No response text'}")
         messages_to_send = [TextSendMessage(text="咪～小雲的網路好像不太好...")]
@@ -774,7 +1031,6 @@ def handle_image_message(event):
         messages_to_send.append(TextSendMessage(text="小雲的頭有點暈 😵"))
         line_bot_api.reply_message(event.reply_token, messages_to_send[:5])
 
-# --- MODIFICATION START: handle_sticker_message function ---
 @handler.add(MessageEvent, message=StickerMessage)
 def handle_sticker_message(event):
     user_id = event.source.user_id
@@ -864,7 +1120,6 @@ def handle_sticker_message(event):
         if sticker:
             messages_to_send.append(StickerSendMessage(package_id=str(sticker["package_id"]), sticker_id=str(sticker["sticker_id"])))
         line_bot_api.reply_message(event.reply_token, messages_to_send[:5])
-# --- MODIFICATION END: handle_sticker_message function ---
 
 @app.route("/clear_memory/<user_id>", methods=["GET"])
 def clear_memory_route(user_id):
