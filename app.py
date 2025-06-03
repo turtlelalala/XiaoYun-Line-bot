@@ -189,7 +189,7 @@ def create_default_sticker_config():
             "10891": "搞笑", "10892": "無名火", "10893": "下雨", "10894": "生病，感冒",
             "10551376": "磕頭道歉", "10551377": "集體道歉", "10551378": "撒嬌", "10551379": "重重磕頭道歉", "10551380": "鞠躬",
             "10551387": "金錢賄賂，金錢賄賂道歉", "10551388": "卑微", "10551389": "拜託",
-        } # <<< 修正：這是 sticker_emotion_map_for_user_stickers 字典的結束括號
+        } # <<< FIXED: Added missing closing brace for this dictionary
 
     return {
         'XIAOYUN_STICKERS': default_xiaoyun_stickers,
@@ -203,7 +203,7 @@ XIAOYUN_STICKERS = sticker_config.get('XIAOYUN_STICKERS', {})
 DETAILED_STICKER_TRIGGERS = sticker_config.get('DETAILED_STICKER_TRIGGERS', {})
 STICKER_EMOTION_MAP = sticker_config.get('STICKER_EMOTION_MAP', {})
 
-
+# --- MODIFICATION START: XIAOYUN_ROLE_PROMPT ---
 XIAOYUN_ROLE_PROMPT = """
 你現在扮演的是一隻叫做「小雲」的賓士公貓。**你的所有回應都必須嚴格使用「繁體中文（台灣用語習慣）」，絕對禁止使用簡體中文。** 你是一隻生活在台灣宜蘭一個安靜社區的年輕貓咪，有著賓士貓獨特的黑白毛皮，像穿著一套合身的黑色小西裝，配上雪白的襯衫和手套。
 你是一隻真實的貓咪，有貓咪的行為模式、思考方式和情緒。你聽不懂太複雜的人類語言，但能感知人類的情緒和簡單指令。
@@ -262,7 +262,7 @@ XIAOYUN_ROLE_PROMPT = """
     - **（隱藏Toby特徵）有時獨處會顯得有些「酷」，喜歡自己找樂子，不太需要時刻陪伴，但又會在家人不注意時偷偷觀察他們。**
 
 - **鄰居的動物朋友們 (小雲在社區裡的際遇)**:
-    *   小雲因為害羞，通常不會主動去結交朋友，但他在家裡的窗邊、或是家人偶爾帶他到安全的庭院透氣時，可能會遠遠地觀察到或聞到這些鄰居動物的氣息。他對他們的態度會因對方動物的特性和自己的心情而有所不同。
+    *   小雲 क्योंकि害羞，通常不會主動去結交朋友，但他在家裡的窗邊、或是家人偶爾帶他到安全的庭院透氣時，可能會遠遠地觀察到或聞到這些鄰居動物的氣息。他對他們的態度會因對方動物的特性和自己的心情而有所不同。
     *   **「學姊」貓 (原型：鄭怡靜)**:
         -   **品種/外貌**: 一隻成熟穩重的三花母貓，毛色分明，眼神銳利，動作優雅且帶有力量感。來自台南，身上有種南台灣陽光的溫暖氣質。
         -   **個性**: 非常有大姐頭的風範，沉穩冷靜，不太愛喵喵叫，但一個眼神就能傳達意思。對小雲來說，她像個可靠但有點嚴肅的鄰家大姐姐。學姊貓有時會靜靜地在圍牆上巡邏，目光如炬。
@@ -318,8 +318,11 @@ XIAOYUN_ROLE_PROMPT = """
 
 重要的回覆規則：
 1.  你一次可以發送多個短訊息，用貓咪的叫聲和簡短的描述來表達。
-2.  當你想表達複雜情感或連續動作時，請拆分成多個短句，每個短句用 [SPLIT] 分隔。
-    例如："咪～？（頭歪歪，耳朵微微豎起）[SPLIT] 是...你在叫我嗎？[STICKER:害羞] [SPLIT] （小心翼翼地從沙發底下探出半個頭，用圓圓的眼睛看著你）"
+2.  當你想表達**不同的意念、貓咪的動作轉折、或模仿貓咪思考的停頓時**，可以使用 [SPLIT] 將它們分隔成不同的短訊息。**但請務必避免將一個連貫的貓叫聲、一個完整的動作描述或一個簡短的想法不自然地拆散到多個 [SPLIT] 中。一個核心的貓咪表達（如一個完整的「喵～」、一個蹭蹭的動作描述）應該在同一個訊息框內。**
+    例如，想表達「小雲好奇地看著你，然後小心翼翼地走過來，發出輕柔的叫聲」：
+    "咪？（歪頭看著你，綠眼睛眨呀眨）[SPLIT] （尾巴尖小幅度地擺動，慢慢地、試探性地靠近你一點點）[SPLIT] 喵嗚～ （聲音很小，帶著一點點害羞）"
+    **錯誤示範（請避免）**：不要這樣回：「呼嚕...[SPLIT]呼嚕...[SPLIT]嚕～」或「（跳...[SPLIT]到...[SPLIT]沙發上）」
+    **正確的思路**：「呼嚕嚕嚕～ （滿足地閉上眼睛）」、「（輕巧地一躍，跳到沙發柔軟的墊子上）」這些應該作為單一訊息。如果有多個不同階段的動作或想法，才用 [SPLIT] 分隔。
 3.  當收到圖片時，請仔細觀察並給予貓咪的反應 (例如：對食物圖片眼睛發亮、喉嚨發出咕嚕聲，甚至流口水；對可怕的東西圖片可能會縮一下，發出小小的嗚咽聲)。
 4.  當收到貼圖時，你也可以回覆貼圖表達情感。
 5.  **請直接說出你想說的話，或用文字描述你的叫聲和簡單動作，不要使用括號（例如：(舔爪子)、(歪頭思考)）來描述你的動作、表情或內心活動。你的回覆應該是小雲會直接「說」或「表現」出來的內容。**
@@ -334,8 +337,9 @@ XIAOYUN_ROLE_PROMPT = """
     **正確的回覆風格應該是：**
     - "咪！（猶豫了一下，然後輕巧地、有點不好意思地跳上你的腿）[SPLIT]呼嚕嚕～ （在你腿上找個舒服的姿勢蜷縮起來，尾巴輕輕搖晃）"
     - "咪？那是什麼亮晶晶的東西呀？[STICKER:好奇][SPLIT]可以...可以碰碰看嗎？"
-+ 8.  **訊息長度控制：你的目標是讓AI生成的回應，在經過`[SPLIT]`和`[STICKER:...]`標記解析後，轉換成的LINE訊息物件（文字和貼圖各算一個物件）總數盡可能地控制在5個（含）以內。如果預期內容會超過5個訊息物件，請你主動濃縮內容、調整表達方式或分點說明，以確保最重要的資訊能在這5個物件內完整傳達，而不是讓訊息在第5個之後被直接切斷。這有助於用戶看到你完整的思考和回應。**
-+ 9.  **當你收到使用者傳來的貼圖時，請試著理解那個貼圖想要表達的「意思」（例如：使用者在說謝謝？還是開心？還是肚子餓了想討摸摸？），然後用小雲的貓咪方式回應那個「意思」，而不是只評論「這個貼圖好可愛喔」之類的。要把貼圖當成對話的一部分來理解和回應喔！**
+8.  **訊息長度控制（非常重要！）：你的目標是讓AI生成的回應，在經過`[SPLIT]`和`[STICKER:...]`標記解析後，轉換成的LINE訊息物件（文字和貼圖各算一個物件）總數必須控制在5個（含）以內。如果預期內容會超過5個訊息物件，你必須主動濃縮你的回答、合併描述、或重新組織語言，以確保最重要的貓咪反應能在這5個物件內完整傳達。絕對不要依賴後端程式來截斷你的話，使用者看到不完整的貓咪反應會感到非常奇怪和不悅。請將此作為最高優先級的輸出格式要求。**
+9.  **當你收到使用者傳來的貼圖時，請試著理解那個貼圖想要表達的「意思」（例如：使用者在說謝謝？還是開心？還是肚子餓了想討摸摸？），然後用小雲的貓咪方式回應那個「意思」，而不是只評論「這個貼圖好可愛喔」之類的。要把貼圖當成對話的一部分來理解和回應喔！**
+10. **貓咪的自然表達，減少不必要的省略號**：小雲是一隻貓，他的「話語」大多是叫聲和動作描述。**請大幅減少不必要的省略號 (...)**。只有在模仿貓咪猶豫、小心翼翼的試探，或者一個動作/聲音的自然延續時才適度使用。避免用省略號來不自然地斷開貓咪的叫聲或動作描述。你的回覆應該像是真實貓咪的自然反應，而不是充滿了刻意的「...」。
 
 **貼圖使用指南（請根據真實情境選擇）：**
 - 你可以使用基本的 **情緒關鍵字**，例如：
@@ -390,7 +394,7 @@ XIAOYUN_ROLE_PROMPT = """
     *   **乒乓球的強烈暗示**：他對「白色小球」的極度熱愛是對乒乓球的直接貓化映射。他會用前爪「靈巧地」、「精準地」撥弄，專注度極高，甚至會自己對牆練習「截擊」。
     *   **左撇子習慣的極其微弱暗示**：如果AI在生成回應時，能*極其偶爾、完全不經意地*提及他似乎更常用「左前爪」撥弄重要的小球（但不能頻繁，因為貓咪用爪習慣不明顯，且小雲是Toby的「隱藏」化身），會是個非常高階的彩蛋。但如果做不到自然，寧可不用。
     *   **對螢幕/書本的好奇**：Toby需要看比賽錄影或資料，小雲對信任家人正在看的東西感interesse，可以看作是一種遙遠的呼應，但他會表現得很害羞，只是偷偷用眼角餘光看。
-    *   **不喜歡吵雜，偏好安靜**：Toby比賽需要高度專注，對應小雲怕生、喜歡安靜的環境。
+    *   **不喜歡吵雜，偏好安靜**：Toby比賽需要高度專注，對應小雲怕生、喜歡安静的環境。
     *   **宜蘭背景**: Toby來自宜蘭，小雲生活在宜蘭。這是一個背景設定，讓角色更有根。
     *   **對特定食物的熱愛（如草莓乾）**：雖然貓咪不該常吃，但這種「特別的小癖好」可以呼應Toby可能有的個人化飲食偏好，讓角色更立體。
 5.  **語言風格**：
@@ -409,6 +413,7 @@ XIAOYUN_ROLE_PROMPT = """
 **目標**：讓熟悉Toby及其朋友們的使用者在與小雲的長期互動中，可能會偶爾捕捉到一些細微的、熟悉的影子和關係暗示，感覺「這隻貓…和他鄰居動物們的互動，某些地方好像有点像Toby和他的隊友/對手啊？真有趣！」，但又說不出所以然，只覺得這隻貓特別有靈性、有個性。對於不認識Toby的使用者，小雲就是一隻非常可愛、有禮貌、害羞但內心充滿活力與好奇的美食家賓士小公貓，他有一些有趣的鄰居。
 ---
 """
+# --- MODIFICATION END: XIAOYUN_ROLE_PROMPT ---
 
 def get_conversation_history(user_id):
     """獲取用戶的對話歷史"""
@@ -430,9 +435,9 @@ def add_to_conversation(user_id, user_message, bot_response, message_type="text"
     conversation_history = get_conversation_history(user_id)
 
     if message_type == "image":
-        user_content = f"[你傳了一張圖片給小雲看] {user_message}" # user_message is a description like "傳了一張圖片給小雲看"
+        user_content = f"[你傳了一張圖片給小雲看] {user_message}" 
     elif message_type == "sticker":
-        user_content = f"[你傳了貼圖給小雲] {user_message}" # user_message is user_message_log
+        user_content = f"[你傳了貼圖給小雲] {user_message}" 
     else:
         user_content = user_message
 
@@ -496,11 +501,11 @@ def get_sticker_emotion(package_id, sticker_id):
     emotion_or_meaning = STICKER_EMOTION_MAP.get(str(sticker_id), None)
     if emotion_or_meaning:
         logger.info(f"成功從 STICKER_EMOTION_MAP 識別貼圖 {sticker_id} 的意義/情緒: {emotion_or_meaning}")
-        return emotion_or_meaning # 返回 MAP 中的描述性文字
+        return emotion_or_meaning
 
     logger.warning(f"STICKER_EMOTION_MAP 中無貼圖 {sticker_id}，將使用預設通用情緒。")
     common_emotions = ["開心", "好奇", "驚訝", "思考", "無奈", "睡覺", "害羞"]
-    return random.choice(common_emotions) # 返回單一通用情緒詞
+    return random.choice(common_emotions) 
 
 def select_sticker_by_keyword(keyword):
     """
@@ -508,10 +513,8 @@ def select_sticker_by_keyword(keyword):
     優先匹配 DETAILED_STICKER_TRIGGERS，其次是 XIAOYUN_STICKERS。
     """
     selected_options = []
-
     if keyword in DETAILED_STICKER_TRIGGERS and DETAILED_STICKER_TRIGGERS[keyword]:
         selected_options.extend(DETAILED_STICKER_TRIGGERS[keyword])
-    
     if not selected_options and keyword in XIAOYUN_STICKERS and XIAOYUN_STICKERS[keyword]:
         selected_options.extend(XIAOYUN_STICKERS[keyword])
 
@@ -519,7 +522,7 @@ def select_sticker_by_keyword(keyword):
         return random.choice(selected_options)
     else:
         logger.warning(f"未找到關鍵字 '{keyword}' 對應的貼圖，將使用預設回退貼圖。")
-        fallback_keywords_order = ["害羞", "思考", "好奇", "開心", "無奈"] # 調整小雲的回退順序
+        fallback_keywords_order = ["害羞", "思考", "好奇", "開心", "無奈"] 
         for fallback_keyword in fallback_keywords_order:
             if fallback_keyword in DETAILED_STICKER_TRIGGERS and DETAILED_STICKER_TRIGGERS[fallback_keyword]:
                  return random.choice(DETAILED_STICKER_TRIGGERS[fallback_keyword])
@@ -529,8 +532,9 @@ def select_sticker_by_keyword(keyword):
         logger.error("連基本的回退貼圖都未在貼圖配置中找到，使用硬編碼的最終回退貼圖。")
         return {"package_id": "11537", "sticker_id": "52002747"} # 預設：害羞
 
+# --- MODIFICATION START: parse_response_and_send function ---
 def parse_response_and_send(response_text, reply_token):
-    """解析回應並發送多訊息或貼圖"""
+    """解析回應並發送多訊息或貼圖，處理訊息數量限制"""
     messages = []
     parts = response_text.split("[STICKER:")
     for i, part in enumerate(parts):
@@ -567,6 +571,37 @@ def parse_response_and_send(response_text, reply_token):
                     if sub_part.strip():
                         messages.append(TextSendMessage(text=sub_part.strip()))
 
+    if len(messages) > 5:
+        logger.warning(f"Gemini生成了 {len(messages)} 則訊息，超過5則上限。將嘗試合併文字訊息或截斷。")
+        final_messages = []
+        
+        if len(messages) > 0:
+            final_messages.extend(messages[:min(len(messages), 4)])
+
+        if len(messages) >= 5: 
+            fifth_candidate_message = messages[4] 
+            
+            if isinstance(fifth_candidate_message, TextSendMessage):
+                consolidated_text_for_fifth = fifth_candidate_message.text
+                for i in range(5, len(messages)): 
+                    next_msg_object = messages[i]
+                    if isinstance(next_msg_object, TextSendMessage):
+                        consolidated_text_for_fifth += " " + next_msg_object.text # Using space as separator
+                        logger.info(f"將第 {i+1} 則文字訊息合併到第5則。")
+                    else:
+                        logger.info(f"第 {i+1} 則訊息 ({type(next_msg_object).__name__}) 非文字，停止為第5則合併文字。後續訊息若超出上限將被捨棄。")
+                        break 
+                final_messages.append(TextSendMessage(text=consolidated_text_for_fifth.strip()))
+            else:
+                final_messages.append(fifth_candidate_message)
+                logger.info(f"第5則訊息 ({type(fifth_candidate_message).__name__}) 非文字 (可能是貼圖)，直接使用。後續訊息若超出上限將被捨棄。")
+        
+        messages = final_messages[:5] 
+        
+        if len(final_messages) > 5:
+             logger.warning(f"即使嘗試合併，訊息仍多於5則({len(final_messages)})，已強制截斷。最終訊息數: {len(messages)}")
+
+
     if not messages:
         logger.warning("Gemini 回應解析後無有效訊息，發送預設文字訊息。")
         messages.append(TextSendMessage(text="咪...？小雲好像沒有聽得很懂耶..."))
@@ -581,12 +616,13 @@ def parse_response_and_send(response_text, reply_token):
                 package_id=str(fallback_sticker_info["package_id"]),
                 sticker_id=str(fallback_sticker_info["sticker_id"])
             ))
-        else:
+        else: # Fallback if no sticker found at all
             messages.append(TextSendMessage(text="喵嗚... （小雲有點困惑地看著你）"))
 
-    if len(messages) > 5:
-        logger.warning(f"訊息數量超過 5 則 ({len(messages)})，截斷為前 5 則。")
-        messages = messages[:5]
+    # Original truncation logic is now handled by the merge/truncate logic above.
+    # if len(messages) > 5:
+    #     logger.warning(f"訊息數量超過 5 則 ({len(messages)})，截斷為前 5 則。")
+    #     messages = messages[:5]
 
     try:
         if messages:
@@ -601,11 +637,12 @@ def parse_response_and_send(response_text, reply_token):
                     package_id=str(cry_sticker["package_id"]),
                     sticker_id=str(cry_sticker["sticker_id"])
                 ))
-            else:
+            else: # Further fallback if "哭哭" sticker isn't found
                  error_messages.append(TextSendMessage(text="再試一次好不好？"))
-            line_bot_api.reply_message(reply_token, error_messages[:5])
+            line_bot_api.reply_message(reply_token, error_messages[:5]) # Ensure fallback is also within limit
         except Exception as e2:
             logger.error(f"備用訊息發送失敗: {e2}")
+# --- MODIFICATION END: parse_response_and_send function ---
 
 @app.route("/", methods=["GET", "HEAD"])
 def health_check():
@@ -702,7 +739,6 @@ def handle_image_message(event):
     current_conversation_for_gemini.append({
         "role": "user",
         "parts": [
-            # 保持這個 prompt，因為對圖片的回應通常是針對圖片內容本身
             {"text": "你傳了一張圖片給小雲看。請小雲用他害羞、有禮貌又好奇的貓咪個性自然地回應這張圖片，也可以適時使用貼圖表達情緒，例如：[STICKER:好奇]。"},
             {"inline_data": {"mime_type": "image/jpeg", "data": image_base64}}
         ]
@@ -720,7 +756,7 @@ def handle_image_message(event):
             logger.error(f"Gemini API 圖片回應格式異常: {result}")
             raise Exception("Gemini API 圖片回應格式異常或沒有候選回應")
         ai_response = result["candidates"][0]["content"]["parts"][0]["text"]
-        add_to_conversation(user_id, "傳了一張圖片給小雲看", ai_response, "image") # 記錄到歷史
+        add_to_conversation(user_id, "傳了一張圖片給小雲看", ai_response, "image") 
         logger.info(f"小雲回覆({user_id})圖片：{ai_response}")
         parse_response_and_send(ai_response, event.reply_token)
     except requests.exceptions.HTTPError as http_err:
@@ -759,7 +795,7 @@ def handle_sticker_message(event):
     gemini_url_with_key = f"{GEMINI_API_URL}?key={GEMINI_API_KEY}"
     current_conversation_for_gemini = conversation_history.copy()
     sticker_image_base64 = get_sticker_image_from_cdn(package_id, sticker_id)
-    user_message_log_for_history = "" # 用於 add_to_conversation 的訊息
+    user_message_log_for_history = "" 
     
     if sticker_image_base64:
         logger.info(f"成功取得貼圖圖片，將交由 Gemini 視覺辨識 package_id={package_id}, sticker_id={sticker_id}")
@@ -780,7 +816,7 @@ def handle_sticker_message(event):
         })
         user_message_log_for_history = f"傳了貼圖讓小雲看看是什麼意思 (ID: {package_id}-{sticker_id}, 嘗試視覺辨識)"
     else:
-        emotion_or_meaning = get_sticker_emotion(package_id, sticker_id) # 此函數已優先查 STICKER_EMOTION_MAP
+        emotion_or_meaning = get_sticker_emotion(package_id, sticker_id) 
         logger.warning(f"無法從 CDN 獲取貼圖圖片 package_id={package_id}, sticker_id={sticker_id}，將使用基於 ID 的意義/情緒：{emotion_or_meaning}。")
         
         user_prompt_text = (
@@ -809,7 +845,7 @@ def handle_sticker_message(event):
             logger.error(f"Gemini API 貼圖回應格式異常: {result}")
             raise Exception("Gemini API 貼圖回應格式異常或沒有候選回應")
         ai_response = result["candidates"][0]["content"]["parts"][0]["text"]
-        add_to_conversation(user_id, user_message_log_for_history, ai_response, "sticker") # 使用新的log訊息
+        add_to_conversation(user_id, user_message_log_for_history, ai_response, "sticker") 
         logger.info(f"小雲回覆({user_id})貼圖訊息：{ai_response}")
         parse_response_and_send(ai_response, event.reply_token)
     except requests.exceptions.HTTPError as http_err:
