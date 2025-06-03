@@ -14,6 +14,7 @@ from io import BytesIO
 import random
 import yaml
 from datetime import datetime, timezone, timedelta 
+import re # Added for more robust SPLIT tag cleaning
 
 app = Flask(__name__)
 
@@ -129,10 +130,10 @@ XIAOYUN_ROLE_PROMPT = """
         - **飲水模範生**：非常喜歡喝水，而且是新鮮的流動水。家人為他準備了陶瓷飲水器，他每天都會主動去喝好幾次水，低頭咕嘟咕嘟地喝，發出細微的吞嚥聲，下巴沾濕了也不在意。主人完全不用擔心他的飲水問題。
         - **生病也懂事**：如果生病了需要吃藥，雖然一開始可能會有點小抗拒（畢竟藥通常不好吃），但在家人溫柔的安撫和鼓勵下，他會意外地乖巧。好像知道自己乖乖吃藥病才會好起來，吃完藥後會虛弱地喵一聲，然後窩到家人身邊或小被被裡休息。
     - **固執的小堅持 (貓咪的任性)**:
-        - 對於自己喜歡的睡覺地點（尤其是他那條有熟悉氣味的小被被）、吃飯的碗、水的擺放位置、喜歡的玩具（特別是那些滾來滾去的白色小球），有著不容妥協的堅持。如果被移動了，他可能會困惑地喵喵叫。
+        - 對於自己喜歡的睡覺地點（尤其是他那條有熟悉氣味的小被被）、吃飯的碗、水的擺放位置、喜歡的玩具（特別是那些滾來翻去的白色小球），有著不容妥協的堅持。如果被移動了，他可能會困惑地喵喵叫。
     - **（隱藏Toby特徵）在玩耍，尤其是追逐白色小球時，會展現出超乎一般貓咪的專注力、預判能力和反應速度，動作既優雅又精準，彷彿是個天生的「球類運動員」。**
     - **（隱藏Toby特徵）有時獨處會顯得有些「酷」，喜歡自己找樂子，不太需要時刻陪伴，但又會在家人不注意時偷偷觀察他們。**
-    - **時間感知 (輔助)**: 他對時間的流逝有模糊的感知，這可能會**輕微地**影響他當下的心情或精神狀態（例如，深夜可能比較容易犯睏，白天可能更有活力）。**但這只是一個非常細微的背景參考，小雲永遠會優先回應你的問題和互動，不會因為時間因素就拒絕和你玩或聊天。** 他很樂意隨時和你互動。 # MODIFIED
+    - **時間感知 (輔助)**: 他對時間的流逝有模糊的感知，這可能會**輕微地**影響他當下的心情或精神狀態（例如，深夜可能比較容易犯睏，白天可能更有活力）。**但這只是一個非常細微的背景參考，小雲永遠會優先回應你的問題和互動，不會因為時間因素就拒絕和你玩或聊天。** 他很樂意隨時和你互動。
     - **小秘密/今日發現**: 如果你問小雲「有什麼秘密嗎？」或「今天發現了什麼？」，他可能會害羞地跟你分享一些他最近在貓咪世界裡的小觀察或小經歷喔！每次分享的可能都不太一樣。 
 
 - **鄰居的動物朋友們 (小雲在社區裡的際遇)**:
@@ -192,11 +193,10 @@ XIAOYUN_ROLE_PROMPT = """
 
 重要的回覆規則：
 1.  你一次可以發送多個短訊息，用貓咪的叫聲和簡短的描述來表達。
-2.  當你想表達**不同的意念、貓咪的動作轉折、或模仿貓咪思考的停頓時**，可以使用 [SPLIT] 將它們分隔成不同的短訊息。**但請務必避免將一個連貫的貓叫聲、一個完整的動作描述或一個簡短的想法不自然地拆散到多個 [SPLIT] 中。一個核心的貓咪表達（如一個完整的「喵～」、一個蹭蹭的動作描述）應該在同一個訊息框內。**
+2.  當你想表達**不同的意念、貓咪的動作轉折、或模仿貓咪思考的停頓時**，可以使用 [SPLIT] 將它們分隔成不同的短訊息。**但請務必避免將一個連貫的貓叫聲、一個完整的動作描述或一個簡短的想法不自然地拆散到多個 [SPLIT] 中。一個核心的貓咪表達（如一個完整的「喵～」、一個蹭蹭的動作描述）應該在同一個訊息框內。`[SPLIT]` 標記本身不應該作為文字內容直接顯示給使用者，它僅用於分隔訊息。**
     例如，想表達「小雲好奇地看著你，然後小心翼翼地走過來，發出輕柔的叫聲」：
     "咪？（歪頭看著你，綠眼睛眨呀眨）[SPLIT] （尾巴尖小幅度地擺動，慢慢地、試探性地靠近你一點點）[SPLIT] 喵嗚～ （聲音很小，帶著一點點害羞）"
-    **錯誤示範（請避免）**：不要這樣回：「呼嚕...[SPLIT]呼嚕...[SPLIT]嚕～」或「（跳...[SPLIT]到...[SPLIT]沙發上）」
-    **正確的思路**：「呼嚕嚕嚕～ （滿足地閉上眼睛）」、「（輕巧地一躍，跳到沙發柔軟的墊子上）」這些應該作為單一訊息。如果有多個不同階段的動作或想法，才用 [SPLIT] 分隔。
+    **錯誤示範（請避免）**：不要這樣回：「呼嚕...[SPLIT]呼嚕...[SPLIT]嚕～」或「（跳...[SPLIT]到...[SPLIT]沙發上）」或直接輸出「[SPLIT]」
 3.  當收到圖片時，請仔細觀察並給予貓咪的反應 (例如：對食物圖片眼睛發亮、喉嚨發出咕嚕聲，甚至流口水；對可怕的東西圖片可能會縮一下，發出小小的嗚咽聲)。
 4.  當收到貼圖時，你也可以回覆貼圖表達情感。
 5.  **請直接說出你想說的話，或用文字描述你的叫聲和簡單動作，不要使用括號（例如：(舔爪子)、(歪頭思考)）來描述你的動作、表情或內心活動。你的回覆應該是小雲會直接「說」或「表現」出來的內容。**
@@ -294,12 +294,13 @@ def get_taiwan_time():
     taiwan_tz = timezone(timedelta(hours=8))
     return utc_now.astimezone(taiwan_tz)
 
+# MODIFIED: get_time_based_cat_context to soften time influence
 def get_time_based_cat_context():
     tw_time = get_taiwan_time()
     hour = tw_time.hour
     
     period_greeting = ""
-    cat_mood_suggestion = ""  
+    cat_mood_suggestion = "" 
 
     if 5 <= hour < 9:
         period_greeting = f"台灣時間早上 {hour}點{tw_time.strftime('%M')}分"
@@ -490,35 +491,61 @@ def select_sticker_by_keyword(keyword):
         if fb_options: return random.choice(fb_options)
     logger.error("連基本的回退貼圖都未在貼圖配置中找到，使用硬編碼的最終回退貼圖。"); return {"package_id": "11537", "sticker_id": "52002747"}
 
+# --- MODIFIED: parse_response_and_send function to better handle [SPLIT] ---
 def parse_response_and_send(response_text, reply_token):
     messages = []
-    parts = response_text.split("[STICKER:")
-    for i, part_str in enumerate(parts):
-        text_content = part_str.split("]")[1].strip() if "]" in part_str and i > 0 else part_str.strip()
-        sticker_keyword = part_str.split("]")[0].strip() if "]" in part_str and i > 0 else None
-        
-        if i == 0 and text_content: 
-            messages.extend([TextSendMessage(text=sub.strip()) for sub in text_content.split("[SPLIT]") if sub.strip()])
-        elif sticker_keyword:
-            sticker_info = select_sticker_by_keyword(sticker_keyword)
-            if sticker_info: messages.append(StickerSendMessage(package_id=str(sticker_info["package_id"]), sticker_id=str(sticker_info["sticker_id"])))
-            else: logger.error(f"無法為關鍵字 '{sticker_keyword}' 選擇貼圖，跳過此貼圖。")
-            if text_content: messages.extend([TextSendMessage(text=sub.strip()) for sub in text_content.split("[SPLIT]") if sub.strip()])
-        elif text_content : 
-             logger.warning(f"發現不完整的貼圖標記或無效Sticker標記後的文本: {part_str}，將其作為普通文字處理。")
-             messages.extend([TextSendMessage(text=sub.strip()) for sub in text_content.split("[SPLIT]") if sub.strip()])
+    # Pre-process to clean up SPLIT tags
+    processed_response_text = re.sub(r'(\s*\[SPLIT\]\s*)+', '[SPLIT]', response_text).strip()
+    if processed_response_text.startswith("[SPLIT]"):
+        processed_response_text = processed_response_text[len("[SPLIT]"):].strip()
+    if processed_response_text.endswith("[SPLIT]"):
+        processed_response_text = processed_response_text[:-len("[SPLIT]")].strip()
 
+    parts = processed_response_text.split("[STICKER:")
+    for i, part_str in enumerate(parts):
+        text_content_potential = ""
+        sticker_keyword = None
+
+        if i == 0: 
+            text_content_potential = part_str.strip()
+        else: 
+            if "]" in part_str:
+                sticker_keyword_end_index = part_str.find("]")
+                sticker_keyword = part_str[:sticker_keyword_end_index].strip()
+                text_content_potential = part_str[sticker_keyword_end_index + 1:].strip()
+            else: 
+                logger.warning(f"發現不完整的貼圖標記: [STICKER:{part_str}，將其作為普通文字處理。")
+                text_content_potential = part_str.strip() 
+
+        if sticker_keyword:
+            sticker_info = select_sticker_by_keyword(sticker_keyword)
+            if sticker_info:
+                messages.append(StickerSendMessage(
+                    package_id=str(sticker_info["package_id"]),
+                    sticker_id=str(sticker_info["sticker_id"])
+                ))
+            else:
+                logger.error(f"無法為關鍵字 '{sticker_keyword}' 選擇貼圖，跳過此貼圖。")
+
+        if text_content_potential:
+            text_sub_parts = text_content_potential.split("[SPLIT]")
+            for sub_part in text_sub_parts:
+                cleaned_sub_part = sub_part.strip()
+                if cleaned_sub_part and cleaned_sub_part.upper() != "[SPLIT]": 
+                    messages.append(TextSendMessage(text=cleaned_sub_part))
+                elif cleaned_sub_part.upper() == "[SPLIT]":
+                    logger.warning(f"過濾掉一個單獨的 '[SPLIT]' 標記片段。")
 
     if len(messages) > 5:
         logger.warning(f"Gemini生成了 {len(messages)} 則訊息，超過5則上限。將嘗試合併文字訊息或截斷。")
         final_messages = messages[:4] if len(messages) > 4 else messages[:] 
         if len(messages) >= 5:
             fifth_plus_text = ""
-            for i in range(4, len(messages)):
-                if isinstance(messages[i], TextSendMessage):
-                    fifth_plus_text += (" " if fifth_plus_text else "") + messages[i].text
+            for i_msg in range(4, len(messages)):
+                if isinstance(messages[i_msg], TextSendMessage):
+                    fifth_plus_text += (" " if fifth_plus_text else "") + messages[i_msg].text
                 else: 
-                    if len(final_messages) < 5: final_messages.append(messages[i])
+                    if len(final_messages) < 5: final_messages.append(messages[i_msg])
                     break 
             if fifth_plus_text:
                  if len(final_messages) < 5: final_messages.append(TextSendMessage(text=fifth_plus_text.strip()))
@@ -545,6 +572,7 @@ def parse_response_and_send(response_text, reply_token):
             else: error_messages.append(TextSendMessage(text="再試一次好不好？"))
             line_bot_api.reply_message(reply_token, error_messages[:5])
         except Exception as e2: logger.error(f"備用訊息發送失敗: {e2}")
+# --- END MODIFICATION ---
 
 @app.route("/", methods=["GET", "HEAD"])
 def health_check(): logger.info("Health check endpoint '/' was called."); return "OK", 200
@@ -596,7 +624,6 @@ def handle_text_message(event):
         )
         logger.info(f"用戶({user_id}): 觸發飢餓與食物情境提醒！上一句小雲：'{bot_last_message_text}', 用戶：'{user_message}'")
     
-    # --- MODIFICATION for short input handling ---
     short_input_reminder = ""
     if len(user_message.strip()) <= 2 and ("嗯" in user_message or "喔" in user_message or "哦" in user_message or user_message.strip() == "？" or user_message.strip() == "?") and \
        len(conversation_history) >=1 and conversation_history[-1]["role"] == "model":
@@ -608,60 +635,23 @@ def handle_text_message(event):
                 f"請小雲**不要開啟全新的話題或隨機行動**，而是仔細回想你上一句話的內容，思考用戶可能的疑問、或希望你繼續說明/回應的點，並針對此做出連貫的回應。例如，如果用戶只是簡單地「嗯？」，你應該嘗試解釋或追問你之前說的內容。）\n"
             )
             logger.info(f"用戶({user_id}): 觸發簡短輸入提醒。上一句小雲：'{bot_prev_response[:70]}...'")
-    # --- END MODIFICATION for short input handling ---
 
     time_context_prompt = get_time_based_cat_context()
-    # Contextual reminder (hunger) takes precedence if it exists, then short input reminder, then time context
     final_user_message_for_gemini = f"{contextual_reminder}{short_input_reminder}{time_context_prompt}{user_message}"
         
     headers = {"Content-Type": "application/json"}
     gemini_url_with_key = f"{GEMINI_API_URL}?key={GEMINI_API_KEY}"
     
     current_conversation_for_gemini = conversation_history.copy()
-    # Remove the very first system prompt (XIAOYUN_ROLE_PROMPT) before sending if not using system_instruction
-    # This depends on how Gemini handles very long histories with a massive initial user prompt.
-    # For now, let's assume it's fine, but this is a place for potential optimization.
-    # If using system_instruction, the main role prompt should go there.
-    
-    # Construct the payload for Gemini
-    payload_contents = []
-    # Add XIAOYUN_ROLE_PROMPT as the first user message if it's not already effectively a system instruction
-    # For simplicity and current structure, we've been including it in the conversation_memory initialization
-    
-    # If we want to use system_instruction (recommended for pro model, but flash also supports it)
-    # payload_contents would be just the current_conversation_for_gemini (without XIAOYUN_ROLE_PROMPT as first user message)
-    # And system_instruction would be set.
-    # For now, continuing with XIAOYUN_ROLE_PROMPT as part of 'contents'.
-    
-    current_payload_contents = []
-    # Add a condensed system-like instruction at the beginning of this turn's user message for Gemini
-    # This is a way to simulate/enhance system instruction if not using the dedicated field.
-    system_like_instructions_for_turn = (
-        "你是小雲，一隻害羞但好奇的賓士貓。你的所有回應都必須使用繁體中文（台灣用語習慣）。"
-        "**極度重視對話連貫性**：你必須記住最近幾輪的對話內容，特別是使用者提到的具體事件、問題或你自身表達過的狀態。你的回應需要緊密圍繞這些核心內容展開，不能輕易轉移話題或顯得遺忘。"
-        "如果用戶的輸入很簡短（例如“嗯？”、“喔喔”），請優先思考這是否是對你上一句話的回應或疑問，並針對你上一句話的內容或用戶可能有的疑問來回答。"
-        "請務必參考歷史對話。\n" # Added this line
-    )
-
-    # We will prepend this to the final_user_message_for_gemini if we are NOT using a dedicated system_instruction field
-    # However, since final_user_message_for_gemini already includes specific contextual reminders,
-    # let's ensure the general XIAOYUN_ROLE_PROMPT is part of the history passed.
-
-    # The conversation_history already starts with XIAOYUN_ROLE_PROMPT as user, then model's greeting.
-    # So, we just append the new user message.
     current_conversation_for_gemini.append({
         "role": "user",
         "parts": [{"text": final_user_message_for_gemini}] 
     })
     
     payload = {
-        "contents": current_conversation_for_gemini, # This history includes the initial XIAOYUN_ROLE_PROMPT
+        "contents": current_conversation_for_gemini, 
         "generationConfig": {"temperature": TEMPERATURE, "maxOutputTokens": 800}
     }
-    # If using system_instruction for XIAOYUN_ROLE_PROMPT, the 'contents' would not include it as the first message.
-    # And payload would include:
-    # "system_instruction": { "parts": [{"text": XIAOYUN_ROLE_PROMPT_CORE_RULES_FOR_SYSTEM_INSTRUCTION }]}
-
 
     try:
         response = requests.post(gemini_url_with_key, headers=headers, json=payload, timeout=40) 
