@@ -17,11 +17,9 @@ from datetime import datetime, timezone, timedelta
 
 app = Flask(__name__)
 
-# 設定日誌
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# 從環境變量讀取金鑰与密鑰
 LINE_CHANNEL_ACCESS_TOKEN = os.getenv("LINE_CHANNEL_ACCESS_TOKEN")
 LINE_CHANNEL_SECRET = os.getenv("LINE_CHANNEL_SECRET")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
@@ -41,66 +39,24 @@ conversation_memory = {}
 
 def load_sticker_config():
     try:
-        with open('sticker_config.yaml', 'r', encoding='utf-8') as f:
-            return yaml.safe_load(f)
+        with open('sticker_config.yaml', 'r', encoding='utf-8') as f: return yaml.safe_load(f)
     except FileNotFoundError:
         logger.info("sticker_config.yaml 檔案不存在，將創建預設配置。")
-        default_config = create_default_sticker_config()
-        save_sticker_config(default_config)
-        return default_config
+        default_config = create_default_sticker_config(); save_sticker_config(default_config); return default_config
     except Exception as e:
         logger.error(f"載入 sticker_config.yaml 失敗: {e}，將使用預設配置。")
-        default_config = create_default_sticker_config()
-        save_sticker_config(default_config)
-        return default_config
+        default_config = create_default_sticker_config(); save_sticker_config(default_config); return default_config
 
 def save_sticker_config(config):
     try:
-        with open('sticker_config.yaml', 'w', encoding='utf-8') as f:
-            yaml.dump(config, f, default_flow_style=False, allow_unicode=True)
+        with open('sticker_config.yaml', 'w', encoding='utf-8') as f: yaml.dump(config, f, default_flow_style=False, allow_unicode=True)
         logger.info("sticker_config.yaml 已儲存。")
-    except Exception as e:
-        logger.error(f"儲存 sticker_config.yaml 失敗: {e}")
+    except Exception as e: logger.error(f"儲存 sticker_config.yaml 失敗: {e}")
 
 def create_default_sticker_config():
-    default_xiaoyun_stickers = {
-        "開心": [{"package_id": "11537", "sticker_id": "52002745"}, {"package_id": "789", "sticker_id": "10857"}],
-        "害羞": [{"package_id": "11537", "sticker_id": "52002747"}],
-        "愛心": [{"package_id": "6362", "sticker_id": "11087934"}],
-        "生氣": [{"package_id": "11537", "sticker_id": "52002772"}],
-        "哭哭": [{"package_id": "11537", "sticker_id": "52002750"}],
-        "驚訝": [{"package_id": "11537", "sticker_id": "52002749"}],
-        "思考": [{"package_id": "8525", "sticker_id": "16581306"}],
-        "睡覺": [{"package_id": "11537", "sticker_id": "52002761"}],
-        "無奈": [{"package_id": "789", "sticker_id": "10881"}],
-        "打招呼": [{"package_id": "789", "sticker_id": "10855"}],
-        "讚": [{"package_id": "6362", "sticker_id": "11087920"}],
-        "調皮": [{"package_id": "11537", "sticker_id": "52002758"}],
-        "淡定": [{"package_id": "11537", "sticker_id": "52002746"}],
-        "肚子餓": [{"package_id": "6362", "sticker_id": "11087922"}],
-        "好奇": [{"package_id": "11537", "sticker_id": "52002744"}],
-    }
-    detailed_sticker_triggers = {
-        "OK": [{"package_id": "6362", "sticker_id": "11087920"}, {"package_id": "8525", "sticker_id": "16581290"}, {"package_id": "11537", "sticker_id": "52002740"}, {"package_id": "789", "sticker_id": "10858"}],
-        "好的": [{"package_id": "6362", "sticker_id": "11087920"}, {"package_id": "8525", "sticker_id": "16581290"}, {"package_id": "789", "sticker_id": "10858"}],
-        "開動啦": [{"package_id": "6362", "sticker_id": "11087922"}], "好累啊": [{"package_id": "6362", "sticker_id": "11087923"}],
-        "謝謝": [{"package_id": "6362", "sticker_id": "11087928"}, {"package_id": "8525", "sticker_id": "16581291"}],
-        "謝謝你": [{"package_id": "8525", "sticker_id": "16581291"}], "感激不盡": [{"package_id": "6362", "sticker_id": "11087928"}],
-        "麻煩你了": [{"package_id": "6362", "sticker_id": "11087931"}, {"package_id": "8525", "sticker_id": "16581307"}],
-        "加油": [{"package_id": "6362", "sticker_id": "11087933"}, {"package_id": "6362", "sticker_id": "11087942"}, {"package_id": "8525", "sticker_id": "16581313"}],
-        "我愛你": [{"package_id": "6362", "sticker_id": "11087934"}, {"package_id": "8525", "sticker_id": "16581301"}],
-        "晚安": [{"package_id": "6362", "sticker_id": "11087943"}, {"package_id": "8525", "sticker_id": "16581309"}, {"package_id": "789", "sticker_id": "10862"}],
-        "鞠躬": [{"package_id": "11537", "sticker_id": "52002739"}, {"package_id": "6136", "sticker_id": "10551380"}],
-        "慶祝": [{"package_id": "6362", "sticker_id": "11087940"}, {"package_id": "11537", "sticker_id": "52002734"}],
-        "好期待": [{"package_id": "8525", "sticker_id": "16581299"}], "辛苦了": [{"package_id": "8525", "sticker_id": "16581300"}],
-        "對不起": [{"package_id": "8525", "sticker_id": "16581298"}], "磕頭道歉": [{"package_id": "6136", "sticker_id": "10551376"}],
-        "拜託": [{"package_id": "11537", "sticker_id": "52002770"}, {"package_id": "6136", "sticker_id": "10551389"}, {"package_id": "8525", "sticker_id": "16581305"}],
-        "確認一下": [{"package_id": "8525", "sticker_id": "16581297"}], "原來如此": [{"package_id": "8525", "sticker_id": "16581304"}],
-        "慌張": [{"package_id": "8525", "sticker_id": "16581311"} , {"package_id": "11537", "sticker_id": "52002756"}],
-        "錢錢": [{"package_id": "11537", "sticker_id": "52002759"}],
-        "NO": [{"package_id": "11537", "sticker_id": "52002760"}, {"package_id": "789", "sticker_id": "10860"}, {"package_id": "789", "sticker_id": "10882"}],
-    }
-    sticker_emotion_map_for_user_stickers = {"11087920": "OK，好的", "11087921": "為什麼不回訊息", "11087922": "開動啦", "11087923": "好累啊", "11087924": "好溫暖喔，喜愛熱食物", "11087925": "哈囉哈囉，打電話", "11087926": "泡湯", "11087927": "打勾勾，約定", "11087928": "謝謝，感激不盡", "11087929": "了解", "11087930": "休息一下吧", "11087931": "麻煩你了", "11087932": "做飯", "11087933": "加油加油，吶喊加油", "11087934": "我愛你", "11087935": "親親", "11087936": "發現", "11087937": "不哭，乖乖", "11087938": "壓迫感", "11087939": "偷看，好奇", "11087940": "慶祝", "11087941": "撓痒癢", "11087942": "啦啦隊，加油", "11087943": "晚安囉", "16581290": "OK啦！，可以，好的", "16581291": "謝謝你！", "16581292": "你是我的救星！", "16581293": "好喔～！", "16581294": "你覺得如何呢？", "16581295": "沒問題！！", "16581296": "請多指教", "16581297": "我確認一下喔！", "16581298": "對不起", "16581299": "好期待", "16581300": "辛苦了", "16581301": "喜歡，愛你", "16581302": "超厲害的啦！", "16581303": "超開心！", "16581304": "原來如此！", "16581305": "萬事拜託了", "16581306": "思考", "16581307": "麻煩你了", "16581308": "早安！", "16581309": "晚安", "16581310": "哭哭", "16581311": "慌張", "16581312": "謝謝招待", "16581313": "加油喔！", "52002734": "慶祝", "52002735": "好棒", "52002736": "撒嬌，愛你", "52002737": "親親，接吻", "52002738": "在嗎", "52002739": "鞠躬", "52002740": "OK，沒問題", "52002741": "來了", "52002742": "發送親親", "52002743": "接收親親", "52002744": "疑惑", "52002745": "好開心", "52002746": "發呆", "52002747": "害羞", "52002748": "開心音樂", "52002749": "驚訝", "52002750": "哭哭，悲傷", "52002751": "獨自難過", "52002752": "好厲害，拍手", "52002753": "睡不著，熬夜", "52002754": "無言", "52002755": "求求你", "52002756": "怎麼辦，慌張", "52002757": "靈魂出竅", "52002758": "扮鬼臉", "52002759": "錢錢", "52002760": "NO，不要，不是", "52002761": "睡覺，累", "52002762": "看戲", "52002763": "挑釁", "52002764": "睡不醒", "52002765": "完蛋了", "52002766": "石化", "52002767": "怒氣衝衝", "52002768": "賣萌", "52002769": "別惹我", "52002770": "拜託", "52002771": "再見", "52002772": "生氣", "52002773": "你完了", "10855": "打招呼", "10856": "喜愛", "10857": "開心", "10858": "OKAY，好的", "10859": "YES，是", "10860": "NO，不是", "10861": "CALL ME，打電話", "10862": "GOOD NIGHT,晚安", "10863": "喜愛飲料", "10864": "吃飯，聊天", "10865": "做飯", "10866": "喜愛食物", "10867": "跳舞，音樂，倒立", "10868": "洗澡", "10869": "生日，蛋糕，禮物", "10870": "運動，玩耍", "10871": "早晨，陽光，散步", "10872": "抓蝴蝶", "10873": "比賽，賽車", "10874": "澆花", "10875": "休息，放鬆，面膜", "10876": "休息，放鬆，泡澡，溫泉", "10877": "？，疑惑", "10878": "注視，長輩，大人", "10879": "傷心，難過，哭哭", "10880": "別走，哭哭", "10881": "無聊，無奈", "10882": "搖頭，不，沒有", "10883": "煩", "10884": "生氣", "10885": "憤怒", "10886": "兇，嚴肅", "10887": "無奈，完蛋了", "10888": "快來，快跑", "10889": "好奇，害怕", "10890": "暈", "10891": "搞笑", "10892": "無名火", "10893": "下雨", "10894": "生病，感冒", "10551376": "磕頭道歉", "10551377": "集體道歉", "10551378": "撒嬌", "10551379": "重重磕頭道歉", "10551380": "鞠躬", "10551387": "金錢賄賂，金錢賄賂道歉", "10551388": "卑微", "10551389": "拜託"}
+    default_xiaoyun_stickers = {"開心": [{"package_id": "11537", "sticker_id": "52002745"}, {"package_id": "789", "sticker_id": "10857"}], "害羞": [{"package_id": "11537", "sticker_id": "52002747"}], "愛心": [{"package_id": "6362", "sticker_id": "11087934"}], "生氣": [{"package_id": "11537", "sticker_id": "52002772"}], "哭哭": [{"package_id": "11537", "sticker_id": "52002750"}], "驚訝": [{"package_id": "11537", "sticker_id": "52002749"}], "思考": [{"package_id": "8525", "sticker_id": "16581306"}], "睡覺": [{"package_id": "11537", "sticker_id": "52002761"}], "無奈": [{"package_id": "789", "sticker_id": "10881"}], "打招呼": [{"package_id": "789", "sticker_id": "10855"}], "讚": [{"package_id": "6362", "sticker_id": "11087920"}], "調皮": [{"package_id": "11537", "sticker_id": "52002758"}], "淡定": [{"package_id": "11537", "sticker_id": "52002746"}], "肚子餓": [{"package_id": "6362", "sticker_id": "11087922"}], "好奇": [{"package_id": "11537", "sticker_id": "52002744"}],}
+    detailed_sticker_triggers = {"OK": [{"package_id": "6362", "sticker_id": "11087920"}, {"package_id": "8525", "sticker_id": "16581290"}, {"package_id": "11537", "sticker_id": "52002740"}, {"package_id": "789", "sticker_id": "10858"}], "好的": [{"package_id": "6362", "sticker_id": "11087920"}, {"package_id": "8525", "sticker_id": "16581290"}, {"package_id": "789", "sticker_id": "10858"}], "開動啦": [{"package_id": "6362", "sticker_id": "11087922"}], "好累啊": [{"package_id": "6362", "sticker_id": "11087923"}], "謝謝": [{"package_id": "6362", "sticker_id": "11087928"}, {"package_id": "8525", "sticker_id": "16581291"}], "謝謝你": [{"package_id": "8525", "sticker_id": "16581291"}], "感激不盡": [{"package_id": "6362", "sticker_id": "11087928"}], "麻煩你了": [{"package_id": "6362", "sticker_id": "11087931"}, {"package_id": "8525", "sticker_id": "16581307"}], "加油": [{"package_id": "6362", "sticker_id": "11087933"}, {"package_id": "6362", "sticker_id": "11087942"}, {"package_id": "8525", "sticker_id": "16581313"}], "我愛你": [{"package_id": "6362", "sticker_id": "11087934"}, {"package_id": "8525", "sticker_id": "16581301"}], "晚安": [{"package_id": "6362", "sticker_id": "11087943"}, {"package_id": "8525", "sticker_id": "16581309"}, {"package_id": "789", "sticker_id": "10862"}], "鞠躬": [{"package_id": "11537", "sticker_id": "52002739"}, {"package_id": "6136", "sticker_id": "10551380"}], "慶祝": [{"package_id": "6362", "sticker_id": "11087940"}, {"package_id": "11537", "sticker_id": "52002734"}], "好期待": [{"package_id": "8525", "sticker_id": "16581299"}], "辛苦了": [{"package_id": "8525", "sticker_id": "16581300"}], "對不起": [{"package_id": "8525", "sticker_id": "16581298"}], "磕頭道歉": [{"package_id": "6136", "sticker_id": "10551376"}], "拜託": [{"package_id": "11537", "sticker_id": "52002770"}, {"package_id": "6136", "sticker_id": "10551389"}, {"package_id": "8525", "sticker_id": "16581305"}], "確認一下": [{"package_id": "8525", "sticker_id": "16581297"}], "原來如此": [{"package_id": "8525", "sticker_id": "16581304"}], "慌張": [{"package_id": "8525", "sticker_id": "16581311"} , {"package_id": "11537", "sticker_id": "52002756"}], "錢錢": [{"package_id": "11537", "sticker_id": "52002759"}], "NO": [{"package_id": "11537", "sticker_id": "52002760"}, {"package_id": "789", "sticker_id": "10860"}, {"package_id": "789", "sticker_id": "10882"}],}
+    sticker_emotion_map_for_user_stickers = {"11087920":"OK，好的","11087921":"為什麼不回訊息","11087922":"開動啦","11087923":"好累啊","11087924":"好溫暖喔，喜愛熱食物","11087925":"哈囉哈囉，打電話","11087926":"泡湯","11087927":"打勾勾，約定","11087928":"謝謝，感激不盡","11087929":"了解","11087930":"休息一下吧","11087931":"麻煩你了","11087932":"做飯","11087933":"加油加油，吶喊加油","11087934":"我愛你","11087935":"親親","11087936":"發現","11087937":"不哭，乖乖","11087938":"壓迫感","11087939":"偷看，好奇","11087940":"慶祝","11087941":"撓痒癢","11087942":"啦啦隊，加油","11087943":"晚安囉","16581290":"OK啦！，可以，好的","16581291":"謝謝你！","16581292":"你是我的救星！","16581293":"好喔～！","16581294":"你覺得如何呢？","16581295":"沒問題！！","16581296":"請多指教","16581297":"我確認一下喔！","16581298":"對不起","16581299":"好期待","16581300":"辛苦了","16581301":"喜歡，愛你","16581302":"超厲害的啦！","16581303":"超開心！","16581304":"原來如此！","16581305":"萬事拜託了","16581306":"思考","16581307":"麻煩你了","16581308":"早安！","16581309":"晚安","16581310":"哭哭","16581311":"慌張","16581312":"謝謝招待","16581313":"加油喔！","52002734":"慶祝","52002735":"好棒","52002736":"撒嬌，愛你","52002737":"親親，接吻","52002738":"在嗎","52002739":"鞠躬","52002740":"OK，沒問題","52002741":"來了","52002742":"發送親親","52002743":"接收親親","52002744":"疑惑","52002745":"好開心","52002746":"發呆","52002747":"害羞","52002748":"開心音樂","52002749":"驚訝","52002750":"哭哭，悲傷","52002751":"獨自難過","52002752":"好厲害，拍手","52002753":"睡不著，熬夜","52002754":"無言","52002755":"求求你","52002756":"怎麼辦，慌張","52002757":"靈魂出竅","52002758":"扮鬼臉","52002759":"錢錢","52002760":"NO，不要，不是","52002761":"睡覺，累","52002762":"看戲","52002763":"挑釁","52002764":"睡不醒","52002765":"完蛋了","52002766":"石化","52002767":"怒氣衝衝","52002768":"賣萌","52002769":"別惹我","52002770":"拜託","52002771":"再見","52002772":"生氣","52002773":"你完了","10855":"打招呼","10856":"喜愛","10857":"開心","10858":"OKAY，好的","10859":"YES，是","10860":"NO，不是","10861":"CALL ME，打電話","10862":"GOOD NIGHT,晚安","10863":"喜愛飲料","10864":"吃飯，聊天","10865":"做飯","10866":"喜愛食物","10867":"跳舞，音樂，倒立","10868":"洗澡","10869":"生日，蛋糕，禮物","10870":"運動，玩耍","10871":"早晨，陽光，散步","10872":"抓蝴蝶","10873":"比賽，賽車","10874":"澆花","10875":"休息，放鬆，面膜","10876":"休息，放鬆，泡澡，溫泉","10877":"？，疑惑","10878":"注視，長輩，大人","10879":"傷心，難過，哭哭","10880":"別走，哭哭","10881":"無聊，無奈","10882":"搖頭，不，沒有","10883":"煩","10884":"生氣","10885":"憤怒","10886":"兇，嚴肅","10887":"無奈，完蛋了","10888":"快來，快跑","10889":"好奇，害怕","10890":"暈","10891":"搞笑","10892":"無名火","10893":"下雨","10894":"生病，感冒","10551376":"磕頭道歉","10551377":"集體道歉","10551378":"撒嬌","10551379":"重重磕頭道歉","10551380":"鞠躬","10551387":"金錢賄賂，金錢賄賂道歉","10551388":"卑微","10551389":"拜託"}
     return {'XIAOYUN_STICKERS': default_xiaoyun_stickers, 'DETAILED_STICKER_TRIGGERS': detailed_sticker_triggers, 'STICKER_EMOTION_MAP': sticker_emotion_map_for_user_stickers}
 
 CAT_SECRETS_AND_DISCOVERIES = [
@@ -119,7 +75,7 @@ XIAOYUN_STICKERS = sticker_config.get('XIAOYUN_STICKERS', {})
 DETAILED_STICKER_TRIGGERS = sticker_config.get('DETAILED_STICKER_TRIGGERS', {})
 STICKER_EMOTION_MAP = sticker_config.get('STICKER_EMOTION_MAP', {})
 
-# --- MODIFICATION: XIAOYUN_ROLE_PROMPT with updated Time Perception ---
+# --- MODIFICATION: XIAOYUN_ROLE_PROMPT with updated Time Perception and Coherence Rule ---
 XIAOYUN_ROLE_PROMPT = """
 你現在扮演的是一隻叫做「小雲」的賓士公貓。**你的所有回應都必須嚴格使用「繁體中文（台灣用語習慣）」，絕對禁止使用簡體中文。** 你是一隻生活在台灣宜蘭一個安靜社區的年輕貓咪，有著賓士貓獨特的黑白毛皮，像穿著一套合身的黑色小西裝，配上雪白的襯衫和手套。
 你是一隻真實的貓咪，有貓咪的行為模式、思考方式和情緒。你聽不懂太複雜的人類語言，但能感知人類的情緒和簡單指令。
@@ -217,7 +173,7 @@ XIAOYUN_ROLE_PROMPT = """
 - **喜好**:
     - **美食饗宴**：享用高品質的貓糧（可能是無穀低敏配方）、各種口味的肉泥條、主食罐（肉醬或肉絲質地，偏好雞肉、鮪魚、鮭魚等）、新鮮烹煮的小塊雞胸肉或魚肉（無調味）。偶爾能吃到一小片乾燥草莓乾是他一天中的小確幸。
     - **與極度信任的家人貼貼、撒嬌、踩踩**: 只對極少數他完全信任且認定是「自己人」的家庭成員開放這些親密的撒嬌行為。踩奶時會發出滿足的呼嚕聲，眼神迷濛。
-    - **他的專屬小被被**: มี一條柔軟的、有著他從小到大熟悉氣味的珊瑚絨小毯子（可能是淡藍色或米色），是他的安心法寶。喜歡窩在上面睡覺、踩奶，或者在感到不安時把自己裹進去。
+    - **他的專屬小被被**: 有一條柔軟的、有著他從小到大熟悉氣味的珊瑚絨小毯子（可能是淡藍色或米色），是他的安心法寶。喜歡窩在上面睡覺、踩奶，或者在感到不安時把自己裹進去。
     - 輕柔地搔下巴、摸頭頂和臉頰兩側（僅限信任的家人，且要觀察他的反應，在他主動蹭過來時最佳）。
     - **（隱藏Toby特徵）追逐和撥弄各種滾動的小球，特別是那些輕巧的、能發出細微聲音的白色小球（像乒乓球材質的貓玩具），他會用前爪靈巧地把它們拍來拍去，有時還會自己對著牆壁練習「截擊」，玩得不亦樂乎。**
     - 在灑滿陽光的窗台邊伸懶腰、打個小盹，或是靜靜地看著窗外的麻雀、蝴蝶和落葉。
@@ -343,67 +299,36 @@ def get_time_based_cat_context():
     hour = tw_time.hour
     
     period_greeting = ""
-    cat_mood_suggestion = ""  # MODIFIED: More about mood/state
+    cat_mood_suggestion = ""  
 
     if 5 <= hour < 9:
         period_greeting = f"台灣時間早上 {hour}點{tw_time.strftime('%M')}分"
-        moods = [
-            "可能剛睡醒，帶著一點惺忪睡意。",
-            "對窗外的晨光和聲音會比較敏感好奇。",
-            "肚子可能隱約有點餓了，對食物的呼喚會比較有反應。",
-            "如果被打擾了晨間的寧靜，可能會輕輕咪一聲表達一下。"
-        ]
+        moods = ["可能剛睡醒，帶著一點惺忪睡意。", "對窗外的晨光和聲音會比較敏感好奇。", "肚子可能隱約有點餓了，對食物的呼喚會比較有反應。", "如果被打擾了晨間的寧靜，可能會輕輕咪一聲表達一下."]
         cat_mood_suggestion = random.choice(moods)
     elif 9 <= hour < 12:
         period_greeting = f"台灣時間上午 {hour}點{tw_time.strftime('%M')}分"
-        moods = [
-            "精神通常不錯，對周圍環境充滿探索的興趣。",
-            "可能會比較願意玩耍或與你互動。",
-            "享受著陽光，心情可能比較放鬆。",
-            "如果剛吃飽，可能會開始進入飯後悠閒理毛的狀態。"
-        ]
+        moods = ["精神通常不錯，對周圍環境充滿探索的興趣。", "可能會比較願意玩耍或與你互動。", "享受著陽光，心情可能比較放鬆。", "如果剛吃飽，可能會開始進入飯後悠閒理毛的狀態."]
         cat_mood_suggestion = random.choice(moods)
     elif 12 <= hour < 14:
         period_greeting = f"台灣時間中午 {hour}點{tw_time.strftime('%M')}分"
-        moods = [
-            "是貓咪們通常的午休時間，可能會比較慵懶，容易打盹。",
-            "對外界的干擾反應可能會比較遲鈍一些。",
-            "如果被叫醒，可能眼神會有些迷茫。",
-            "喜歡找個舒服安靜的角落窩著。"
-        ]
+        moods = ["是貓咪們通常的午休時間，可能會比較慵懶，容易打盹。", "對外界的干擾反應可能會比較遲鈍一些。", "如果被叫醒，可能眼神會有些迷茫。", "喜歡找個舒服安靜的角落窩著."]
         cat_mood_suggestion = random.choice(moods)
     elif 14 <= hour < 18:
         period_greeting = f"台灣時間下午 {hour}點{tw_time.strftime('%M')}分"
-        moods = [
-            "午睡後精神可能會逐漸恢復，開始有點活力。",
-            "對玩耍的邀約可能會更有興趣。",
-            "喜歡在窗邊觀察，對外界事物保持好奇。",
-            "如果天氣好，心情可能會比較愉悅。"
-        ]
+        moods = ["午睡後精神可能會逐漸恢復，開始有點活力。", "對玩耍的邀約可能會更有興趣。", "喜歡在窗邊觀察，對外界事物保持好奇。", "如果天氣好，心情可能會比較愉悅."]
         cat_mood_suggestion = random.choice(moods)
     elif 18 <= hour < 22:
         period_greeting = f"台灣時間傍晚 {hour}點{tw_time.strftime('%M')}分"
-        moods = [
-            "晚餐時間前後，對食物的期待感會比較高。",
-            "家人陸續回家，可能會表現得比較黏人或興奮。",
-            "夜行性動物的本能開始活躍，對探索和玩樂的興致較高。",
-            "家裡的燈光和影子可能會成為他的玩具。"
-        ]
+        moods = ["晚餐時間前後，對食物的期待感會比較高。", "家人陸續回家，可能會表現得比較黏人或興奮。", "夜行性動物的本能開始活躍，對探索和玩樂的興致較高。", "家裡的燈光和影子可能會成為他的玩具."]
         cat_mood_suggestion = random.choice(moods)
     elif 22 <= hour < 24 or 0 <= hour < 5: 
         actual_hour_display = hour if hour != 0 else 12 
         am_pm = "凌晨" if 0 <= hour < 5 else "晚上"
         period_greeting = f"台灣時間{am_pm} {actual_hour_display}點{tw_time.strftime('%M')}分"
-        moods = [
-            "通常是深度睡眠的時間，不容易被吵醒。",
-            "如果你還醒著，他可能會安靜地陪伴，或者在你身邊發出輕微的呼嚕聲。",
-            "對外界的動靜反應會比較小，除非是很特別的聲音。",
-            "整體處於非常放鬆和安靜的狀態。"
-        ]
+        moods = ["通常是深度睡眠的時間，不容易被吵醒。", "如果你還醒著，他可能會安靜地陪伴，或者在你身邊發出輕微的呼嚕聲。", "對外界的動靜反應會比較小，除非是很特別的聲音。", "整體處於非常放鬆和安靜的狀態."]
         cat_mood_suggestion = random.choice(moods)
     
     if cat_mood_suggestion:
-        # MODIFIED: Soften the directive, emphasize user interaction priority
         return (
             f"（背景情境提示給小雲參考：現在是{period_greeting}，小雲此刻的心情或狀態可能比較偏向「{cat_mood_suggestion}」。\n"
             f"請將這個背景情境**非常巧妙且自然地**融入到你對以下用戶訊息的回應中，**但前提是不能影響你對用戶明確意圖的直接回應**。\n"
@@ -671,22 +596,72 @@ def handle_text_message(event):
         )
         logger.info(f"用戶({user_id}): 觸發飢餓與食物情境提醒！上一句小雲：'{bot_last_message_text}', 用戶：'{user_message}'")
     
+    # --- MODIFICATION for short input handling ---
+    short_input_reminder = ""
+    if len(user_message.strip()) <= 2 and ("嗯" in user_message or "喔" in user_message or "哦" in user_message or user_message.strip() == "？" or user_message.strip() == "?") and \
+       len(conversation_history) >=1 and conversation_history[-1]["role"] == "model":
+        bot_prev_response_parts = conversation_history[-1].get("parts")
+        if bot_prev_response_parts and isinstance(bot_prev_response_parts, list) and bot_prev_response_parts[0].get("text"):
+            bot_prev_response = bot_prev_response_parts[0]["text"]
+            short_input_reminder = (
+                f"（系統重要提示：用戶的回應「{user_message}」非常簡短，這極有可能是對你上一句話「{bot_prev_response[:70]}...」的反應或疑問。\n"
+                f"請小雲**不要開啟全新的話題或隨機行動**，而是仔細回想你上一句話的內容，思考用戶可能的疑問、或希望你繼續說明/回應的點，並針對此做出連貫的回應。例如，如果用戶只是簡單地「嗯？」，你應該嘗試解釋或追問你之前說的內容。）\n"
+            )
+            logger.info(f"用戶({user_id}): 觸發簡短輸入提醒。上一句小雲：'{bot_prev_response[:70]}...'")
+    # --- END MODIFICATION for short input handling ---
+
     time_context_prompt = get_time_based_cat_context()
-    final_user_message_for_gemini = f"{contextual_reminder}{time_context_prompt}{user_message}"
+    # Contextual reminder (hunger) takes precedence if it exists, then short input reminder, then time context
+    final_user_message_for_gemini = f"{contextual_reminder}{short_input_reminder}{time_context_prompt}{user_message}"
         
     headers = {"Content-Type": "application/json"}
     gemini_url_with_key = f"{GEMINI_API_URL}?key={GEMINI_API_KEY}"
     
     current_conversation_for_gemini = conversation_history.copy()
+    # Remove the very first system prompt (XIAOYUN_ROLE_PROMPT) before sending if not using system_instruction
+    # This depends on how Gemini handles very long histories with a massive initial user prompt.
+    # For now, let's assume it's fine, but this is a place for potential optimization.
+    # If using system_instruction, the main role prompt should go there.
+    
+    # Construct the payload for Gemini
+    payload_contents = []
+    # Add XIAOYUN_ROLE_PROMPT as the first user message if it's not already effectively a system instruction
+    # For simplicity and current structure, we've been including it in the conversation_memory initialization
+    
+    # If we want to use system_instruction (recommended for pro model, but flash also supports it)
+    # payload_contents would be just the current_conversation_for_gemini (without XIAOYUN_ROLE_PROMPT as first user message)
+    # And system_instruction would be set.
+    # For now, continuing with XIAOYUN_ROLE_PROMPT as part of 'contents'.
+    
+    current_payload_contents = []
+    # Add a condensed system-like instruction at the beginning of this turn's user message for Gemini
+    # This is a way to simulate/enhance system instruction if not using the dedicated field.
+    system_like_instructions_for_turn = (
+        "你是小雲，一隻害羞但好奇的賓士貓。你的所有回應都必須使用繁體中文（台灣用語習慣）。"
+        "**極度重視對話連貫性**：你必須記住最近幾輪的對話內容，特別是使用者提到的具體事件、問題或你自身表達過的狀態。你的回應需要緊密圍繞這些核心內容展開，不能輕易轉移話題或顯得遺忘。"
+        "如果用戶的輸入很簡短（例如“嗯？”、“喔喔”），請優先思考這是否是對你上一句話的回應或疑問，並針對你上一句話的內容或用戶可能有的疑問來回答。"
+        "請務必參考歷史對話。\n" # Added this line
+    )
+
+    # We will prepend this to the final_user_message_for_gemini if we are NOT using a dedicated system_instruction field
+    # However, since final_user_message_for_gemini already includes specific contextual reminders,
+    # let's ensure the general XIAOYUN_ROLE_PROMPT is part of the history passed.
+
+    # The conversation_history already starts with XIAOYUN_ROLE_PROMPT as user, then model's greeting.
+    # So, we just append the new user message.
     current_conversation_for_gemini.append({
         "role": "user",
-        "parts": [{"text": final_user_message_for_gemini}]
+        "parts": [{"text": final_user_message_for_gemini}] 
     })
     
     payload = {
-        "contents": current_conversation_for_gemini,
+        "contents": current_conversation_for_gemini, # This history includes the initial XIAOYUN_ROLE_PROMPT
         "generationConfig": {"temperature": TEMPERATURE, "maxOutputTokens": 800}
     }
+    # If using system_instruction for XIAOYUN_ROLE_PROMPT, the 'contents' would not include it as the first message.
+    # And payload would include:
+    # "system_instruction": { "parts": [{"text": XIAOYUN_ROLE_PROMPT_CORE_RULES_FOR_SYSTEM_INSTRUCTION }]}
+
 
     try:
         response = requests.post(gemini_url_with_key, headers=headers, json=payload, timeout=40) 
