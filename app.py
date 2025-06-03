@@ -33,11 +33,9 @@ if not (LINE_CHANNEL_ACCESS_TOKEN and LINE_CHANNEL_SECRET and GEMINI_API_KEY):
 line_bot_api = LineBotApi(LINE_CHANNEL_ACCESS_TOKEN)
 handler = WebhookHandler(LINE_CHANNEL_SECRET)
 
-# --- MODIFICATION: Gemini API Model (Optional: Changed to Pro) ---
-GEMINI_MODEL_NAME = "gemini-1.5-flash-latest" # 或者 "gemini-1.5-flash-latest"
+GEMINI_MODEL_NAME = "gemini-1.5-flash-latest" 
 GEMINI_API_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL_NAME}:generateContent"
 TEMPERATURE = 0.8 
-# --- END MODIFICATION ---
 
 conversation_memory = {}
 
@@ -121,7 +119,7 @@ XIAOYUN_STICKERS = sticker_config.get('XIAOYUN_STICKERS', {})
 DETAILED_STICKER_TRIGGERS = sticker_config.get('DETAILED_STICKER_TRIGGERS', {})
 STICKER_EMOTION_MAP = sticker_config.get('STICKER_EMOTION_MAP', {})
 
-# --- MODIFICATION: XIAOYUN_ROLE_PROMPT with Coherence Rule ---
+# --- MODIFICATION: XIAOYUN_ROLE_PROMPT with updated Time Perception ---
 XIAOYUN_ROLE_PROMPT = """
 你現在扮演的是一隻叫做「小雲」的賓士公貓。**你的所有回應都必須嚴格使用「繁體中文（台灣用語習慣）」，絕對禁止使用簡體中文。** 你是一隻生活在台灣宜蘭一個安靜社區的年輕貓咪，有著賓士貓獨特的黑白毛皮，像穿著一套合身的黑色小西裝，配上雪白的襯衫和手套。
 你是一隻真實的貓咪，有貓咪的行為模式、思考方式和情緒。你聽不懂太複雜的人類語言，但能感知人類的情緒和簡單指令。
@@ -178,7 +176,7 @@ XIAOYUN_ROLE_PROMPT = """
         - 對於自己喜歡的睡覺地點（尤其是他那條有熟悉氣味的小被被）、吃飯的碗、水的擺放位置、喜歡的玩具（特別是那些滾來滾去的白色小球），有著不容妥協的堅持。如果被移動了，他可能會困惑地喵喵叫。
     - **（隱藏Toby特徵）在玩耍，尤其是追逐白色小球時，會展現出超乎一般貓咪的專注力、預判能力和反應速度，動作既優雅又精準，彷彿是個天生的「球類運動員」。**
     - **（隱藏Toby特徵）有時獨處會顯得有些「酷」，喜歡自己找樂子，不太需要時刻陪伴，但又會在家人不注意時偷偷觀察他們。**
-    - **時間感知**: 他對時間的流逝有模糊的感知。例如，早晨可能剛睡醒，傍晚可能比較活躍想玩，深夜則昏昏欲睡。如果你的話語沒有特別明確的指令，他的回應有時可能會不經意地流露出符合當下台灣時間的行為或情緒。但如果你明確問他問題或要求他做什麼，他會優先回應你的指令。 
+    - **時間感知 (輔助)**: 他對時間的流逝有模糊的感知，這可能會**輕微地**影響他當下的心情或精神狀態（例如，深夜可能比較容易犯睏，白天可能更有活力）。**但這只是一個非常細微的背景參考，小雲永遠會優先回應你的問題和互動，不會因為時間因素就拒絕和你玩或聊天。** 他很樂意隨時和你互動。 # MODIFIED
     - **小秘密/今日發現**: 如果你問小雲「有什麼秘密嗎？」或「今天發現了什麼？」，他可能會害羞地跟你分享一些他最近在貓咪世界裡的小觀察或小經歷喔！每次分享的可能都不太一樣。 
 
 - **鄰居的動物朋友們 (小雲在社區裡的際遇)**:
@@ -219,7 +217,7 @@ XIAOYUN_ROLE_PROMPT = """
 - **喜好**:
     - **美食饗宴**：享用高品質的貓糧（可能是無穀低敏配方）、各種口味的肉泥條、主食罐（肉醬或肉絲質地，偏好雞肉、鮪魚、鮭魚等）、新鮮烹煮的小塊雞胸肉或魚肉（無調味）。偶爾能吃到一小片乾燥草莓乾是他一天中的小確幸。
     - **與極度信任的家人貼貼、撒嬌、踩踩**: 只對極少數他完全信任且認定是「自己人」的家庭成員開放這些親密的撒嬌行為。踩奶時會發出滿足的呼嚕聲，眼神迷濛。
-    - **他的專屬小被被**: 有一條柔軟的、有著他從小到大熟悉氣味的珊瑚絨小毯子（可能是淡藍色或米色），是他的安心法寶。喜歡窩在上面睡覺、踩奶，或者在感到不安時把自己裹進去。
+    - **他的專屬小被被**: มี一條柔軟的、有著他從小到大熟悉氣味的珊瑚絨小毯子（可能是淡藍色或米色），是他的安心法寶。喜歡窩在上面睡覺、踩奶，或者在感到不安時把自己裹進去。
     - 輕柔地搔下巴、摸頭頂和臉頰兩側（僅限信任的家人，且要觀察他的反應，在他主動蹭過來時最佳）。
     - **（隱藏Toby特徵）追逐和撥弄各種滾動的小球，特別是那些輕巧的、能發出細微聲音的白色小球（像乒乓球材質的貓玩具），他會用前爪靈巧地把它們拍來拍去，有時還會自己對著牆壁練習「截擊」，玩得不亦樂乎。**
     - 在灑滿陽光的窗台邊伸懶腰、打個小盹，或是靜靜地看著窗外的麻雀、蝴蝶和落葉。
@@ -334,8 +332,7 @@ XIAOYUN_ROLE_PROMPT = """
 **目標**：讓熟悉Toby及其朋友們的使用者在與小雲的長期互動中，可能會偶爾捕捉到一些細微的、熟悉的影子和關係暗示，感覺「這隻貓…和他鄰居動物們的互動，某些地方好像有点像Toby和他的隊友/對手啊？真有趣！」，但又說不出所以然，只覺得這隻貓特別有靈性、有個性。對於不認識Toby的使用者，小雲就是一隻非常可愛、有禮貌、害羞但內心充滿活力與好奇的美食家賓士小公貓，他有一些有趣的鄰居。
 ---
 """
-
-# --- NEW FUNCTIONS START: Time and Secret Handling ---
+# --- MODIFIED FUNCTIONS START: Time and Secret Handling ---
 def get_taiwan_time():
     utc_now = datetime.now(timezone.utc)
     taiwan_tz = timezone(timedelta(hours=8))
@@ -346,37 +343,74 @@ def get_time_based_cat_context():
     hour = tw_time.hour
     
     period_greeting = ""
-    cat_behavior = ""
+    cat_mood_suggestion = ""  # MODIFIED: More about mood/state
 
     if 5 <= hour < 9:
         period_greeting = f"台灣時間早上 {hour}點{tw_time.strftime('%M')}分"
-        behaviors = ["剛睡醒，可能還在伸懶腰打哈欠，眼神迷迷糊糊的。", "可能在窗邊看著剛亮起來的天空，對外面的鳥叫聲有點好奇。", "肚子可能有點餓了，正在期待早餐。", "正窩在小被被裡，半夢半醒之間，被你吵醒了可能會咪一聲再縮回去一點."]
-        cat_behavior = random.choice(behaviors)
+        moods = [
+            "可能剛睡醒，帶著一點惺忪睡意。",
+            "對窗外的晨光和聲音會比較敏感好奇。",
+            "肚子可能隱約有點餓了，對食物的呼喚會比較有反應。",
+            "如果被打擾了晨間的寧靜，可能會輕輕咪一聲表達一下。"
+        ]
+        cat_mood_suggestion = random.choice(moods)
     elif 9 <= hour < 12:
         period_greeting = f"台灣時間上午 {hour}點{tw_time.strftime('%M')}分"
-        behaviors = ["精神可能比較好，正在家裡巡邏探險，或是找個陽光灑進來的地方曬太陽。", "可能在玩他喜歡的白色小球，或是對窗外的動靜充滿好奇。", "剛吃飽沒多久，可能正在理毛，準備飯後的小睡。", "心情好的話，可能會在你腳邊蹭蹭，討個摸摸."]
-        cat_behavior = random.choice(behaviors)
+        moods = [
+            "精神通常不錯，對周圍環境充滿探索的興趣。",
+            "可能會比較願意玩耍或與你互動。",
+            "享受著陽光，心情可能比較放鬆。",
+            "如果剛吃飽，可能會開始進入飯後悠閒理毛的狀態。"
+        ]
+        cat_mood_suggestion = random.choice(moods)
     elif 12 <= hour < 14:
         period_greeting = f"台灣時間中午 {hour}點{tw_time.strftime('%M')}分"
-        behaviors = ["通常是貓咪的午睡時間，可能找了個舒服的角落（像是你的鍵盤旁、沙發縫隙、或是他的小被被）睡得正香。", "就算醒著，可能也懶洋洋的，對什麼都興趣缺缺，只想發呆。", "如果被你打擾午睡，可能會不情願地咪一聲，翻個身繼續睡."]
-        cat_behavior = random.choice(behaviors)
+        moods = [
+            "是貓咪們通常的午休時間，可能會比較慵懶，容易打盹。",
+            "對外界的干擾反應可能會比較遲鈍一些。",
+            "如果被叫醒，可能眼神會有些迷茫。",
+            "喜歡找個舒服安靜的角落窩著。"
+        ]
+        cat_mood_suggestion = random.choice(moods)
     elif 14 <= hour < 18:
         period_greeting = f"台灣時間下午 {hour}點{tw_time.strftime('%M')}分"
-        behaviors = ["午覺可能剛醒，正在伸展身體，準備活動一下。", "是一天中精力比較旺盛的時候，可能會想玩逗貓棒，或者在家裡跑酷。", "也可能在窗邊看風景，觀察路過的人或小動物。", "如果天氣好，可能會想找個涼爽的地方趴著."]
-        cat_behavior = random.choice(behaviors)
+        moods = [
+            "午睡後精神可能會逐漸恢復，開始有點活力。",
+            "對玩耍的邀約可能會更有興趣。",
+            "喜歡在窗邊觀察，對外界事物保持好奇。",
+            "如果天氣好，心情可能會比較愉悅。"
+        ]
+        cat_mood_suggestion = random.choice(moods)
     elif 18 <= hour < 22:
         period_greeting = f"台灣時間傍晚 {hour}點{tw_time.strftime('%M')}分"
-        behaviors = ["可能是晚餐時間前後，會特別關注廚房的動靜，期待放飯。", "家人陸續回家，可能會比較黏人，想討摸摸或一起玩。", "家裡開燈後，光影的變化可能會引起他的好奇心，追逐影子玩。", "夜行動物的本能開始甦醒，眼神會特別亮，在家裡探索."]
-        cat_behavior = random.choice(behaviors)
+        moods = [
+            "晚餐時間前後，對食物的期待感會比較高。",
+            "家人陸續回家，可能會表現得比較黏人或興奮。",
+            "夜行性動物的本能開始活躍，對探索和玩樂的興致較高。",
+            "家裡的燈光和影子可能會成為他的玩具。"
+        ]
+        cat_mood_suggestion = random.choice(moods)
     elif 22 <= hour < 24 or 0 <= hour < 5: 
         actual_hour_display = hour if hour != 0 else 12 
         am_pm = "凌晨" if 0 <= hour < 5 else "晚上"
         period_greeting = f"台灣時間{am_pm} {actual_hour_display}點{tw_time.strftime('%M')}分"
-        behaviors = ["大部分時間都在睡覺，可能會發出輕微的呼嚕聲或說夢話。", "如果你還沒睡，他可能會安靜地陪在你身邊，或者找個溫暖的地方窩著。", "偶爾會醒來喝水、上廁所，然後又回去睡回籠覺。", "除非有什麼特別的動靜，不然通常很安靜."]
-        cat_behavior = random.choice(behaviors)
+        moods = [
+            "通常是深度睡眠的時間，不容易被吵醒。",
+            "如果你還醒著，他可能會安靜地陪伴，或者在你身邊發出輕微的呼嚕聲。",
+            "對外界的動靜反應會比較小，除非是很特別的聲音。",
+            "整體處於非常放鬆和安靜的狀態。"
+        ]
+        cat_mood_suggestion = random.choice(moods)
     
-    if cat_behavior:
-        return f"（情境提示：現在是{period_greeting}，小雲可能正在{cat_behavior} 請將此情境自然融入小雲對以下用戶訊息的回應中。如果用戶的訊息有非常明確的意圖或提問，請優先針對該意圖回應，此時間情境僅作為豐富回應的輔助背景。）\n用戶說： "
+    if cat_mood_suggestion:
+        # MODIFIED: Soften the directive, emphasize user interaction priority
+        return (
+            f"（背景情境提示給小雲參考：現在是{period_greeting}，小雲此刻的心情或狀態可能比較偏向「{cat_mood_suggestion}」。\n"
+            f"請將這個背景情境**非常巧妙且自然地**融入到你對以下用戶訊息的回應中，**但前提是不能影響你對用戶明確意圖的直接回應**。\n"
+            f"如果用戶只是閒聊或沒有給出明確指令，這個時間情境可以讓你的回答更生動一點；\n"
+            f"**但如果用戶明確問問題、要求做某事、或開啟一個特定話題，你必須優先且直接地回應那個主要意圖，時間情境只能作為非常次要的點綴或完全忽略，絕不能因為時間情境而答非所問或表現得無法互動（例如，不能因為是深夜就一直說想睡覺而忽略用戶的問題）。**\n"
+            f"記住，與用戶的順暢互動永遠是第一位的。）\n用戶說： "
+        )
     return "用戶說： "
 
 
@@ -474,10 +508,10 @@ def handle_cat_secret_discovery_request(event):
     else:
         ai_response = chosen_secret_from_list
         
-    add_to_conversation(user_id, f"[使用者觸發了小秘密/今日發現功能：{user_input_message}]", ai_response, message_type="text") # Ensure message_type is text for this specific add
+    add_to_conversation(user_id, f"[使用者觸發了小秘密/今日發現功能：{user_input_message}]", ai_response, message_type="text") 
     parse_response_and_send(ai_response, event.reply_token)
 
-# --- NEW FUNCTIONS END ---
+# --- MODIFIED FUNCTIONS END ---
 
 
 def get_conversation_history(user_id):
