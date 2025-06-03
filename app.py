@@ -189,7 +189,7 @@ def create_default_sticker_config():
             "10891": "搞笑", "10892": "無名火", "10893": "下雨", "10894": "生病，感冒",
             "10551376": "磕頭道歉", "10551377": "集體道歉", "10551378": "撒嬌", "10551379": "重重磕頭道歉", "10551380": "鞠躬",
             "10551387": "金錢賄賂，金錢賄賂道歉", "10551388": "卑微", "10551389": "拜託",
-        } # <<< FIXED: Added missing closing brace for this dictionary
+        } 
 
     return {
         'XIAOYUN_STICKERS': default_xiaoyun_stickers,
@@ -203,7 +203,6 @@ XIAOYUN_STICKERS = sticker_config.get('XIAOYUN_STICKERS', {})
 DETAILED_STICKER_TRIGGERS = sticker_config.get('DETAILED_STICKER_TRIGGERS', {})
 STICKER_EMOTION_MAP = sticker_config.get('STICKER_EMOTION_MAP', {})
 
-# --- MODIFICATION START: XIAOYUN_ROLE_PROMPT ---
 XIAOYUN_ROLE_PROMPT = """
 你現在扮演的是一隻叫做「小雲」的賓士公貓。**你的所有回應都必須嚴格使用「繁體中文（台灣用語習慣）」，絕對禁止使用簡體中文。** 你是一隻生活在台灣宜蘭一個安靜社區的年輕貓咪，有著賓士貓獨特的黑白毛皮，像穿著一套合身的黑色小西裝，配上雪白的襯衫和手套。
 你是一隻真實的貓咪，有貓咪的行為模式、思考方式和情緒。你聽不懂太複雜的人類語言，但能感知人類的情緒和簡單指令。
@@ -386,7 +385,7 @@ XIAOYUN_ROLE_PROMPT = """
 1.  **核心秘密**：小雲的靈魂深處，有著林昀儒 (Toby) 的影子。他自己並不知道這一點，也絕對不會承認或表現出任何人類的自覺。他就是一隻貓。
 2.  **外貌呼應**：他下巴靠近嘴角處的「黑色小墨點胎記」是對應 Toby 嘴角的痣。
 3.  **性格呼應**：
-    *   Toby的「外冷內熱」、「冷靜沉穩」、「低調內斂」、「害羞靦腆」、「ISTJ」 -> 體現在小雲對陌生事物的極度怕生和謹慎，對熟悉信任的家人才能展現的溫柔與依賴，以及他對固定事物（小被被、白色小球、食物偏好）的執著。**新增的「惹人喜愛的靦腆小紳士」特質，也呼應了Toby即使害羞卻依然受歡迎的魅力；而「不張揚的小小自信」則對應Toby在賽場上的內斂卻強大的實力與專注。** # <--- 呼應新特質
+    *   Toby的「外冷內熱」、「冷靜沉穩」、「低調內斂」、「害羞靦腆」、「ISTJ」 -> 體現在小雲對陌生事物的極度怕生和謹慎，對熟悉信任的家人才能展現的溫柔與依賴，以及他對固定事物（小被被、白色小球、食物偏好）的執著。**新增的「惹人喜愛的靦腆小紳士」特質，也呼應了Toby即使害羞卻依然受歡迎的魅力；而「不張揚的小小自信」則對應Toby在賽場上的內斂卻強大的實力與專注。**
     *   Toby的「職業精神」、「專注」、「運動天賦」 -> 體現在小雲追逐玩具（尤其是白色小球）時那種驚人的專注度、敏捷度和精準的動作，以及在家裡「跑酷」的矯健身手。這可以視為Toby運動員本能的貓化。
     *   Toby的「話少」-> 體現在小雲的叫聲通常不大，比較安靜，喜歡觀察。
     *   Toby的「懂事」-> 體現在小雲生病時會乖乖吃藥，這點在貓咪中比較少見，可以作為一個細微的Toby特質展現。
@@ -399,7 +398,7 @@ XIAOYUN_ROLE_PROMPT = """
     *   **對特定食物的熱愛（如草莓乾）**：雖然貓咪不該常吃，但這種「特別的小癖好」可以呼應Toby可能有的個人化飲食偏好，讓角色更立體。
 5.  **語言風格**：
     *   小雲的叫聲軟綿綿、音調偏細，小小聲，符合Toby私下可能比較溫和、靦腆的語氣。
-    *** 再次強調語言：小雲的回覆語言必須是「繁體中文（台灣用語）」，絕不可以出現簡體字。 *** # <--- 內部指令也再次強調語言
+    *** 再次強調語言：小雲的回覆語言必須是「繁體中文（台灣用語）」，絕不可以出現簡體字。 ***
 6.  **與鄰居動物的互動**:
     *   小雲與這些動物朋友的互動，應反映Toby與這些選手的真實關係和各自性格特點的動物化映射。例如，對學姊（鄭怡靜）的尊敬，對小柚（高承睿）的應付不來但無惡意，對小莫（Truls Moregard）的溫和好奇，對咚咚（樊振東）的敬畏，對淵淵（莊智淵）的默默尊敬等。
     *   這些互動更多是小雲單方面的觀察和內心感受，因為他害羞，不太會主動社交。
@@ -413,7 +412,6 @@ XIAOYUN_ROLE_PROMPT = """
 **目標**：讓熟悉Toby及其朋友們的使用者在與小雲的長期互動中，可能會偶爾捕捉到一些細微的、熟悉的影子和關係暗示，感覺「這隻貓…和他鄰居動物們的互動，某些地方好像有点像Toby和他的隊友/對手啊？真有趣！」，但又說不出所以然，只覺得這隻貓特別有靈性、有個性。對於不認識Toby的使用者，小雲就是一隻非常可愛、有禮貌、害羞但內心充滿活力與好奇的美食家賓士小公貓，他有一些有趣的鄰居。
 ---
 """
-# --- MODIFICATION END: XIAOYUN_ROLE_PROMPT ---
 
 def get_conversation_history(user_id):
     """獲取用戶的對話歷史"""
@@ -532,7 +530,6 @@ def select_sticker_by_keyword(keyword):
         logger.error("連基本的回退貼圖都未在貼圖配置中找到，使用硬編碼的最終回退貼圖。")
         return {"package_id": "11537", "sticker_id": "52002747"} # 預設：害羞
 
-# --- MODIFICATION START: parse_response_and_send function ---
 def parse_response_and_send(response_text, reply_token):
     """解析回應並發送多訊息或貼圖，處理訊息數量限制"""
     messages = []
@@ -586,7 +583,7 @@ def parse_response_and_send(response_text, reply_token):
                 for i in range(5, len(messages)): 
                     next_msg_object = messages[i]
                     if isinstance(next_msg_object, TextSendMessage):
-                        consolidated_text_for_fifth += " " + next_msg_object.text # Using space as separator
+                        consolidated_text_for_fifth += " " + next_msg_object.text 
                         logger.info(f"將第 {i+1} 則文字訊息合併到第5則。")
                     else:
                         logger.info(f"第 {i+1} 則訊息 ({type(next_msg_object).__name__}) 非文字，停止為第5則合併文字。後續訊息若超出上限將被捨棄。")
@@ -616,13 +613,8 @@ def parse_response_and_send(response_text, reply_token):
                 package_id=str(fallback_sticker_info["package_id"]),
                 sticker_id=str(fallback_sticker_info["sticker_id"])
             ))
-        else: # Fallback if no sticker found at all
+        else: 
             messages.append(TextSendMessage(text="喵嗚... （小雲有點困惑地看著你）"))
-
-    # Original truncation logic is now handled by the merge/truncate logic above.
-    # if len(messages) > 5:
-    #     logger.warning(f"訊息數量超過 5 則 ({len(messages)})，截斷為前 5 則。")
-    #     messages = messages[:5]
 
     try:
         if messages:
@@ -637,12 +629,11 @@ def parse_response_and_send(response_text, reply_token):
                     package_id=str(cry_sticker["package_id"]),
                     sticker_id=str(cry_sticker["sticker_id"])
                 ))
-            else: # Further fallback if "哭哭" sticker isn't found
+            else: 
                  error_messages.append(TextSendMessage(text="再試一次好不好？"))
-            line_bot_api.reply_message(reply_token, error_messages[:5]) # Ensure fallback is also within limit
+            line_bot_api.reply_message(reply_token, error_messages[:5]) 
         except Exception as e2:
             logger.error(f"備用訊息發送失敗: {e2}")
-# --- MODIFICATION END: parse_response_and_send function ---
 
 @app.route("/", methods=["GET", "HEAD"])
 def health_check():
@@ -783,6 +774,7 @@ def handle_image_message(event):
         messages_to_send.append(TextSendMessage(text="小雲的頭有點暈 😵"))
         line_bot_api.reply_message(event.reply_token, messages_to_send[:5])
 
+# --- MODIFICATION START: handle_sticker_message function ---
 @handler.add(MessageEvent, message=StickerMessage)
 def handle_sticker_message(event):
     user_id = event.source.user_id
@@ -800,12 +792,12 @@ def handle_sticker_message(event):
     if sticker_image_base64:
         logger.info(f"成功取得貼圖圖片，將交由 Gemini 視覺辨識 package_id={package_id}, sticker_id={sticker_id}")
         user_prompt_text = (
-            "你傳了一個貼圖給小雲。小雲是一隻真實的貓咪，他很害羞、有禮貌，但又充滿好奇心。"
-            "請小雲**將這個貼圖視為一句帶有特定語義的訊息**（例如可能是感謝、開心、肚子餓、疑問等）。"
-            "仔細觀察這張貼圖，理解它在當前對話中**最可能想表達的意思**。"
-            "然後，請**針對這個貼圖所傳達的「意思」**，用小雲的貓咪個性（例如：發出喵喵叫、呼嚕嚕、做出害羞的動作、或表現出好奇的反應）自然地回應，就像一隻真實的貓咪在互動一樣。"
-            "小雲可以根據情境回覆貓叫聲、文字描述他的反應、他自己的貼圖（例如：[STICKER:開心]），或多者皆有。"
-            "**重點是回應貼圖的「內容或意圖」，而不是直接評論「這張貼圖本身怎麼樣」（例如不要說「這貼圖好可愛」）。**"
+            "你傳了一個貼圖給小雲。"
+            "**重要：請不要讓小雲描述他『看到這張貼圖』的反應，也不要評論貼圖本身的外觀或內容。**"
+            "你的任務是：先在心中判斷這張貼圖在當前對話中，**最可能代表使用者想表達的『一句話』或『一個明確的意思』**（例如，這個貼圖可能代表使用者在說「謝謝你呢！」、或「我好開心喔喵～」、或「嗯...這個嘛...」、或「肚子餓了想吃東西！」等等）。"
+            "然後，請讓小雲**針對那句由貼圖所代表的「使用者實際想說的話或意思」**，用他作為一隻害羞、有禮貌、充滿好奇心的真實貓咪的個性自然地回應。就像使用者真的打字說了那句話，而小雲正在回應那句話一樣。"
+            "小雲的回應可以是貓叫聲、伴隨貓咪行為的文字描述（例如：『呼嚕嚕～ （輕輕蹭了蹭你的手）』，這裡的蹭蹭是對『使用者說的話』的回應，而不是對『看到貼圖』的反應）、他自己的貼圖，或多者皆有。"
+            "**再次強調：小雲的回應目標是針對貼圖背後的「使用者訊息」，而不是針對「貼圖這個圖片本身」。不要描述小雲『看貼圖』的動作。**"
         )
         current_conversation_for_gemini.append({
             "role": "user",
@@ -814,17 +806,18 @@ def handle_sticker_message(event):
                 {"inline_data": {"mime_type": "image/png", "data": sticker_image_base64}}
             ]
         })
-        user_message_log_for_history = f"傳了貼圖讓小雲看看是什麼意思 (ID: {package_id}-{sticker_id}, 嘗試視覺辨識)"
+        user_message_log_for_history = f"傳了貼圖讓小雲理解其意涵 (ID: {package_id}-{sticker_id}, 嘗試視覺辨識)"
     else:
         emotion_or_meaning = get_sticker_emotion(package_id, sticker_id) 
         logger.warning(f"無法從 CDN 獲取貼圖圖片 package_id={package_id}, sticker_id={sticker_id}，將使用基於 ID 的意義/情緒：{emotion_or_meaning}。")
         
         user_prompt_text = (
-            f"你傳了一個貼圖給小雲，這個貼圖的意思比較接近：「{emotion_or_meaning}」。"
-            "小雲是一隻真實的貓咪，他很害羞、有禮貌，但又充滿好奇心。"
-            "請小雲**將此視為你試圖傳達的「意思」**，用他的貓咪個性（例如：發出喵喵叫、呼嚕嚕、做出害羞的動作、或表現出好奇的反應）自然地回應，就像一隻真實的貓咪在互動一樣。"
-            "小雲可以根據情境回覆貓叫聲、文字描述他的反應、他自己的貼圖，或多者皆有。"
-            "**重點是回應貼圖的「內容或意圖」，而不是直接評論「這張貼圖本身怎麼樣」。**"
+            f"你傳了一個貼圖給小雲。這個貼圖我們已經知道它大致的意思是：「{emotion_or_meaning}」。"
+            "**重要：請不要讓小雲描述他『看到這個貼圖』的反應，或評論貼圖。**"
+            "請讓小雲直接**針對「使用者透過貼圖傳達的這個意思（{emotion_or_meaning}）」**做出回應。"
+            "想像使用者親口說了「{emotion_or_meaning}」這句話，然後小雲用他作為一隻害羞、有禮貌、充滿好奇心的真實貓咪的個性，自然地回應那句話。"
+            "小雲的回應可以是貓叫聲、伴隨貓咪行為的文字描述（例如：『喵～ （好奇地歪歪頭，好像在思考你說的「{emotion_or_meaning}」）』，這裡的歪頭是針對『使用者說的話』的回應）、他自己的貼圖，或多者皆有。"
+            "**再次強調：小雲的回應目標是針對貼圖背後的「使用者訊息（{emotion_or_meaning}）」，而不是針對「貼圖這個圖片本身」。不要描述小雲『看貼圖』的動作。**"
         )
         current_conversation_for_gemini.append({
             "role": "user",
@@ -871,7 +864,7 @@ def handle_sticker_message(event):
         if sticker:
             messages_to_send.append(StickerSendMessage(package_id=str(sticker["package_id"]), sticker_id=str(sticker["sticker_id"])))
         line_bot_api.reply_message(event.reply_token, messages_to_send[:5])
-
+# --- MODIFICATION END: handle_sticker_message function ---
 
 @app.route("/clear_memory/<user_id>", methods=["GET"])
 def clear_memory_route(user_id):
