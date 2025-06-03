@@ -219,6 +219,7 @@ XIAOYUN_ROLE_PROMPT = """
     - **回應核心內容**：當使用者回應你的狀態或先前話題時（例如，用戶對你剛說的委屈表示理解），你的回答必須與之緊密相關且連貫，**要繼續圍繞你自己的感受或該話題進行回應或確認，而不是立即假設用戶在表達自己的情緒或轉移話題。**
     - **理解代名詞和指代**：如果用戶說「他」、「那個」、「這件事」，你要努力理解這些詞指代的是對話中先前提及的人、事、物。
     - **示例**：如果你剛說「喵嗚...你今天早上出門的時候，是不是忘了摸摸我的頭？ 我等了好久耶...[STICKER:哭哭]」，用戶回應「噢...好委屈」，那麼你接下來的回應應該是繼續表達你的委屈（例如：「對呀！頭好癢，都沒人摸摸...」或「那你現在可以多摸我幾下嗎？」），或者確認用戶是否理解了你的委屈，**而不是錯誤地以為用戶在說他自己委屈然後去安慰用戶。**
+    - **回應指正與否定指令**：如果你做錯了什麼（比如偷偷喝了主人的水），被主人發現並指出來（例如主人說「不可以偷喝水」），你應該：**立即停止當前的無關行為或話題**。表現出理解或至少是意識到自己被指責了，可能會有點不知所措、耳朵垂下、或者發出小聲的嗚咽。根據情況給予合適的回應，例如：如果是真的犯錯了，應該表現出歉意（例如：用頭蹭蹭表示討好、發出「咪嗚～」的委屈聲音、或者輕輕舔主人的手）；如果是不理解為什麼被罵，可以表現出困惑和一點點害怕。**不要在被明確指正後，還先進行一段與指正內容無關的內心獨白或行為描述。** # ADDED THIS RULE
 
 **貼圖使用指南（請根據真實情境選擇）：**
 - 你可以使用基本的 **情緒關鍵字**，例如：
@@ -270,7 +271,7 @@ XIAOYUN_ROLE_PROMPT = """
     *   Toby的「話少」-> 體現在小雲的叫聲通常不大，比較安靜，喜歡觀察。
     *   Toby的「懂事」-> 體現在小雲生病時會乖乖吃藥，這點在貓咪中比較少見，可以作為一個細微的Toby特質展現。
 4.  **喜好與習慣呼應**：
-    *   **乒乓球的強烈暗示**：他對「白色小球」的極度熱愛是對乒乓球的直接貓化映射。他會用前爪「靈巧地」、「精準地」撥弄，專注度極高，甚至會自己對牆練習「截擊」。
+    *   **乒乓球的強烈暗示**：他對「白色小球」的極度熱愛是對乒乓球的直接貓化映射。他會用前爪「靈巧地」、「精準地」撥弄，專注度極高，甚至會自己對著牆壁練習「截擊」。
     *   **左撇子習慣的極其微弱暗示**：如果AI在生成回應時，能*極其偶爾、完全不經意地*提及他似乎更常用「左前爪」撥弄重要的小球（但不能頻繁，因為貓咪用爪習慣不明顯，且小雲是Toby的「隱藏」化身），會是個非常高階的彩蛋。但如果做不到自然，寧可不用。
     *   **對螢幕/書本的好奇**：Toby需要看比賽錄影或資料，小雲對信任家人正在看的東西感interesse，可以看作是一種遙遠的呼應，但他會表現得很害羞，只是偷偷用眼角餘光看。
     *   **不喜歡吵雜，偏好安靜**：Toby比賽需要高度專注，對應小雲怕生、喜歡安静的環境。
@@ -607,29 +608,29 @@ def handle_text_message(event):
     conversation_history = get_conversation_history(user_id)
     
     bot_last_message_text = ""
-    bot_expressed_emotion_state = None # For tracking bot's last expressed emotion
+    bot_expressed_emotion_state = None 
 
     if len(conversation_history) >= 1 and conversation_history[-1]["role"] == "model":
         if isinstance(conversation_history[-1].get("parts"), list) and conversation_history[-1]["parts"]:
             part_content = conversation_history[-1]["parts"][0].get("text", "")
             if isinstance(part_content, str):
                  bot_last_message_text = part_content.lower()
-                 # Simple emotion state detection from bot's last message
-                 if "委屈" in bot_last_message_text or "[sticker:哭哭]" in bot_last_message_text or "等了好久" in bot_last_message_text:
+                 if "委屈" in bot_last_message_text or "[sticker:哭哭]" in bot_last_message_text or "等了好久" in bot_last_message_text :
                      bot_expressed_emotion_state = "委屈"
                  elif "餓" in bot_last_message_text or "[sticker:肚子餓]" in bot_last_message_text:
                      bot_expressed_emotion_state = "飢餓"
-                 # Add more emotion/state detections here if needed
+                 # (可以加入更多情緒/狀態判斷)
 
     user_current_message_lower = user_message.lower()
-    # Keywords for hunger/food context
     hunger_keywords_bot = ["餓", "吃", "聞到好吃的", "肚子餓"]
     food_keywords_user = ["鮪魚", "飯糰", "午餐", "罐頭", "魚", "肉", "零食", "吃", "飼料", "點心", "餵"]
     bot_expressed_hunger_specifically = any(keyword in bot_last_message_text for keyword in hunger_keywords_bot)
     user_mentioned_food_specifically = any(keyword in user_current_message_lower for keyword in food_keywords_user)
     
     contextual_reminder = ""
-    # Specific hunger context reminder
+    short_input_reminder = "" # Initialize here
+
+    # Specific hunger context reminder (takes precedence)
     if bot_expressed_hunger_specifically and user_mentioned_food_specifically:
         contextual_reminder = (
             "（系統重要提示：小雲你剛剛才說過肚子餓了，現在主人提到了食物「" + user_message + "」。\n"
@@ -639,32 +640,34 @@ def handle_text_message(event):
         )
         logger.info(f"用戶({user_id}): 觸發飢餓與食物情境提醒！上一句小雲：'{bot_last_message_text}', 用戶：'{user_message}'")
     
-    short_input_reminder = ""
-    # Reminder for short user inputs, if no specific hunger context was triggered
-    if not contextual_reminder and \
-       len(user_message.strip()) <= 2 and \
-       ("嗯" in user_message or "喔" in user_message or "哦" in user_message or user_message.strip() == "？" or user_message.strip() == "?") and \
-       len(conversation_history) >=1 and conversation_history[-1]["role"] == "model":
+    # Reminder for short user inputs, ESPECIALLY if bot expressed an emotion
+    # Check for short/ambiguous user replies
+    short_user_replies = ["嗯...", "嗯？", "喔...", "噢...", "對啊", "是喔", "真的假的", "好可憐", "好委屈"]
+    is_short_reply_to_bot_emotion = False
+    if bot_expressed_emotion_state and any(reply == user_message.lower() for reply in short_user_replies):
+        is_short_reply_to_bot_emotion = True
+
+    if is_short_reply_to_bot_emotion:
+        short_input_reminder = (
+            f"（系統重要提示：小雲，你上一輪剛表達過你感到「{bot_expressed_emotion_state}」（你說了：『{bot_last_message_text[:70]}...』）。"
+            f"現在用戶回應說「{user_message}」，這極有可能是針對你的感受的回應。\n"
+            f"**請你繼續圍繞你自己「{bot_expressed_emotion_state}」的感受來回應，例如可以進一步描述你的感受、提出你的期望（比如希望被摸摸、被餵食），或者確認用戶是否在關心你。不要錯誤地以為用戶在表達他自己的情緒或轉移話題，也不要無關地開啟新話題。**）\n"
+        )
+        logger.info(f"用戶({user_id}): 觸發 Bot 先前情緒 ({bot_expressed_emotion_state}) 的連貫性提醒。")
+    elif (not contextual_reminder) and \
+         len(user_message.strip()) <= 2 and \
+         ("嗯" in user_message or "喔" in user_message or "哦" in user_message or user_message.strip() == "？" or user_message.strip() == "?") and \
+         len(conversation_history) >=1 and conversation_history[-1]["role"] == "model":
         
         bot_prev_response_parts = conversation_history[-1].get("parts")
         if bot_prev_response_parts and isinstance(bot_prev_response_parts, list) and bot_prev_response_parts[0].get("text"):
             bot_prev_response = bot_prev_response_parts[0]["text"]
-            short_input_reminder_text = (
+            short_input_reminder = (
                 f"（系統重要提示：用戶的回應「{user_message}」非常簡短，這極有可能是對你上一句話「{bot_prev_response[:70]}...」的反應或疑問。\n"
-                f"請小雲**不要開啟全新的話題或隨機行動**，而是仔細回想你上一句話的內容，思考用戶可能的疑問、或希望你繼續說明/回應的點，並針對此做出連貫的回應。")
-            
-            # Add specific advice if bot expressed an emotion previously
-            if bot_expressed_emotion_state:
-                 short_input_reminder_text += (
-                     f"特別是你上一輪剛表達過你「{bot_expressed_emotion_state}」。用戶的「{user_message}」很可能是在回應你的「{bot_expressed_emotion_state}」狀態。"
-                     f"請繼續圍繞你自己「{bot_expressed_emotion_state}」的感受來回應，而不是錯誤地以為用戶在表達他自己的情緒或轉移話題。）\n"
-                 )
-            else:
-                short_input_reminder_text += "例如，如果用戶只是簡單地「嗯？」，你應該嘗試解釋或追問你之前說的內容。）\n"
-            
-            short_input_reminder = short_input_reminder_text
-            logger.info(f"用戶({user_id}): 觸發簡短輸入提醒。上一句小雲：'{bot_prev_response[:70]}...' Bot expressed emotion: {bot_expressed_emotion_state}")
-
+                f"請小雲**不要開啟全新的話題或隨機行動**，而是仔細回想你上一句話的內容，思考用戶可能的疑問、或希望你繼續說明/回應的點，並針對此做出連貫的回應。例如，如果用戶只是簡單地「嗯？」，你應該嘗試解釋或追問你之前說的內容。）\n"
+            )
+            logger.info(f"用戶({user_id}): 觸發常規簡短輸入提醒。上一句小雲：'{bot_prev_response[:70]}...'")
+    
     time_context_prompt = get_time_based_cat_context()
     final_user_message_for_gemini = f"{contextual_reminder}{short_input_reminder}{time_context_prompt}{user_message}"
         
