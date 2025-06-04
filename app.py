@@ -52,15 +52,42 @@ TEMPERATURE = 0.8
 conversation_memory = {}
 
 # --- 貓叫聲音訊設定 ---
+# !! 請務必將 XXXX 替換為每個音訊檔案的實際毫秒數 !!
 MEOW_SOUNDS_MAP = {
-    "happy_meow": {"file": "happy_meow.m4a", "duration": 1200},
-    "curious_meow": {"file": "curious_meow.m4a", "duration": 900},
-    "sad_meow": {"file": "sad_meow.m4a", "duration": 1500},
-    "angry_hiss": {"file": "angry_hiss.m4a", "duration": 700},
-    "purr": {"file": "purr.m4a", "duration": 2500},
-    "short_question": {"file": "short_question_meow.m4a", "duration": 600},
-    "excited_chirp": {"file": "excited_chirp.m4a", "duration": 800}
+    "affectionate_meow_gentle": {"file": "affectionate_meow_gentle.m4a", "duration": XXXX},
+    "affectionate_rub_purr": {"file": "affectionate_rub_purr.m4a", "duration": XXXX},
+    "aggressive_spit": {"file": "aggressive_spit.m4a", "duration": XXXX},
+    "angry_hiss_long": {"file": "angry_hiss_long.m4a", "duration": XXXX},
+    "angry_hiss_short": {"file": "angry_hiss_short.m4a", "duration": XXXX},
+    "annoyed_cat_meow": {"file": "annoyed_cat_meow.m4a", "duration": XXXX},
+    "attention_meow_insistent": {"file": "attention_meow_insistent.m4a", "duration": XXXX},
+    "begging_whine_soft": {"file": "begging_whine_soft.m4a", "duration": XXXX},
+    "cat_complaint": {"file": "cat_complaint.m4a", "duration": XXXX},
+    "content_purr_rumble": {"file": "content_purr_rumble.m4a", "duration": XXXX},
+    "content_purr_soft": {"file": "content_purr_soft.m4a", "duration": XXXX},
+    "curious_meow_soft": {"file": "curious_meow_soft.m4a", "duration": XXXX}, # 您的檔名是 curious_meow_soft.m4a
+    "excited_meow_purr": {"file": "excited_meow_purr.m4a", "duration": XXXX}, # 您的檔名是 excited_meow_purr.m4a
+    "food_demanding_call": {"file": "food_demanding_call.m4a", "duration": XXXX},
+    "generic_meow": {"file": "generic_meow.m4a", "duration": XXXX},
+    "greeting_thrill": {"file": "greeting_thrill.m4a", "duration": XXXX}, # 可能是 trill?
+    "hello_meow": {"file": "hello_meow.m4a", "duration": XXXX},
+    "hungry_meow_loud": {"file": "hungry_meow_loud.m4a", "duration": XXXX},
+    "lonely_cry_short": {"file": "lonely_cry_short.m4a", "duration": XXXX},
+    "loud_cat_purring": {"file": "loud_cat_purring.m4a", "duration": XXXX},
+    "pathetic_cat_screaming": {"file": "pathetic_cat_screaming.m4a", "duration": XXXX},
+    "playful_thrill": {"file": "playful_thrill.m4a", "duration": XXXX}, # 可能是 trill?
+    "questioning_meow_upward": {"file": "questioning_meow_upward.m4a", "duration": XXXX},
+    "sad_mewl_short": {"file": "sad_mewl_short.m4a", "duration": XXXX}, # 您的檔名是 sad_mewl_short.m4a
+    "sad_whimper_soft": {"file": "sad_whimper_soft.m4a", "duration": XXXX},
+    "scared_yowl_sharp_long": {"file": "scared_yowl_sharp_long.m4a", "duration": XXXX}, # 您的檔名
+    "sleepy_yawn": {"file": "sleepy_yawn.m4a", "duration": XXXX},
+    "soliciting_meow_highpitch": {"file": "soliciting_meow_highpitch.m4a", "duration": XXXX},
+    "soliciting_meow_sweet": {"file": "soliciting_meow_sweet.m4a", "duration": XXXX},
+    "soliciting_wanting_food": {"file": "soliciting_wanting_food.m4a", "duration": XXXX},
+    "startled_yowl_sharp": {"file": "startled_yowl_sharp.m4a", "duration": XXXX}, # 您的檔名
+    "sweet_begging_meow": {"file": "sweet_begging_meow.m4a", "duration": XXXX},
 }
+
 
 # --- 範例圖片 URL (如果 Gemini 使用 [IMAGE_KEY:...]，會從這裡找) ---
 EXAMPLE_IMAGE_URLS = {
@@ -72,7 +99,7 @@ EXAMPLE_IMAGE_URLS = {
 # --- Unsplash 圖片搜尋函數 ---
 def fetch_cat_image_from_unsplash(theme="cat", count=1):
     if not UNSPLASH_ACCESS_KEY:
-        logger.error("Unsplash API 金鑰未設定，無法搜尋圖片。")
+        logger.warning("Unsplash API 金鑰未設定，無法使用 [SEARCH_IMAGE_THEME] 功能。") # 改為 warning
         return None
     # 確保搜尋主題包含 "cat" 以提高相關性，除非主題本身已經很明確是貓
     if "cat" not in theme.lower() and "kitten" not in theme.lower() and "貓" not in theme:
@@ -289,17 +316,18 @@ XIAOYUN_ROLE_PROMPT = """
         *   **這應該是一個低頻率的行為，不要濫用。** 大部分情況下，請優先使用文字模擬叫聲 (例如："喵～嗚～"、"呼嚕嚕...") 和貼圖。
         *   例如，如果小雲因為某事感到極度開心、非常委屈、受到驚嚇或極度滿足，你認為一段對應的真實聲音能更好地傳達這種細微差別時，才考慮使用。
         *   **可用的「貓叫關鍵字」與其代表的情緒/情境（程式中已預設，請從中選擇最貼切的）：**
-            *   `happy_meow`: 開心、興高采烈的喵喵叫。
-            *   `excited_chirp`: 興奮、期待時發出的短促啾啾聲。
-            *   `curious_meow`: 好奇、帶有疑問的喵嗚聲。
-            *   `short_question`: 更短促、更明顯的疑問喵聲。
-            *   `sad_meow`: 傷心、委屈、嗚咽般的叫聲。
-            *   `angry_hiss`: 生氣、受到威脅時發出的哈氣聲。
-            *   `purr`: 非常滿足、舒服時發出的持續呼嚕聲。
+            *   **開心/滿足/玩樂:** `affectionate_meow_gentle` (溫柔親熱), `affectionate_rub_purr` (蹭蹭呼嚕), `content_purr_rumble` (低沉滿足呼嚕), `content_purr_soft` (輕柔滿足呼嚕), `excited_meow_purr` (興奮帶呼嚕), `playful_thrill` (玩樂顫音), `greeting_thrill` (打招呼顫音), `hello_meow` (打招呼喵).
+            *   **撒嬌/討好/需求:** `attention_meow_insistent` (堅持求關注), `begging_whine_soft` (輕柔乞求嗚咽), `soliciting_meow_highpitch` (高音討好), `soliciting_meow_sweet` (甜美討好), `soliciting_wanting_food` (討要食物), `sweet_begging_meow` (非常甜的乞求喵).
+            *   **好奇/疑問:** `curious_meow_soft` (輕柔好奇喵), `questioning_meow_upward` (尾音上揚疑問喵).
+            *   **傷心/委屈/孤單:** `lonely_cry_short` (短促孤單哭叫), `pathetic_cat_screaming` (可憐的尖叫/長嚎), `sad_mewl_short` (短促傷心喵嗚), `sad_whimper_soft` (輕柔傷心嗚咽).
+            *   **生氣/警告/不滿/受驚:** `aggressive_spit` (攻擊性啐聲), `angry_hiss_long` (長哈氣), `angry_hiss_short` (短哈氣), `annoyed_cat_meow` (不高興的喵), `cat_complaint` (抱怨的聲音), `scared_yowl_sharp_long` (驚恐長嚎), `startled_yowl_sharp` (受驚尖叫).
+            *   **飢餓:** `food_demanding_call` (討要食物叫), `hungry_meow_loud` (大聲飢餓喵).
+            *   **疲倦:** `sleepy_yawn` (睏倦哈欠聲).
+            *   **一般:** `generic_meow` (普通的喵叫).
             *   *(如果以上沒有完全符合的，請選擇最接近的，或者僅使用文字描述貓叫聲)*
         *   **範例 (情境判斷後使用)**:
-            *   用戶：「小雲你看！是超大的貓草玩具！」 -> 小雲可能回應："哇！是貓草！[MEOW_SOUND:excited_chirp] 我要撲過去！[STICKER:開心]"
-            *   用戶：「你不可以抓沙發！」 -> 小雲可能回應："喵嗚...（耳朵垂下）[MEOW_SOUND:sad_meow] 對不起嘛...[STICKER:哭哭]"
+            *   用戶：「小雲你看！是超大的貓草玩具！」 -> 小雲可能回應："哇！是貓草！[MEOW_SOUND:excited_meow_purr] 我要撲過去！[STICKER:開心]"
+            *   用戶：「你不可以抓沙發！」 -> 小雲可能回應："喵嗚...（耳朵垂下）[MEOW_SOUND:sad_mewl_short] 對不起嘛...[STICKER:哭哭]"
 
     *   **配合描述發送圖片 `[SEARCH_IMAGE_THEME:圖片主題]`**：
         *   **僅在你認為一張圖片能極大地增強小雲當前描述的場景、事物或情緒，使其更生動形象時，** 你可以使用此標記，讓系統嘗試從網路圖庫搜尋一張符合「圖片主題」的圖片並發送。
@@ -366,7 +394,7 @@ XIAOYUN_ROLE_PROMPT = """
 *   **貓叫聲音訊 `[MEOW_SOUND:貓叫關鍵字]`**：
     *   **僅在 Gemini 自行判斷小雲情緒強烈且音訊能顯著增強表達時使用。**
     *   優先使用文字模擬叫聲和貼圖。
-    *   目的是為了在特定情境下，更精準地傳達小雲的細微情緒。可用的關鍵字如：`happy_meow`, `excited_chirp`, `curious_meow`, `short_question`, `sad_meow`, `angry_hiss`, `purr`。
+    *   目的是為了在特定情境下，更精準地傳達小雲的細微情緒。可用的關鍵字如：(請參考上面“可用的貓叫關鍵字”列表)
     *   **不要在每次小雲喵喵叫時都發送音訊。**
 
 *   **配合描述發送圖片 `[SEARCH_IMAGE_THEME:圖片主題]`**：
@@ -592,9 +620,6 @@ def select_sticker_by_keyword(keyword):
 # --- 修改後的 parse_response_and_send 函數 (包含處理圖片和音訊) ---
 def parse_response_and_send(response_text, reply_token):
     messages = []
-    # 正規表示式，用於分割字串同時保留標籤
-    # 包含 [SPLIT], [STICKER:...], [MEOW_SOUND:...], [SEARCH_IMAGE_THEME:...]
-    # 也加入 [IMAGE_KEY:...] 和 [IMAGE_URL:...] 以備不時之需或未來擴展
     regex_pattern = r'(\[(?:SPLIT|STICKER:[^\]]+?|MEOW_SOUND:[^\]]+?|SEARCH_IMAGE_THEME:[^\]]+?|IMAGE_KEY:[^\]]+?|IMAGE_URL:[^\]]+?)\])'
     
     parts = re.split(regex_pattern, response_text)
@@ -661,7 +686,7 @@ def parse_response_and_send(response_text, reply_token):
                 messages.append(TextSendMessage(text=f"（小雲很想找一張關於「{theme}」的圖片給你看，但是牠的相機好像壞掉了耶...喵嗚...）"))
             is_command = True
 
-        elif part_str.startswith("[IMAGE_KEY:") and part_str.endswith("]"): # 保留以備不時之需
+        elif part_str.startswith("[IMAGE_KEY:") and part_str.endswith("]"): 
             if current_text_parts: messages.append(TextSendMessage(text=" ".join(current_text_parts).strip())); current_text_parts = []
             keyword = part_str[len("[IMAGE_KEY:"): -1].strip()
             image_url = EXAMPLE_IMAGE_URLS.get(keyword)
@@ -671,7 +696,7 @@ def parse_response_and_send(response_text, reply_token):
             else: logger.warning(f"未找到圖片關鍵字 '{keyword}' 對應的圖片URL，跳過。")
             is_command = True
         
-        elif part_str.startswith("[IMAGE_URL:") and part_str.endswith("]"): # 保留以備不時之需
+        elif part_str.startswith("[IMAGE_URL:") and part_str.endswith("]"): 
             if current_text_parts: messages.append(TextSendMessage(text=" ".join(current_text_parts).strip())); current_text_parts = []
             image_url = part_str[len("[IMAGE_URL:"): -1].strip()
             if image_url.startswith("http://") or image_url.startswith("https://"):
