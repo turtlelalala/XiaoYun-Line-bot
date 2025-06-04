@@ -544,35 +544,42 @@ def select_sticker_by_keyword(keyword):
     logger.error("連基本的回退貼圖都未在貼圖配置中找到，使用硬編碼的最終回退貼圖。")
     return {"package_id": "11537", "sticker_id": "52002747"} # 請確保這個貼圖是你可用的
 
+# --- 新增：輔助函數，用於清理文字結尾的特定符號 ---
+def _clean_trailing_symbols(text: str) -> str:
+    text = text.strip() # 先移除首尾空白
+    if text.endswith(" `"): # 檢查 "空格+反引號"
+        return text[:-2].strip()
+    elif text.endswith("`"): # 檢查單獨的反引號
+        return text[:-1].strip()
+    # 如果需要，可以加入對其他符號的檢查，例如反斜線
+    # elif text.endswith(" \\"):
+    #     return text[:-2].strip()
+    # elif text.endswith("\\"):
+    #     return text[:-1].strip()
+    return text
+
 def parse_response_and_send(response_text, reply_token):
     messages = []
-    # 正則表達式，用於匹配各種指令標籤
-    # 確保 : 後面可以接受更多種類的字元，例如中文、底線、連字號等
     regex_pattern = r'(\[(?:SPLIT|STICKER:[^\]]+?|MEOW_SOUND:[a-zA-Z0-9_]+?|SEARCH_IMAGE_THEME:[^\]]+?|IMAGE_KEY:[a-zA-Z0-9_]+?|IMAGE_URL:[^\]]+?)\])'
-
+    
     parts = re.split(regex_pattern, response_text)
     current_text_parts = []
 
     for part_str in parts:
-        part_str = part_str.strip() # 去除前後空白
-        if not part_str: # 如果處理後是空字串，則跳過
+        part_str = part_str.strip()
+        if not part_str:
             continue
-
-        is_command = False # 標記是否為指令
-
-        # --- 處理 [SPLIT] ---
+        is_command = False
         if part_str.upper() == "[SPLIT]":
             if current_text_parts:
-                cleaned_text = " ".join(current_text_parts).strip()
-                if cleaned_text:
+                cleaned_text = _clean_trailing_symbols(" ".join(current_text_parts)) # 清理
+                if cleaned_text: 
                     messages.append(TextSendMessage(text=cleaned_text))
                 current_text_parts = []
             is_command = True
-        
-        # --- 處理 [STICKER:關鍵字] ---
         elif part_str.startswith("[STICKER:") and part_str.endswith("]"):
-            if current_text_parts: # 先將累積的文字發送
-                cleaned_text = " ".join(current_text_parts).strip()
+            if current_text_parts: 
+                cleaned_text = _clean_trailing_symbols(" ".join(current_text_parts)) # 清理
                 if cleaned_text: messages.append(TextSendMessage(text=cleaned_text))
                 current_text_parts = []
             keyword = part_str[len("[STICKER:"): -1].strip()
@@ -582,22 +589,20 @@ def parse_response_and_send(response_text, reply_token):
                     package_id=str(sticker_info["package_id"]),
                     sticker_id=str(sticker_info["sticker_id"])
                 ))
-            else:
-                logger.warning(f"未找到貼圖關鍵字 '{keyword}' 對應的貼圖，跳過。")
+            else: logger.warning(f"未找到貼圖關鍵字 '{keyword}' 對應的貼圖，跳過。")
             is_command = True
-
-        # --- 處理 [MEOW_SOUND:貓叫關鍵字] ---
+        # ... (MEOW_SOUND, SEARCH_IMAGE_THEME, IMAGE_KEY, IMAGE_URL 的處理邏輯保持不變) ...
         elif part_str.startswith("[MEOW_SOUND:") and part_str.endswith("]"):
             if current_text_parts:
-                cleaned_text = " ".join(current_text_parts).strip()
+                cleaned_text = _clean_trailing_symbols(" ".join(current_text_parts)) # 清理
                 if cleaned_text: messages.append(TextSendMessage(text=cleaned_text))
                 current_text_parts = []
             keyword = part_str[len("[MEOW_SOUND:"): -1].strip()
             sound_info = MEOW_SOUNDS_MAP.get(keyword)
             if sound_info and BASE_URL:
-                audio_url = f"{BASE_URL.rstrip('/')}/static/audio/meows/{sound_info['file']}" # 假設音檔在 static/audio/meows/
-                duration_ms = sound_info.get("duration", 1000) # 預設時長 1000ms
-                if not isinstance(duration_ms, int) or duration_ms <= 0:
+                audio_url = f"{BASE_URL.rstrip('/')}/static/audio/meows/{sound_info['file']}"
+                duration_ms = sound_info.get("duration", 1000)
+                if not isinstance(duration_ms, int) or duration_ms <= 0 :
                     logger.warning(f"貓叫聲 '{keyword}' 的 duration ({duration_ms}) 無效，使用預設值 1000ms。")
                     duration_ms = 1000
                 messages.append(AudioSendMessage(original_content_url=audio_url, duration=duration_ms))
@@ -607,32 +612,27 @@ def parse_response_and_send(response_text, reply_token):
             elif not BASE_URL:
                 logger.warning(f"BASE_URL 未設定，無法發送貓叫聲 '{keyword}'。")
             is_command = True
-
-        # --- 處理 [SEARCH_IMAGE_THEME:圖片主題] ---
         elif part_str.startswith("[SEARCH_IMAGE_THEME:") and part_str.endswith("]"):
             if current_text_parts:
-                cleaned_text = " ".join(current_text_parts).strip()
+                cleaned_text = _clean_trailing_symbols(" ".join(current_text_parts)) # 清理
                 if cleaned_text: messages.append(TextSendMessage(text=cleaned_text))
                 current_text_parts = []
             theme = part_str[len("[SEARCH_IMAGE_THEME:"): -1].strip()
             if UNSPLASH_ACCESS_KEY:
-                image_url = fetch_cat_image_from_unsplash(theme) # 調用 Unsplash 函數
+                image_url = fetch_cat_image_from_unsplash(theme)
                 if image_url:
                     messages.append(ImageSendMessage(original_content_url=image_url, preview_image_url=image_url))
                     logger.info(f"準備發送從 Unsplash 搜尋到的圖片 (視角化主題: {theme}) -> {image_url}")
                 else:
                     logger.warning(f"無法從 Unsplash 獲取視角化主題為 '{theme}' 的圖片。")
-                    # 可以選擇發送一個提示訊息給用戶
-                    messages.append(TextSendMessage(text=f"（小雲努力看了看「{theme}」，但好像看得不是很清楚耶...喵嗚...）"))
+                    messages.append(TextSendMessage(text=_clean_trailing_symbols(f"（小雲努力看了看「{theme}」，但好像看得不是很清楚耶...喵嗚...）"))) # 清理
             else:
                 logger.warning(f"指令 [SEARCH_IMAGE_THEME:{theme}] 但 UNSPLASH_ACCESS_KEY 未設定，跳過圖片搜尋。")
-                messages.append(TextSendMessage(text=f"（小雲很想把「{theme}」的樣子拍給你看，但是牠的相機好像壞掉了耶...喵嗚...）"))
+                messages.append(TextSendMessage(text=_clean_trailing_symbols(f"（小雲很想把「{theme}」的樣子拍給你看，但是牠的相機好像壞掉了耶...喵嗚...）"))) # 清理
             is_command = True
-
-        # --- 處理 [IMAGE_KEY:圖片關鍵字] ---
         elif part_str.startswith("[IMAGE_KEY:") and part_str.endswith("]"):
             if current_text_parts:
-                cleaned_text = " ".join(current_text_parts).strip()
+                cleaned_text = _clean_trailing_symbols(" ".join(current_text_parts)) # 清理
                 if cleaned_text: messages.append(TextSendMessage(text=cleaned_text))
                 current_text_parts = []
             keyword = part_str[len("[IMAGE_KEY:"): -1].strip()
@@ -645,134 +645,119 @@ def parse_response_and_send(response_text, reply_token):
                 fallback_tuxedo_url = EXAMPLE_IMAGE_URLS.get("tuxedo_cat_default")
                 if fallback_tuxedo_url:
                     messages.append(ImageSendMessage(original_content_url=fallback_tuxedo_url, preview_image_url=fallback_tuxedo_url))
-                else: # 如果連預設圖都沒有，記錄錯誤
+                else:
                     logger.error(f"連預設賓士貓圖片 tuxedo_cat_default 都找不到。")
-                    messages.append(TextSendMessage(text="（小雲想給你看牠的樣子，但照片不見了喵...）"))
+                    messages.append(TextSendMessage(text=_clean_trailing_symbols("（小雲想給你看牠的樣子，但照片不見了喵...）"))) # 清理
             is_command = True
-            
-        # --- 處理 [IMAGE_URL:圖片網址] ---
         elif part_str.startswith("[IMAGE_URL:") and part_str.endswith("]"):
             if current_text_parts:
-                cleaned_text = " ".join(current_text_parts).strip()
+                cleaned_text = _clean_trailing_symbols(" ".join(current_text_parts)) # 清理
                 if cleaned_text: messages.append(TextSendMessage(text=cleaned_text))
                 current_text_parts = []
             image_url = part_str[len("[IMAGE_URL:"): -1].strip()
             if image_url.startswith("http://") or image_url.startswith("https://"):
                 messages.append(ImageSendMessage(original_content_url=image_url, preview_image_url=image_url))
                 logger.info(f"準備發送圖片 (來自URL): {image_url}")
-            else:
-                logger.warning(f"提供的圖片URL '{image_url}' 格式不正確，跳過。")
+            else: logger.warning(f"提供的圖片URL '{image_url}' 格式不正確，跳過。")
             is_command = True
-        
-        # 如果不是指令，則加入到當前的文字部分
-        if not is_command and part_str: # 再次檢查 part_str 是否為空
+
+        if not is_command and part_str:
             current_text_parts.append(part_str)
 
-    # 處理循環結束後剩餘的文字
     if current_text_parts:
-        cleaned_text = " ".join(current_text_parts).strip()
+        cleaned_text = _clean_trailing_symbols(" ".join(current_text_parts)) # 清理
         if cleaned_text:
             messages.append(TextSendMessage(text=cleaned_text))
 
     # --- 訊息數量上限處理 ---
     if len(messages) > 5:
-        logger.warning(f"Gemini生成了 {len(messages)} 則訊息物件，超過5則上限。將嘗試智能處理。")
+        logger.warning(f"Gemini原始解析後生成了 {len(messages)} 則訊息物件，超過5則上限。將嘗試智能處理。")
         
-        # 策略：優先合併連續的 TextSendMessage
         temp_messages_with_text_merged = []
         text_accumulator = []
-        for msg in messages:
+        for msg_idx, msg in enumerate(messages): # 使用 enumerate 獲取索引方便調試
             if isinstance(msg, TextSendMessage):
                 text_accumulator.append(msg.text)
             else:
-                if text_accumulator: # 如果有累積的文字，先合併發送
-                    merged_text = " ".join(text_accumulator).strip()
-                    if merged_text: # 確保合併後不是空字串
+                if text_accumulator: 
+                    merged_text = _clean_trailing_symbols(" ".join(text_accumulator)) # 清理
+                    if merged_text:
                          temp_messages_with_text_merged.append(TextSendMessage(text=merged_text))
-                    text_accumulator = [] # 清空累加器
-                temp_messages_with_text_merged.append(msg) # 加入非文字訊息
+                    text_accumulator = []
+                temp_messages_with_text_merged.append(msg) 
         
-        if text_accumulator: # 處理最後可能剩餘的文字
-            merged_text = " ".join(text_accumulator).strip()
+        if text_accumulator: 
+            merged_text = _clean_trailing_symbols(" ".join(text_accumulator)) # 清理
             if merged_text:
                 temp_messages_with_text_merged.append(TextSendMessage(text=merged_text))
+        
+        logger.info(f"第一次合併文字後，訊息數量為 {len(temp_messages_with_text_merged)}。")
 
         if len(temp_messages_with_text_merged) <= 5:
             messages = temp_messages_with_text_merged
         else:
-            # 如果合併後仍然超過5則，則進行更積極的截斷
-            logger.warning(f"即使合併文字後訊息仍有 {len(temp_messages_with_text_merged)} 則，將進一步處理以不超過5則。")
+            logger.warning(f"即使合併文字後訊息仍有 {len(temp_messages_with_text_merged)} 則，將進一步截斷處理。")
             final_messages_candidate = temp_messages_with_text_merged[:4] # 先取前4則
             
-            # 嘗試將第5則之後的文字合併到第5則（如果第5則是文字）或作為新的第5則文字訊息
-            remaining_texts_for_fifth = []
-            if len(temp_messages_with_text_merged) >= 5:
-                # 檢查第5則是否為文字，如果是，且還有剩餘，則將後續文字追加到第5則
-                is_fifth_text = isinstance(temp_messages_with_text_merged[4], TextSendMessage)
-                
-                for i in range(4, len(temp_messages_with_text_merged)):
-                    if isinstance(temp_messages_with_text_merged[i], TextSendMessage):
-                        remaining_texts_for_fifth.append(temp_messages_with_text_merged[i].text)
-                    elif len(final_messages_candidate) < 5 : # 如果還有空間且遇到非文字，則加入
-                        # 如果之前有累積的文字，先發送
-                        if remaining_texts_for_fifth:
-                            merged_remaining_text = " ".join(remaining_texts_for_fifth).strip()
-                            if merged_remaining_text:
-                                final_messages_candidate.append(TextSendMessage(text=merged_remaining_text))
-                            remaining_texts_for_fifth = []
-                        if len(final_messages_candidate) < 5: # 再次檢查空間
-                            final_messages_candidate.append(temp_messages_with_text_merged[i])
-                        # 如果加入後已滿5則，且後續還有訊息，就無法再加，可以考慮記錄日誌
-                        elif i < len(temp_messages_with_text_merged) -1 :
-                            logger.warning(f"訊息已達5則，後續訊息將被捨棄。剩餘訊息: {temp_messages_with_text_merged[i+1:]}")
-                            break 
-                
-                if remaining_texts_for_fifth: # 處理最後剩餘的文字
-                    merged_remaining_text = " ".join(remaining_texts_for_fifth).strip()
-                    if merged_remaining_text:
-                        if len(final_messages_candidate) < 5:
-                             final_messages_candidate.append(TextSendMessage(text=merged_remaining_text))
-                        # 如果第4則是文字，且第5則不存在，可以考慮合併到第4則，但這裡的邏輯是優先保留獨立訊息
-                        elif isinstance(final_messages_candidate[-1], TextSendMessage) and len(final_messages_candidate) == 4:
-                             # 這個情況比較複雜，因為我們已經取了前4則。
-                             # 如果第5則的內容是文字，應該合併到第5則文字訊息。
-                             # 但若final_messages_candidate已經是4則，且最後一則是文字，
-                             # 且我們還有剩餘文字，可以考慮擴充最後一則文字，或如果下一則也是文字，就合併。
-                             # 目前邏輯是取前4，然後剩餘的儘量塞到第5個。
-                             # 這裡為了簡化，如果第5個訊息槽位可用，則新增；否則追加到最後一個文字訊息（如果它是文字）
-                             if len(final_messages_candidate) == 5 and isinstance(final_messages_candidate[-1], TextSendMessage):
-                                 final_messages_candidate[-1].text = (final_messages_candidate[-1].text + " ... " + merged_remaining_text).strip()
-                                 logger.info("部分額外文字已用 '...' 追加到最後一個文字訊息。")
-                             elif len(final_messages_candidate) < 5 :
-                                 final_messages_candidate.append(TextSendMessage(text=merged_remaining_text))
-                             else:
-                                logger.warning(f"訊息已達5則，無法追加剩餘文字: {merged_remaining_text}")
+            remaining_texts_for_fifth_message = []
+            # 從合併後的列表的第5個元素開始（索引為4）
+            for i in range(4, len(temp_messages_with_text_merged)):
+                current_processing_message = temp_messages_with_text_merged[i]
+                if isinstance(current_processing_message, TextSendMessage):
+                    remaining_texts_for_fifth_message.append(current_processing_message.text)
+                elif len(final_messages_candidate) < 5: # 如果還有空間給非文字訊息
+                    # 先處理掉之前累積的文字 (如果有)
+                    if remaining_texts_for_fifth_message:
+                        merged_remaining_text = _clean_trailing_symbols(" ".join(remaining_texts_for_fifth_message)) # 清理
+                        if merged_remaining_text:
+                            final_messages_candidate.append(TextSendMessage(text=merged_remaining_text))
+                        remaining_texts_for_fifth_message = [] # 清空
+                    
+                    # 如果加入此非文字訊息後仍未滿5則，則加入
+                    if len(final_messages_candidate) < 5:
+                        final_messages_candidate.append(current_processing_message)
+                    else: # 已經滿5則了，這個非文字訊息加不進去
+                        logger.warning(f"已達5則，非文字訊息 {current_processing_message.type if hasattr(current_processing_message, 'type') else 'UnknownType'} 將被捨棄。")
+                        break # 後面的也加不進去了
+                else: # 沒有空間給非文字訊息了
+                    logger.warning(f"已達5則，非文字訊息 {current_processing_message.type if hasattr(current_processing_message, 'type') else 'UnknownType'} 將被捨棄 (因剩餘空間不足)。")
 
-            messages = final_messages_candidate[:5] # 確保最終不超過5則
+            # 處理最後可能累積的文字
+            if remaining_texts_for_fifth_message:
+                merged_final_text = _clean_trailing_symbols(" ".join(remaining_texts_for_fifth_message)) # 清理
+                if merged_final_text:
+                    if len(final_messages_candidate) < 5:
+                        final_messages_candidate.append(TextSendMessage(text=merged_final_text))
+                    elif len(final_messages_candidate) == 5 and isinstance(final_messages_candidate[-1], TextSendMessage):
+                        # 如果第5則剛好是文字，就把剩餘文字追加進去
+                        final_messages_candidate[-1].text = _clean_trailing_symbols(final_messages_candidate[-1].text + " ... " + merged_final_text) # 清理
+                        logger.info("額外文字已用 '...' 追加到最後一個文字訊息。")
+                    else:
+                        logger.warning(f"已達5則，且最後一則非文字，無法追加剩餘文字: '{merged_final_text}'")
+            
+            messages = final_messages_candidate[:5] # 再次確保最終不超過5則
+            logger.info(f"最終截斷處理後，訊息數量為 {len(messages)}。")
 
-    if not messages:
+
+    if not messages: # 如果處理到最後完全沒有訊息了
         logger.warning("Gemini 回應解析後無有效訊息，發送預設文字訊息。")
         messages = [TextSendMessage(text="咪...？小雲好像沒有聽得很懂耶..."), TextSendMessage(text="可以...再說一次嗎？")]
-        fb_sticker = select_sticker_by_keyword("害羞") or select_sticker_by_keyword("思考") # 確保有回退
+        fb_sticker = select_sticker_by_keyword("害羞") or select_sticker_by_keyword("思考")
         if fb_sticker:
             messages.append(StickerSendMessage(package_id=str(fb_sticker["package_id"]), sticker_id=str(fb_sticker["sticker_id"])))
         else:
-             messages.append(TextSendMessage(text="喵嗚... （小雲有點困惑地看著你）")) # 最終回退
-             
+             messages.append(TextSendMessage(text="喵嗚... （小雲有點困惑地看著你）"))
     try:
         if messages:
-            # 過濾掉 None 或非 Message 對象，雖然理論上不應該出現
-            valid_messages = [m for m in messages if hasattr(m, 'type')] 
+            valid_messages = [m for m in messages if hasattr(m, 'type')]
             if valid_messages:
                 line_bot_api.reply_message(reply_token, valid_messages)
-            elif messages : # 如果 messages 不為空但 valid_messages 為空，表示有問題
+            elif messages: 
                 logger.error("解析後 messages 列表不為空，但無有效 LINE Message 物件可發送。Messages: %s", messages)
                 line_bot_api.reply_message(reply_token, [TextSendMessage(text="咪...小雲好像有點迷糊了...")])
-
     except Exception as e:
         logger.error(f"發送訊息失敗: {e}", exc_info=True)
         try:
-            # 準備備用錯誤訊息
             error_messages_fallback = [TextSendMessage(text="咪！小雲好像卡住了...")]
             cry_sticker_fallback = select_sticker_by_keyword("哭哭")
             if cry_sticker_fallback:
@@ -780,13 +765,10 @@ def parse_response_and_send(response_text, reply_token):
                     package_id=str(cry_sticker_fallback["package_id"]),
                     sticker_id=str(cry_sticker_fallback["sticker_id"])
                 ))
-            else: # 如果連哭哭貼圖都沒有，再加一個文字
-                error_messages_fallback.append(TextSendMessage(text="再試一次好不好？"))
-            
-            line_bot_api.reply_message(reply_token, error_messages_fallback[:5]) # 確保不超過5則
+            else: error_messages_fallback.append(TextSendMessage(text="再試一次好不好？"))
+            line_bot_api.reply_message(reply_token, error_messages_fallback[:5])
         except Exception as e2:
             logger.error(f"備用訊息發送失敗: {e2}")
-
 
 def handle_cat_secret_discovery_request(event):
     user_id = event.source.user_id
