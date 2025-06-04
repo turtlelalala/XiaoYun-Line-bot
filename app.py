@@ -627,6 +627,193 @@ def fetch_cat_image_from_unsplash_sync_simplified(raw_theme_content: str) -> tup
     return None, display_theme_name
 
 
+def _is_image_relevant_by_gemini_sync(image_base64: str, chinese_theme: str, image_url_for_log: str = "N/A") -> bool:
+    """
+    使用 Gemini Vision API 判斷圖片是否與給定的中文主題相關且符合小雲視角 (同步版本)。
+    返回 True (相關) 或 False (不相關)。
+    """
+    vision_model_name = "gemini-1.5-flash-latest" 
+    vision_api_url = f"https://generativelanguage.googleapis.com/v1beta/models/{vision_model_name}:generateContent"
+
+    logger.info(f"開始使用 Gemini 判斷圖片相關性。主題: '{chinese_theme}', 圖片URL (僅供記錄): {image_url_for_log}")
+
+    prompt_parts = [
+        "You are an AI assistant evaluating an image for a cat character named 'Xiaoyun' (小雲). Xiaoyun is a real cat and sees the world from a cat's perspective. The image should represent what Xiaoyun is currently seeing or a scene Xiaoyun is describing.",
+        f"The Chinese theme/description for what Xiaoyun sees is: \"{chinese_theme}\".",
+        "Please evaluate the provided image based on the following CRITICAL criteria:",
+        "1. Visual Relevance to Chinese Theme: Does the main visual content of the image STRONGLY and CLEARLY match the Chinese theme? For example, if the theme is '窗戶外的雨景，路燈模糊的光暈和濕漉漉的柏油路' (Rainy scene outside the window, blurred halo of streetlights and wet asphalt), the image MUST depict a rainy scene from a window, showing a wet street and streetlights. Abstract art or unrelated objects are NOT acceptable.",
+        "2. Cat's Perspective (No Cat in Image): Does the image realistically look like something a cat would see? MOST IMPORTANTLY: **the image ITSELF should NOT contain any cats, dogs, or other prominent animals (especially not a tuxedo cat like Xiaoyun), unless the theme EXPLICITLY states that Xiaoyun is looking at another specific animal (e.g., '一隻三花貓在屋頂上' - a calico cat on the roof).** If the theme is about an object (like a toy, food) or a general scene (like rain, a plant, a street), there should be NO cat or other animal in the image itself. The image is WHAT XIAOYUN SEES, not an image OF Xiaoyun.",
+        "3. Atmosphere and Detail: Do the image's atmosphere (e.g., sunny, rainy, dark, cozy, blurry, close-up) and key details align with the theme, if specified in the Chinese theme?",
+        "Based STRICTLY on these criteria, especially points 1 (strong visual match to the CHINESE THEME) and 2 (NO cat/animal in the image unless the theme says so), is this image a GOOD and HIGHLY RELEVANT visual representation for the theme?",
+        "Respond with only 'YES' or 'NO'. Do not provide any explanations or other text. Your answer must be exact."
+    ]
+    user_prompt_text = "\n".join(prompt_parts)
+
+    headers = {"Content-Type": "application/json"}
+    gemini_url_with_key = f"{vision_api_url}?key={GEMINI_API_KEY}"
+
+    payload_contents = [
+        {
+            "role": "user",
+            "parts": [
+                {"text": user_prompt_text},
+                {"inline_data": {"mime_type": "image/jpeg", "data": image_base64}} 
+            ]
+        }
+    ]
+    payload = {
+        "contents": payload_contents,
+        "generationConfig": {
+            "temperature": 0.0, # 判斷任務，溫度設低以求穩定
+            "maxOutputTokens": 10 
+        },
+        # 安全設置可以考慮調整，但通常預設即可
+        # "safetySettings": [
+        #     {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
+        #     {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"},
+        #     {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_NONE"},
+        #     {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"}
+        # ]
+    }
+
+    try:
+        response = requests.post(gemini_url_with_key, headers=headers, json=payload, timeout=30) 
+        response.raise_for_status()
+        result = response.json()
+
+        if "candidates" in result and result["candidates"] and \
+           "content" in result["candidates"][0] and \
+           "parts" in result["candidates"][0]["content"] and \
+           result["candidates"][0]["content"]["parts"]:
+            gemini_answer = result["candidates"][0]["content"]["parts"][0]["text"].strip().upper()
+            logger.info(f"Gemini 圖片相關性判斷回應: '{gemini_answer}' (針對主題: '{chinese_theme}', 圖片: {image_url_for_log[:70]}...)")
+            if "YES" in gemini_answer: # 有時 Gemini 可能會返回 "YES."
+                return True
+            elif "NO" in gemini_answer:
+                return False
+            else:
+                logger.warning(f"Gemini 圖片相關性判斷回應非預期的 'YES' 或 'NO': '{gemini_answer}'. 預設為不相關。")
+                return False
+        else:
+            # 檢查是否有 blockReason
+            if result.get("promptFeedback", {}).get("blockReason"):
+                logger.error(f"Gemini 圖片相關性判斷被阻擋: {result['promptFeedback']['blockReason']}")
+            else:
+                logger.error(f"Gemini 圖片相關性判斷 API 回應格式異常: {result}")
+            return False
+    except requests.exceptions.Timeout:
+        logger.error(f"Gemini 圖片相關性判斷 API 請求超時 (主題: {chinese_theme})")
+        return False
+    except requests.exceptions.HTTPError as http_err:
+        logger.error(f"Gemini 圖片相關性判斷 API HTTP 錯誤 (主題: {chinese_theme}): {http_err} - {http_err.response.text if http_err.response else 'No response text'}")
+        return False
+    except Exception as e:
+        logger.error(f"Gemini 圖片相關性判斷時發生未知錯誤 (主題: {chinese_theme}): {e}", exc_info=True)
+        return False
+
+def fetch_cat_image_from_unsplash_sync(raw_theme_content: str, max_candidates_to_check: int = 3, unsplash_per_page: int = 5) -> tuple[str | None, str]:
+    """
+    從 Unsplash API 獲取與主題相關的圖片，並使用 Gemini 進行相關性驗證 (同步版本)。
+    返回 (圖片URL | None, 用於顯示的中文主題名稱)
+    """
+    if not UNSPLASH_ACCESS_KEY:
+        logger.warning("fetch_cat_image_from_unsplash_sync called but UNSPLASH_ACCESS_KEY is not set.")
+        display_theme_name_fallback = raw_theme_content.split('|', 1)[0].strip()
+        return None, display_theme_name_fallback
+
+    parts = raw_theme_content.split('|', 1)
+    display_theme_name = parts[0].strip() # 中文主題，用於 Gemini 判斷和用戶回饋
+    search_query_for_unsplash = ""
+
+    if len(parts) == 2 and parts[1].strip():
+        search_query_for_unsplash = parts[1].strip()
+        logger.info(f"使用標籤中提供的英文內容作為 Unsplash 搜尋詞: '{search_query_for_unsplash}' (中文主題: '{display_theme_name}')")
+    else:
+        logger.info(f"標籤中未提供英文搜尋詞，嘗試從中文主題 '{display_theme_name}' 翻譯並提取關鍵詞。")
+        # _translate_text_to_english_with_gemini_sync 返回 (完整翻譯, 關鍵詞組)
+        _, extracted_keywords = _translate_text_to_english_with_gemini_sync(display_theme_name)
+        if extracted_keywords:
+            search_query_for_unsplash = extracted_keywords
+            logger.info(f"從中文主題 '{display_theme_name}' 提取的 Unsplash 搜尋英文關鍵詞: '{search_query_for_unsplash}'")
+        else:
+            full_translation, _ = _translate_text_to_english_with_gemini_sync(display_theme_name)
+            if full_translation:
+                search_query_for_unsplash = full_translation
+                logger.warning(f"無法提取英文關鍵詞，將使用完整翻譯 '{full_translation}' 進行 Unsplash 搜尋。")
+            else:
+                search_query_for_unsplash = display_theme_name
+                logger.warning(f"無法翻譯或提取關鍵詞 '{display_theme_name}'，將使用原始中文進行 Unsplash 搜尋。")
+    
+    api_url_search = f"https://api.unsplash.com/search/photos"
+    params_search = {
+        "query": search_query_for_unsplash,
+        "page": 1,
+        "per_page": unsplash_per_page, 
+        "orientation": "landscape",
+        "client_id": UNSPLASH_ACCESS_KEY
+    }
+    
+    try:
+        headers = {'User-Agent': 'XiaoyunCatBot/1.0', "Accept-Version": "v1"}
+        response_search = requests.get(api_url_search, params=params_search, timeout=12, headers=headers)
+        response_search.raise_for_status()
+        data_search = response_search.json()
+
+        if data_search and data_search.get("results"):
+            checked_count = 0
+            for image_data in data_search["results"]:
+                if checked_count >= max_candidates_to_check:
+                    logger.info(f"已達到 Gemini 圖片檢查上限 ({max_candidates_to_check})。")
+                    break
+                
+                potential_image_url = image_data.get("urls", {}).get("regular")
+                if not potential_image_url:
+                    logger.warning(f"Unsplash 圖片數據中 'regular' URL 為空或不存在。ID: {image_data.get('id','N/A')}")
+                    continue
+
+                alt_description = image_data.get("alt_description", "N/A")
+                logger.info(f"從 Unsplash 獲取到待驗證圖片 URL: {potential_image_url} (Alt: {alt_description})")
+
+                try:
+                    image_response = requests.get(potential_image_url, timeout=10, stream=True)
+                    image_response.raise_for_status()
+                    
+                    content_length = image_response.headers.get('Content-Length')
+                    if content_length and int(content_length) > 4 * 1024 * 1024: # 4MB limit
+                        logger.warning(f"圖片 {potential_image_url} 過大 ({content_length} bytes)，跳過驗證。")
+                        continue
+
+                    image_bytes = image_response.content
+                    image_base64 = base64.b64encode(image_bytes).decode('utf-8')
+                    
+                    checked_count += 1
+                    is_relevant = _is_image_relevant_by_gemini_sync(image_base64, display_theme_name, potential_image_url)
+                    if is_relevant:
+                        logger.info(f"Gemini 認為圖片 {potential_image_url} 與主題 '{display_theme_name}' 相關。")
+                        return potential_image_url, display_theme_name
+                    else:
+                        logger.info(f"Gemini 認為圖片 {potential_image_url} 與主題 '{display_theme_name}' 不相關。")
+                except requests.exceptions.RequestException as img_req_err:
+                    logger.error(f"下載或處理 Unsplash 圖片 {potential_image_url} 失敗: {img_req_err}")
+                except Exception as img_err: 
+                    logger.error(f"處理 Unsplash 圖片 {potential_image_url} 時發生未知錯誤: {img_err}", exc_info=True)
+            
+            logger.warning(f"遍歷了 {len(data_search.get('results',[]))} 張 Unsplash 圖片（最多檢查 {max_candidates_to_check} 張），未找到 Gemini 認為相關的圖片。")
+        else:
+            logger.warning(f"Unsplash 搜尋 '{search_query_for_unsplash}' 無結果或格式錯誤。")
+            if data_search and data_search.get("errors"):
+                 logger.error(f"Unsplash API 錯誤 (搜尋: '{search_query_for_unsplash}'): {data_search['errors']}")
+        
+    except requests.exceptions.HTTPError as http_err:
+        logger.error(f"Unsplash API HTTP 錯誤 (搜尋: '{search_query_for_unsplash}'): {http_err}")
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Unsplash API 請求錯誤 (搜尋: '{search_query_for_unsplash}'): {e}")
+    except Exception as e:
+        logger.error(f"fetch_cat_image_from_unsplash_sync 發生未知錯誤 (搜尋: '{search_query_for_unsplash}'): {e}", exc_info=True)
+            
+    logger.warning(f"未能找到與主題 '{display_theme_name}' (搜尋詞: '{search_query_for_unsplash}') 高度相關的圖片。")
+    return None, display_theme_name
+
 def get_taiwan_time():
     utc_now = datetime.now(timezone.utc)
     taiwan_tz = timezone(timedelta(hours=8))
@@ -748,7 +935,6 @@ def _clean_trailing_symbols(text: str) -> str:
 def parse_response_and_send(gemini_json_string_response: str, reply_token: str):
     messages_to_send = []
     try:
-        # 移除 Gemini 可能添加的 markdown 代码块标记
         cleaned_json_string = gemini_json_string_response.strip()
         if cleaned_json_string.startswith("```json"):
             cleaned_json_string = cleaned_json_string[7:]
@@ -801,12 +987,13 @@ def parse_response_and_send(gemini_json_string_response: str, reply_token: str):
                 if media_counts["image"] < 1:
                     raw_theme = obj.get("theme")
                     if raw_theme:
-                        image_url, display_theme = fetch_cat_image_from_unsplash_sync_simplified(raw_theme)
+                        # 調用包含 Gemini 驗證的 fetch_cat_image_from_unsplash_sync
+                        image_url, display_theme = fetch_cat_image_from_unsplash_sync(raw_theme) 
                         if image_url:
                             final_message_object_list.append(ImageSendMessage(original_content_url=image_url, preview_image_url=image_url))
                             media_counts["image"] += 1
-                        else: # 即使找不到圖片，也發送一個文字消息說明
-                            final_message_object_list.append(TextSendMessage(text=_clean_trailing_symbols(f"（小雲努力想了想「{display_theme}」的樣子，但好像看不清楚耶...）")))
+                        else: 
+                            final_message_object_list.append(TextSendMessage(text=_clean_trailing_symbols(f"（小雲努力想了想「{display_theme}」的樣子，但好像看得不是很清楚耶...）")))
                     else: logger.warning("image_theme 物件缺少 'theme'。")
                 else: logger.warning("已達到圖片數量上限 (1)，忽略此圖片請求。")
             
@@ -841,7 +1028,7 @@ def parse_response_and_send(gemini_json_string_response: str, reply_token: str):
             else:
                 logger.warning(f"未知的訊息物件類型: {msg_type}")
         
-        messages_to_send = final_message_object_list[:5] # 再次確保最終不超過5則
+        messages_to_send = final_message_object_list[:5] 
 
         if not messages_to_send:
              logger.warning("經JSON解析後無有效訊息可發送。")
