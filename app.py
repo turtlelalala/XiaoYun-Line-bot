@@ -72,7 +72,7 @@ MEOW_SOUNDS_MAP = {
     "lonely_cry_short": {"file": "lonely_cry_short.m4a", "duration": 3827},
     "loud_cat_purring": {"file": "loud_cat_purring.m4a", "duration": 7919},
     "pathetic_cat_screaming": {"file": "pathetic_cat_screaming.m4a", "duration": 2842},
-    "playful_trill": {"file": "playful_trill.m4a", "duration": 17003}, # Corrected from playful_thill
+    "playful_trill": {"file": "playful_trill.m4a", "duration": 17003}, 
     "questioning_meow_upward": {"file": "questioning_meow_upward.m4a", "duration": 632},
     "sad_mewl_short": {"file": "sad_mewl_short.m4a", "duration": 1625},
     "sad_whimper_soft": {"file": "sad_whimper_soft.m4a", "duration": 8837},
@@ -89,7 +89,7 @@ EXAMPLE_IMAGE_URLS = {
     "playful_cat": "https://i.imgur.com/Optional.jpeg",
     "sleepy_cat": "https://i.imgur.com/Qh6XtN8.jpeg",   
     "food_excited": "https://i.imgur.com/JrHNU5j.jpeg",
-    "tuxedo_cat_default": "https://i.imgur.com/sLXaB0k.jpeg" # Default Tuxedo cat image
+    "tuxedo_cat_default": "https://i.imgur.com/sLXaB0k.jpeg" 
 }
 
 # ----- BEGIN COMPLETE XIAOYUN_ROLE_PROMPT (WITH YOUR DETAILS + MY IMAGE RULE MODIFICATIONS) -----
@@ -123,7 +123,7 @@ XIAOYUN_ROLE_PROMPT = """
 性格:
 溫和有禮貌，但極度怕生害羞 (內向慢熱型):
 對於不熟悉的人、事、物或環境，會立刻進入高度警戒狀態，可能會迅速躲到他認為安全的地方（如床底下、櫃子深處、他專屬的小被被裡），只露出一雙眼睛偷偷觀察。
-需要非常長的時間和耐心才能逐漸卸下心防，對陌生人的觸碰非常抗拒。
+需要非常長の時間和耐心才能逐漸卸下心防，對陌生人的觸碰非常抗拒。
 即便在家裡，有陌生訪客時，他也多半會選擇「隱身」。
 惹人喜愛的靦腆小紳士: 儘管小雲天性害羞，不擅長主動社交，但他那乾淨漂亮的毛色、圓滾滾的綠眼睛，以及偶爾從藏身處投來的、帶著一絲好奇與膽怯的目光，總能輕易地吸引人們的注意與喜愛。許多鄰居和認識他的朋友（無論年長或年幼），都會被他這種安靜乖巧又帶著點神秘感的特質所打動，在心裡默默地疼愛這隻靦腆的小貓咪。他不是那種熱情奔放的萬人迷，但他的存在本身就帶有一種讓人想溫柔對待、不由自主被吸引的獨特魅力。
 不張揚的小小自信: 在自己熟悉且感到安全的領域，例如享用美味的罐罐時發出的滿足呼嚕聲，或是在追逐他最愛的白色小球時展現出的專注與矯健身手，小雲會不經意間流露出自然的篤定與滿足。這是一種源於貓咪本能的、不假外求的小小自信。他知道自己喜歡什麼、擅長什麼（比如找到最舒服的午睡地點，或是精準地撥動小球），雖然這份自信從不張揚，也通常只在信任的家人面前展現，卻讓他更添一份可愛而堅定的內在力量。
@@ -321,14 +321,12 @@ XIAOYUN_ROLE_PROMPT = """
 # ----- END MODIFIED XIAOYUN_ROLE_PROMPT -----
 
 
-# --- 輔助函數 ---
-# (Helper functions: get_taiwan_time, get_time_based_cat_context, 
-#  get_conversation_history, add_to_conversation, get_image_from_line, 
-#  get_audio_content_from_line, get_sticker_image_from_cdn, 
-#  get_sticker_emotion, select_sticker_by_keyword, parse_response_and_send,
-#  handle_cat_secret_discovery_request
-#  should be placed here, before they are called by the route handlers)
+# (The rest of the code, including helper functions and Flask routes, 
+#  is assumed to be the same as the version you last provided that was working,
+#  before the NameError for get_conversation_history occurred.
+#  Please ensure all those functions are correctly placed and defined.)
 
+# --- 輔助函數 ---
 def get_taiwan_time():
     utc_now = datetime.now(timezone.utc)
     taiwan_tz = timezone(timedelta(hours=8))
