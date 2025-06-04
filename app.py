@@ -559,36 +559,95 @@ def _is_image_relevant_by_gemini_sync(image_base64: str, chinese_theme: str, ima
         logger.error(f"Gemini 圖片相關性判斷時發生未知錯誤 (主題: {chinese_theme}): {e}", exc_info=True)
         return False
 
-def _translate_text_to_english_with_gemini_sync(text_to_translate: str) -> str | None:
-    if not text_to_translate: return None
-    if not re.search(r'[\u4e00-\u9fff\u3040-\u30ff]', text_to_translate):
-        logger.info(f"文字 '{text_to_translate}' 看起來已是英文，跳過翻譯。")
-        return text_to_translate
-    logger.info(f"嘗試將文字翻譯成英文: '{text_to_translate}'")
-    translate_prompt = f"Please translate the following text accurately into English. Output only the English translation, with no other surrounding text or explanations. Text to translate: \"{text_to_translate}\""
-    headers = {"Content-Type": "application/json"}
-    # 使用與主聊天相同的模型和端點進行翻譯，除非有專門的翻譯模型
-    translate_api_url = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL_NAME}:generateContent"
-    gemini_url_with_key = f"{translate_api_url}?key={GEMINI_API_KEY}"
+def _translate_text_to_english_with_gemini_sync(text_to_translate: str) -> tuple[str | None, str | None]:
+    """
+    使用 Gemini API 將文字翻譯成英文，並提取簡短的英文搜尋關鍵詞 (同步版本)。
+    返回 (完整英文翻譯 | None, 簡短英文搜尋詞 | None)
+    """
+    if not text_to_translate:
+        return None, None
+    
+    is_already_english_like = not re.search(r'[\u4e00-\u9fff\u3040-\u30ff]', text_to_translate)
 
+    # Prompt 要求兩部分：完整翻譯 和 簡短搜尋詞
+    # 使用分隔符來幫助解析 Gemini 的回應
+    TRANSLATION_SEPARATOR = "###SEARCH_KEYWORDS###"
+    translate_prompt_parts = [
+        f"You are an AI assistant. Your task is to process the following text (which is in Chinese): \"{text_to_translate}\"",
+        "1. Provide an accurate, natural-sounding English translation of the text.",
+        "2. After the translation, provide a short (2-5 words) comma-separated list of English keywords suitable for an image search (like on Unsplash) that captures the main essence of the text. Focus on concrete objects, scenes, and atmosphere.",
+        f"Separate the full translation and the search keywords with the exact separator: {TRANSLATION_SEPARATOR}",
+        "Example:",
+        f"Input text: \"窗戶外的雨景，路燈模糊的光暈和濕漉漉的柏油路\"",
+        f"Expected Output: Rainy scene outside the window, blurred halo of streetlights and wet asphalt{TRANSLATION_SEPARATOR}rain, window, street, night, wet asphalt",
+        f"Input text: \"一隻停在窗台上的小鳥\"",
+        f"Expected Output: A small bird perched on a windowsill{TRANSLATION_SEPARATOR}small bird, windowsill, looking out",
+        f"Input text: \"陽光灑在柔軟沙發上\"",
+        f"Expected Output: Sunlight falling on a soft sofa{TRANSLATION_SEPARATOR}sunlight, sofa, cozy, indoor, soft",
+    ]
+    if is_already_english_like:
+        logger.info(f"文字 '{text_to_translate}' 看起來已是英文，僅提取關鍵詞。")
+        translate_prompt_parts = [
+            f"The following text is already in English: \"{text_to_translate}\"",
+            "Provide a short (2-5 words) comma-separated list of English keywords suitable for an image search (like on Unsplash) that captures the main essence of the text. Focus on concrete objects, scenes, and atmosphere.",
+            f"Output format: {text_to_translate}{TRANSLATION_SEPARATOR}keyword1, keyword2, keyword3", # 保持原文作為“翻譯”部分
+            "Example:",
+            f"Input text: \"Cozy cat napping on a sunlit windowsill\"",
+            f"Expected Output: Cozy cat napping on a sunlit windowsill{TRANSLATION_SEPARATOR}cat, napping, windowsill, sunlit, cozy"
+        ]
+
+    translate_prompt = "\n".join(translate_prompt_parts)
+    
+    logger.info(f"嘗試翻譯並提取關鍵詞: '{text_to_translate}'")
+    headers = {"Content-Type": "application/json"}
+    gemini_api_url = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL_NAME}:generateContent" # Use the main model
+    gemini_url_with_key = f"{gemini_api_url}?key={GEMINI_API_KEY}"
+    
     payload_contents = [{"role": "user", "parts": [{"text": translate_prompt}]}]
-    payload = {"contents": payload_contents, "generationConfig": {"temperature": 0.2, "maxOutputTokens": 150}}
+    payload = {
+        "contents": payload_contents,
+        "generationConfig": {
+            "temperature": 0.3, # 稍高一點的溫度以鼓勵多樣的關鍵詞，但仍偏向準確翻譯
+            "maxOutputTokens": 200 
+        }
+    }
+    
     try:
-        response = requests.post(gemini_url_with_key, headers=headers, json=payload, timeout=15)
+        response = requests.post(gemini_url_with_key, headers=headers, json=payload, timeout=20)
         response.raise_for_status()
         result = response.json()
-        if "candidates" in result and result["candidates"] and "content" in result["candidates"][0] and "parts" in result["candidates"][0]["content"] and result["candidates"][0]["content"]["parts"]:
-            translated_text = result["candidates"][0]["content"]["parts"][0]["text"].strip()
-            if translated_text.startswith('"') and translated_text.endswith('"'): translated_text = translated_text[1:-1]
-            if translated_text.startswith("'") and translated_text.endswith("'"): translated_text = translated_text[1:-1]
-            logger.info(f"成功翻譯 '{text_to_translate}' -> '{translated_text}'")
-            return translated_text
+        
+        if "candidates" in result and result["candidates"] and \
+           "content" in result["candidates"][0] and \
+           "parts" in result["candidates"][0]["content"] and \
+           result["candidates"][0]["content"]["parts"]:
+            full_response_text = result["candidates"][0]["content"]["parts"][0]["text"].strip()
+            
+            if TRANSLATION_SEPARATOR in full_response_text:
+                translation_part, keywords_part = full_response_text.split(TRANSLATION_SEPARATOR, 1)
+                translation_part = translation_part.strip()
+                keywords_part = keywords_part.strip()
+                
+                # 清理可能的引號
+                if translation_part.startswith('"') and translation_part.endswith('"'): translation_part = translation_part[1:-1]
+                if translation_part.startswith("'") and translation_part.endswith("'"): translation_part = translation_part[1:-1]
+
+                logger.info(f"成功處理: 原文='{text_to_translate}', 翻譯='{translation_part}', 關鍵詞='{keywords_part}'")
+                return translation_part, keywords_part
+            else:
+                logger.warning(f"Gemini 回應中未找到分隔符 '{TRANSLATION_SEPARATOR}'. 回應: '{full_response_text}'. 將整個回應視為翻譯。")
+                # 如果沒有分隔符，嘗試將整個回應作為翻譯，關鍵詞設為None或從翻譯中提取
+                # 這裡簡化處理，只返回翻譯
+                return full_response_text, None # 或者嘗試從 full_response_text 中提取關鍵詞
         else:
-            logger.error(f"Gemini 翻譯 API 回應格式異常: {result}")
-            return None
+            logger.error(f"Gemini 翻譯/關鍵詞提取 API 回應格式異常: {result}")
+            return None, None
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Gemini 翻譯/關鍵詞提取 API 請求錯誤: {e}")
+        return None, None
     except Exception as e:
-        logger.error(f"Gemini 翻譯時發生錯誤: {e}")
-        return None
+        logger.error(f"Gemini 翻譯/關鍵詞提取時發生未知錯誤: {e}", exc_info=True)
+        return None, None
 
 def fetch_cat_image_from_unsplash_sync(raw_theme_content: str, max_candidates_to_check: int = 3, unsplash_per_page: int = 5) -> tuple[str | None, str]:
     if not UNSPLASH_ACCESS_KEY:
@@ -597,27 +656,28 @@ def fetch_cat_image_from_unsplash_sync(raw_theme_content: str, max_candidates_to
         return None, display_theme_name_fallback
 
     parts = raw_theme_content.split('|', 1)
-    display_theme_name = parts[0].strip()
-    search_query_for_unsplash = ""
+    display_theme_name = parts[0].strip() # 始終是中文主題，用於Gemini判斷和用戶回饋
+    english_keywords_for_search = None
 
     if len(parts) == 2 and parts[1].strip():
-        search_query_for_unsplash = parts[1].strip()
-        logger.info(f"使用標籤中提供的英文主題進行 Unsplash 搜尋: '{search_query_for_unsplash}' (原文: '{display_theme_name}')")
+        # 如果用戶直接提供了英文主題，我們將其視為優化的搜尋詞
+        english_keywords_for_search = parts[1].strip()
+        logger.info(f"使用標籤中提供的英文內容作為 Unsplash 搜尋詞: '{english_keywords_for_search}' (中文主題: '{display_theme_name}')")
     else:
-        logger.info(f"標籤中未提供英文主題，嘗試翻譯中文主題: '{display_theme_name}'")
-        english_translation = _translate_text_to_english_with_gemini_sync(display_theme_name)
-        if english_translation and english_translation.lower() != display_theme_name.lower():
-            search_query_for_unsplash = english_translation
-            logger.info(f"中文主題 '{display_theme_name}' 成功翻譯為英文: '{search_query_for_unsplash}'，用於 Unsplash 搜尋。")
+        logger.info(f"標籤中未提供英文搜尋詞，嘗試從中文主題 '{display_theme_name}' 翻譯並提取關鍵詞。")
+        _, extracted_keywords = _translate_text_to_english_with_gemini_sync(display_theme_name)
+        if extracted_keywords:
+            english_keywords_for_search = extracted_keywords
+            logger.info(f"從中文主題 '{display_theme_name}' 提取的 Unsplash 搜尋英文關鍵詞: '{english_keywords_for_search}'")
         else:
-            search_query_for_unsplash = display_theme_name
-            logger.warning(f"無法翻譯中文主題 '{display_theme_name}' 或翻譯結果與原文相同，將使用原始中文主題 '{display_theme_name}' 進行 Unsplash 搜尋。")
+            english_keywords_for_search = display_theme_name # 回退到使用原始中文（可能效果不佳）
+            logger.warning(f"無法從 '{display_theme_name}' 提取英文關鍵詞，將嘗試使用原始中文進行 Unsplash 搜尋。")
 
     api_url_search = f"https://api.unsplash.com/search/photos"
     params_search = {
-        "query": search_query_for_unsplash,
+        "query": english_keywords_for_search, # 使用提取或提供的關鍵詞
         "page": 1,
-        "per_page": unsplash_per_page, # 從 Unsplash 一次獲取多一點候選
+        "per_page": unsplash_per_page,
         "orientation": "landscape",
         "client_id": UNSPLASH_ACCESS_KEY
     }
@@ -636,17 +696,20 @@ def fetch_cat_image_from_unsplash_sync(raw_theme_content: str, max_candidates_to
                     break
                 
                 if image_data.get("urls") and image_data["urls"].get("regular"):
-                    potential_image_url = image_data["urls"]["regular"]
-                    alt_description = image_data.get("alt_description", "N/A") # 用於日誌
+                    potential_image_url = image_data["urls"].get("regular") # 使用 .get() 更安全
+                    if not potential_image_url:
+                        logger.warning(f"Unsplash 圖片數據中 'regular' URL 為空或不存在。ID: {image_data.get('id','N/A')}")
+                        continue
+
+                    alt_description = image_data.get("alt_description", "N/A")
                     logger.info(f"從 Unsplash 獲取到待驗證圖片 URL: {potential_image_url} (Alt: {alt_description})")
 
                     try:
-                        image_response = requests.get(potential_image_url, timeout=10, stream=True) # stream=True for large images
+                        image_response = requests.get(potential_image_url, timeout=10, stream=True)
                         image_response.raise_for_status()
                         
-                        # 檢查圖片大小，避免下載過大的圖片進行 base64 編碼
                         content_length = image_response.headers.get('Content-Length')
-                        if content_length and int(content_length) > 4 * 1024 * 1024: # 例如，限制4MB
+                        if content_length and int(content_length) > 4 * 1024 * 1024: # 4MB limit
                             logger.warning(f"圖片 {potential_image_url} 過大 ({content_length} bytes)，跳過驗證。")
                             continue
 
@@ -654,34 +717,36 @@ def fetch_cat_image_from_unsplash_sync(raw_theme_content: str, max_candidates_to
                         image_base64 = base64.b64encode(image_bytes).decode('utf-8')
                         
                         checked_count += 1
+                        # **傳遞 display_theme_name (中文) 給 Gemini 進行判斷**
                         is_relevant = _is_image_relevant_by_gemini_sync(image_base64, display_theme_name, potential_image_url)
                         if is_relevant:
                             logger.info(f"Gemini 認為圖片 {potential_image_url} 與主題 '{display_theme_name}' 相關。")
                             return potential_image_url, display_theme_name
                         else:
                             logger.info(f"Gemini 認為圖片 {potential_image_url} 與主題 '{display_theme_name}' 不相關。")
+                    # ... (錯誤處理保持不變) ...
                     except requests.exceptions.RequestException as img_req_err:
                         logger.error(f"下載或處理 Unsplash 圖片 {potential_image_url} 失敗: {img_req_err}")
-                    except Exception as img_err: # 更廣泛的錯誤捕獲
+                    except Exception as img_err: 
                         logger.error(f"處理 Unsplash 圖片 {potential_image_url} 時發生未知錯誤: {img_err}", exc_info=True)
-                else: # image_data 中沒有 urls 或 regular url
+                else:
                     logger.warning(f"Unsplash 返回的圖片數據不完整: {image_data.get('id', 'Unknown ID')}")
             
             logger.warning(f"遍歷了 {len(data_search.get('results',[]))} 張 Unsplash 圖片（最多檢查 {max_candidates_to_check} 張），未找到 Gemini 認為相關的圖片。")
-
+        # ... (其餘錯誤處理保持不變) ...
         else:
-            logger.warning(f"Unsplash 搜尋 '{search_query_for_unsplash}' 無結果或格式錯誤。")
+            logger.warning(f"Unsplash 搜尋 '{english_keywords_for_search}' 無結果或格式錯誤。")
             if data_search and data_search.get("errors"):
-                 logger.error(f"Unsplash API 錯誤 (搜尋: '{search_query_for_unsplash}'): {data_search['errors']}")
+                 logger.error(f"Unsplash API 錯誤 (搜尋: '{english_keywords_for_search}'): {data_search['errors']}")
         
     except requests.exceptions.HTTPError as http_err:
-        logger.error(f"Unsplash API HTTP 錯誤 (搜尋: '{search_query_for_unsplash}'): {http_err}")
+        logger.error(f"Unsplash API HTTP 錯誤 (搜尋: '{english_keywords_for_search}'): {http_err}")
     except requests.exceptions.RequestException as e:
-        logger.error(f"Unsplash API 請求錯誤 (搜尋: '{search_query_for_unsplash}'): {e}")
+        logger.error(f"Unsplash API 請求錯誤 (搜尋: '{english_keywords_for_search}'): {e}")
     except Exception as e:
-        logger.error(f"fetch_cat_image_from_unsplash_sync 發生未知錯誤 (搜尋: '{search_query_for_unsplash}'): {e}", exc_info=True)
+        logger.error(f"fetch_cat_image_from_unsplash_sync 發生未知錯誤 (搜尋: '{english_keywords_for_search}'): {e}", exc_info=True)
             
-    logger.warning(f"未能找到與主題 '{display_theme_name}' (搜尋詞: '{search_query_for_unsplash}') 高度相關的圖片。")
+    logger.warning(f"未能找到與主題 '{display_theme_name}' (搜尋詞: '{english_keywords_for_search}') 高度相關的圖片。")
     return None, display_theme_name
 
 # ... (get_taiwan_time, get_time_based_cat_context, get_conversation_history, add_to_conversation, get_image_from_line, get_audio_content_from_line, get_sticker_image_from_cdn, get_sticker_emotion, select_sticker_by_keyword, _clean_trailing_symbols 函數保持不變) ...
