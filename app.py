@@ -915,7 +915,7 @@ def handle_cat_secret_discovery_request(event):
                         has_image_theme = any(isinstance(item, dict) and item.get("type") == "image_theme" for item in parsed_secret_list)
                         if not has_image_theme:
                             logger.warning(f"Gemini 生成的秘密JSON缺少 image_theme，將嘗試追加。原始: {gemini_response_json_str}")
-                            new_image_obj = {"type": "image_theme", "theme": "an interesting little discovery from a cat's view"} 
+                            new_image_obj = {"type": "image_theme", "theme": "cat secret discovery"} # 或者更簡短的，如 "small secret" 
                             if len(parsed_secret_list) < 5:
                                 insert_pos = 1 if parsed_secret_list and parsed_secret_list[0].get("type") == "text" else 0
                                 parsed_secret_list.insert(insert_pos, new_image_obj)
@@ -926,7 +926,7 @@ def handle_cat_secret_discovery_request(event):
                             for item_idx, item in enumerate(parsed_secret_list): # Iterate with index
                                 if isinstance(item, dict) and item.get("type") == "image_theme" and (not item.get("theme") or not str(item.get("theme")).strip()):
                                     logger.warning(f"Gemini 生成的 image_theme (索引 {item_idx}) 缺少有效 theme，修正。原始: {item}")
-                                    item["theme"] = "a mysterious and curious cat's discovery" # Corrected theme
+                                    item["theme"] = "mysterious cat find"
                             gemini_response_json_str = json.dumps(parsed_secret_list, ensure_ascii=False) # Re-serialize if modified
                     else: 
                          logger.error(f"Gemini 生成的秘密JSON不是列表格式: {parsed_secret_list}")
