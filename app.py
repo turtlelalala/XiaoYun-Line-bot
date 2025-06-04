@@ -57,7 +57,7 @@ MEOW_SOUNDS_MAP = {
     "affectionate_meow_gentle": {"file": "affectionate_meow_gentle.m4a", "duration": 1265},
     "affectionate_rub_purr": {"file": "affectionate_rub_purr.m4a", "duration": 808},
     "aggressive_spit": {"file": "aggressive_spit.m4a", "duration": 23764},
-    "angry_hiss_long": {"file": "angry_hiss_long.m4a", "duration": XXXX},
+    "angry_hiss_long": {"file": "angry_hiss_long.m4a", "duration": 21419},
     "angry_hiss_short": {"file": "angry_hiss_short.m4a", "duration": 1991},
     "annoyed_cat_meow": {"file": "annoyed_cat_meow.m4a", "duration": 1012},
     "attention_meow_insistent": {"file": "attention_meow_insistent.m4a", "duration": 2194},
@@ -79,7 +79,7 @@ MEOW_SOUNDS_MAP = {
     "questioning_meow_upward": {"file": "questioning_meow_upward.m4a", "duration": 632},
     "sad_mewl_short": {"file": "sad_mewl_short.m4a", "duration": 1625}, # 您的檔名是 sad_mewl_short.m4a
     "sad_whimper_soft": {"file": "sad_whimper_soft.m4a", "duration": 8837},
-    "scared_yowl_sharp_long": {"file": "scared_yowl_sharp_long.m4a", "duration": XXXX}, # 您的檔名
+    "scared_yowl_sharp_long": {"file": "scared_yowl_sharp_long.m4a", "duration": 10646}, # 您的檔名
     "sleepy_yawn": {"file": "sleepy_yawn.m4a", "duration": 604},
     "soliciting_meow_highpitch": {"file": "soliciting_meow_highpitch.m4a", "duration": 685},
     "soliciting_meow_sweet": {"file": "soliciting_meow_sweet.m4a", "duration": 1326},
