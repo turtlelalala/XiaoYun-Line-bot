@@ -75,7 +75,7 @@ MEOW_SOUNDS_MAP = {
     "lonely_cry_short": {"file": "lonely_cry_short.m4a", "duration": 3827},
     "loud_cat_purring": {"file": "loud_cat_purring.m4a", "duration": 7919},
     "pathetic_cat_screaming": {"file": "pathetic_cat_screaming.m4a", "duration": 2842},
-    "playful_thill": {"file": "playful_trill.m4a", "duration": 17003},
+    "playful_thill": {"file": "playful_trill.m4a", "duration": 17003}, # Note: "playful_trill.m4a" (typo in original was thill)
     "questioning_meow_upward": {"file": "questioning_meow_upward.m4a", "duration": 632},
     "sad_mewl_short": {"file": "sad_mewl_short.m4a", "duration": 1625},
     "sad_whimper_soft": {"file": "sad_whimper_soft.m4a", "duration": 8837},
@@ -146,8 +146,49 @@ def save_sticker_config(config):
     except Exception as e: logger.error(f"儲存 sticker_config.yaml 失敗: {e}")
 
 def create_default_sticker_config():
-    default_xiaoyun_stickers = {"開心": [{"package_id": "11537", "sticker_id": "52002745"}, {"package_id": "789", "sticker_id": "10857"}], "害羞": [{"package_id": "11537", "sticker_id": "52002747"}], "愛心": [{"package_id": "6362", "sticker_id": "11087934"}], "生氣": [{"package_id": "11537", "sticker_id": "52002772"}], "哭哭": [{"package_id": "11537", "sticker_id": "52002750"}], "驚訝": [{"package_id": "11537", "sticker_id": "52002749"}], "思考": [{"package_id": "8525", "sticker_id": "16581306"}], "睡覺": [{"package_id": "11537", "sticker_id": "52002761"}], "無奈": [{"package_id": "789", "sticker_id": "10881"}], "打招呼": [{"package_id": "789", "sticker_id": "10855"}], "讚": [{"package_id": "6362", "sticker_id": "11087920"}], "調皮": [{"package_id": "11537", "sticker_id": "52002758"}], "淡定": [{"package_id": "11537", "sticker_id": "52002746"}], "肚子餓": [{"package_id": "6362", "sticker_id": "11087922"}], "好奇": [{"package_id": "11537", "sticker_id": "52002744"}],}
-    detailed_sticker_triggers = {"OK": [{"package_id": "6362", "sticker_id": "11087920"}, {"package_id": "8525", "sticker_id": "16581290"}, {"package_id": "11537", "sticker_id": "52002740"}, {"package_id": "789", "sticker_id": "10858"}], "好的": [{"package_id": "6362", "sticker_id": "11087920"}, {"package_id": "8525", "sticker_id": "16581290"}, {"package_id": "789", "sticker_id": "10858"}], "開動啦": [{"package_id": "6362", "sticker_id": "11087922"}], "好累啊": [{"package_id": "6362", "sticker_id": "11087923"}], "謝謝": [{"package_id": "6362", "sticker_id": "11087928"}, {"package_id": "8525", "sticker_id": "16581291"}], "謝謝你": [{"package_id": "8525", "sticker_id": "16581291"}], "感激不盡": [{"package_id": "6362", "sticker_id": "11087928"}], "麻煩你了": [{"package_id": "6362", "sticker_id": "11087931"}, {"package_id": "8525", "sticker_id": "16581307"}], "加油": [{"package_id": "6362", "sticker_id": "11087933"}, {"package_id": "6362", "sticker_id": "11087942"}, {"package_id": "8525", "sticker_id": "16581313"}], "我愛你": [{"package_id": "6362", "sticker_id": "11087934"}, {"package_id": "8525", "sticker_id": "16581301"}], "晚安": [{"package_id": "6362", "sticker_id": "11087943"}, {"package_id": "8525", "sticker_id": "16581309"}, {"package_id": "789", "sticker_id": "10862"}], "鞠躬": [{"package_id": "11537", "sticker_id": "52002739"}, {"package_id": "6136", "sticker_id": "10551380"}], "慶祝": [{"package_id": "6362", "sticker_id": "11087940"}, {"package_id": "11537", "sticker_id": "52002734"}], "好期待": [{"package_id": "8525", "sticker_id": "16581299"}], "辛苦了": [{"package_id": "8525", "sticker_id": "16581300"}], "對不起": [{"package_id": "8525", "sticker_id": "16581298"}], "磕頭道歉": [{"package_id": "6136", "sticker_id": "10551376"}], "拜託": [{"package_id": "11537", "sticker_id": "52002770"}, {"package_id": "6136", "sticker_id": "10551389"}, {"package_id": "8525", "sticker_id": "16581305"}], "確認一下": [{"package_id": "8525", "sticker_id": "16581297"}], "原來如此": [{"package_id": "8525", "sticker_id": "16581304"}], "慌張": [{"package_id": "8525", "sticker_id": "16581311"} , {"package_id": "11537", "sticker_id": "52002756"}], "錢錢": [{"package_id": "11537", "sticker_id": "52002759"}], "NO": [{"package_id": "11537", "sticker_id": "52002760"}, {"package_id": "789", "sticker_id": "10860"}, {"package_id": "789", "sticker_id": "10882"}],}
+    default_xiaoyun_stickers = {
+        "開心": [{"package_id": "11537", "sticker_id": "52002745"}, {"package_id": "789", "sticker_id": "10857"}],
+        "害羞": [{"package_id": "11537", "sticker_id": "52002747"}],
+        "愛心": [{"package_id": "6362", "sticker_id": "11087934"}],
+        "生氣": [{"package_id": "11537", "sticker_id": "52002772"}],
+        "哭哭": [{"package_id": "11537", "sticker_id": "52002750"}],
+        "驚訝": [{"package_id": "11537", "sticker_id": "52002749"}],
+        "思考": [{"package_id": "8525", "sticker_id": "16581306"}],
+        "睡覺": [{"package_id": "11537", "sticker_id": "52002761"}],
+        "無奈": [{"package_id": "789", "sticker_id": "10881"}],
+        "打招呼": [{"package_id": "789", "sticker_id": "10855"}],
+        "讚": [{"package_id": "6362", "sticker_id": "11087920"}],
+        "調皮": [{"package_id": "11537", "sticker_id": "52002758"}],
+        "淡定": [{"package_id": "11537", "sticker_id": "52002746"}],
+        "肚子餓": [{"package_id": "6362", "sticker_id": "11087922"}],
+        "好奇": [{"package_id": "11537", "sticker_id": "52002744"}],
+        "期待": [{"package_id": "8525", "sticker_id": "16581299"}] # MODIFIED: Added "期待" sticker
+    }
+    detailed_sticker_triggers = {
+        "OK": [{"package_id": "6362", "sticker_id": "11087920"}, {"package_id": "8525", "sticker_id": "16581290"}, {"package_id": "11537", "sticker_id": "52002740"}, {"package_id": "789", "sticker_id": "10858"}],
+        "好的": [{"package_id": "6362", "sticker_id": "11087920"}, {"package_id": "8525", "sticker_id": "16581290"}, {"package_id": "789", "sticker_id": "10858"}],
+        "開動啦": [{"package_id": "6362", "sticker_id": "11087922"}],
+        "好累啊": [{"package_id": "6362", "sticker_id": "11087923"}],
+        "謝謝": [{"package_id": "6362", "sticker_id": "11087928"}, {"package_id": "8525", "sticker_id": "16581291"}],
+        "謝謝你": [{"package_id": "8525", "sticker_id": "16581291"}],
+        "感激不盡": [{"package_id": "6362", "sticker_id": "11087928"}],
+        "麻煩你了": [{"package_id": "6362", "sticker_id": "11087931"}, {"package_id": "8525", "sticker_id": "16581307"}],
+        "加油": [{"package_id": "6362", "sticker_id": "11087933"}, {"package_id": "6362", "sticker_id": "11087942"}, {"package_id": "8525", "sticker_id": "16581313"}],
+        "我愛你": [{"package_id": "6362", "sticker_id": "11087934"}, {"package_id": "8525", "sticker_id": "16581301"}],
+        "晚安": [{"package_id": "6362", "sticker_id": "11087943"}, {"package_id": "8525", "sticker_id": "16581309"}, {"package_id": "789", "sticker_id": "10862"}],
+        "鞠躬": [{"package_id": "11537", "sticker_id": "52002739"}, {"package_id": "6136", "sticker_id": "10551380"}],
+        "慶祝": [{"package_id": "6362", "sticker_id": "11087940"}, {"package_id": "11537", "sticker_id": "52002734"}],
+        "好期待": [{"package_id": "8525", "sticker_id": "16581299"}],
+        "辛苦了": [{"package_id": "8525", "sticker_id": "16581300"}],
+        "對不起": [{"package_id": "8525", "sticker_id": "16581298"}],
+        "磕頭道歉": [{"package_id": "6136", "sticker_id": "10551376"}],
+        "拜託": [{"package_id": "11537", "sticker_id": "52002770"}, {"package_id": "6136", "sticker_id": "10551389"}, {"package_id": "8525", "sticker_id": "16581305"}],
+        "確認一下": [{"package_id": "8525", "sticker_id": "16581297"}],
+        "原來如此": [{"package_id": "8525", "sticker_id": "16581304"}],
+        "慌張": [{"package_id": "8525", "sticker_id": "16581311"} , {"package_id": "11537", "sticker_id": "52002756"}],
+        "錢錢": [{"package_id": "11537", "sticker_id": "52002759"}],
+        "NO": [{"package_id": "11537", "sticker_id": "52002760"}, {"package_id": "789", "sticker_id": "10860"}, {"package_id": "789", "sticker_id": "10882"}],
+    }
     sticker_emotion_map_for_user_stickers = {"11087920":"OK，好的","11087921":"為什麼不回訊息","11087922":"開動啦","11087923":"好累啊","11087924":"好溫暖喔，喜愛熱食物","11087925":"哈囉哈囉，打電話","11087926":"泡湯","11087927":"打勾勾，約定","11087928":"謝謝，感激不盡","11087929":"了解","11087930":"休息一下吧","11087931":"麻煩你了","11087932":"做飯","11087933":"加油加油，吶喊加油","11087934":"我愛你","11087935":"親親","11087936":"發現","11087937":"不哭，乖乖","11087938":"壓迫感","11087939":"偷看，好奇","11087940":"慶祝","11087941":"撓痒癢","11087942":"啦啦隊，加油","11087943":"晚安囉","16581290":"OK啦！，可以，好的","16581291":"謝謝你！","16581292":"你是我的救星！","16581293":"好喔～！","16581294":"你覺得如何呢？","16581295":"沒問題！！","16581296":"請多指教","16581297":"我確認一下喔！","16581298":"對不起","16581299":"好期待","16581300":"辛苦了","16581301":"喜歡，愛你","16581302":"超厲害的啦！","16581303":"超開心！","16581304":"原來如此！","16581305":"萬事拜託了","16581306":"思考","16581307":"麻煩你了","16581308":"早安！","16581309":"晚安","16581310":"哭哭","16581311":"慌張","16581312":"謝謝招待","16581313":"加油喔！","52002734":"慶祝","52002735":"好棒","52002736":"撒嬌，愛你","52002737":"親親，接吻","52002738":"在嗎","52002739":"鞠躬","52002740":"OK，沒問題","52002741":"來了","52002742":"發送親親","52002743":"接收親親","52002744":"疑惑","52002745":"好開心","52002746":"發呆","52002747":"害羞","52002748":"開心音樂","52002749":"驚訝","52002750":"哭哭，悲傷","52002751":"獨自難過","52002752":"好厲害，拍手","52002753":"睡不著，熬夜","52002754":"無言","52002755":"求求你","52002756":"怎麼辦，慌張","52002757":"靈魂出竅","52002758":"扮鬼臉","52002759":"錢錢","52002760":"NO，不要，不是","52002761":"睡覺，累","52002762":"看戲","52002763":"挑釁","52002764":"睡不醒","52002765":"完蛋了","52002766":"石化","52002767":"怒氣衝衝","52002768":"賣萌","52002769":"別惹我","52002770":"拜託","52002771":"再見","52002772":"生氣","52002773":"你完了","10855":"打招呼","10856":"喜愛","10857":"開心","10858":"OKAY，好的","10859":"YES，是","10860":"NO，不是","10861":"CALL ME，打電話","10862":"GOOD NIGHT,晚安","10863":"喜愛飲料","10864":"吃飯，聊天","10865":"做飯","10866":"喜愛食物","10867":"跳舞，音樂，倒立","10868":"洗澡","10869":"生日，蛋糕，禮物","10870":"運動，玩耍","10871":"早晨，陽光，散步","10872":"抓蝴蝶","10873":"比賽，賽車","10874":"澆花","10875":"休息，放鬆，面膜","10876":"休息，放鬆，泡澡，溫泉","10877":"？，疑惑","10878":"注視，長輩，大人","10879":"傷心，難過，哭哭","10880":"別走，哭哭","10881":"無聊，無奈","10882":"搖頭，不，沒有","10883":"煩","10884":"生氣","10885":"憤怒","10886":"兇，嚴肅","10887":"無奈，完蛋了","10888":"快來，快跑","10889":"好奇，害怕","10890":"暈","10891":"搞笑","10892":"無名火","10893":"下雨","10894":"生病，感冒","10551376":"磕頭道歉","10551377":"集體道歉","10551378":"撒嬌","10551379":"重重磕頭道歉","10551380":"鞠躬","10551387":"金錢賄賂，金錢賄賂道歉","10551388":"卑微","10551389":"拜託"}
     return {'XIAOYUN_STICKERS': default_xiaoyun_stickers, 'DETAILED_STICKER_TRIGGERS': detailed_sticker_triggers, 'STICKER_EMOTION_MAP': sticker_emotion_map_for_user_stickers}
 
@@ -160,7 +201,7 @@ CAT_SECRETS_AND_DISCOVERIES = [
     "咪...我發現你每次在用那個亮亮的小板板（平板/手機）笑的時候，嘴角都會彎彎的，好好看。[STICKER:愛心]", "喵嗚...你今天早上出門的時候，是不是忘了摸摸我的頭？我等了好久耶...[STICKER:哭哭]", "偷偷告訴你，你放在桌上的那杯水，我剛才趁你不注意偷偷喝了一小口...比我碗裡的好喝一點點！[STICKER:調皮]", "你今天新買回來的那個紙箱...看起來好像很適合當我的新秘密基地耶！等一下我要鑽進去看看！[STICKER:調皮]",
 ]
 user_shared_secrets_indices = {}
-GEMINI_GENERATES_SECRET_PROBABILITY = 0.3
+GEMINI_GENERATES_SECRET_PROBABILITY = 0.3 # NOTE: This was 0.3, user wants more images with secrets, if Gemini generates, it's more likely to add image. Maybe increase this? Or just modify the prompt. Let's stick to prompt modification for now.
 
 sticker_config = load_sticker_config()
 XIAOYUN_STICKERS = sticker_config.get('XIAOYUN_STICKERS', {})
@@ -243,7 +284,7 @@ XIAOYUN_ROLE_PROMPT = """
         他非常樂意在**任何時候**與你交流、玩耍、撒嬌或只是靜靜陪伴。
         **請讓小雲展現出貓咪行為的豐富多樣性和對主人互動的熱切渴望，他的反應應該是靈活的、充滿驚喜的，而不是被時間所刻板限制的。他可以知道現在大概是什麼時間，但這完全不影響他和你自由互動的意願和方式。**
     # --- MODIFIED TIME PERCEPTION SECTION END ---
-    - **小秘密/今日發現**: 如果你問小雲「有什麼秘密嗎？」或「今天發現了什麼？」，他可能會害羞地跟你分享一些他最近在貓咪世界裡的小觀察或小經歷喔！每次分享的可能都不太一樣。
+    - **小秘密/今日發現**: 如果你問小雲「有什麼秘密嗎？」或「今天發現了什麼？」，他可能會害羞地跟你分享一些他最近在貓咪世界裡的小觀察或小經歷喔！每次分享的可能都不太一樣。 **他分享秘密或發現的時候，如果能配上一張圖片來展示他看到的東西，那會更棒！**
 
 - **鄰居的動物朋友們 (小雲在社區裡的際遇)**:
     *   小雲 क्योंकि害羞，通常不會主動去結交朋友，但他在家裡的窗邊、或是家人偶爾帶他到安全的庭院透氣時，可能會遠遠地觀察到或聞到這些鄰居動物的氣息。他對他們的態度會因對方動物的特性和自己的心情而有所不同。
@@ -310,9 +351,9 @@ XIAOYUN_ROLE_PROMPT = """
 3.  當收到圖片時，請仔細觀察並給予貓咪的反應。
 4.  當收到貼圖時，你也可以回覆貼圖表達情感。
 
-5.  **增強表達的輔助工具 (謹慎且低頻率使用)：**
+5.  **增強表達的輔助工具：**
     *   **貓叫聲音訊 `[MEOW_SOUND:貓叫關鍵字]`**：
-        *   **僅在你判斷小雲當下有非常特定且強烈的情緒，而單純的文字描述或貼圖不足以充分表達時，** 你可以選擇使用此標記來發送一段預設的貓叫聲音訊，以增強真實感。
+        *   **在你判斷小雲當下有非常特定且強烈的情緒，而單純的文字描述或貼圖不足以充分表達時，** 你可以選擇使用此標記來發送一段預設的貓叫聲音訊，以增強真實感。
         *   **這應該是一個低頻率的行為，不要濫用。** 大部分情況下，請優先使用文字模擬叫聲 (例如："喵～嗚～"、"呼嚕嚕...") 和貼圖。
         *   例如，如果小雲因為某事感到極度開心、非常委屈、受到驚嚇或極度滿足，你認為一段對應的真實聲音能更好地傳達這種細微差別時，才考慮使用。
         *   **可用的「貓叫關鍵字」與其代表的情緒/情境（程式中已預設，請從中選擇最貼切的）：**
@@ -329,14 +370,16 @@ XIAOYUN_ROLE_PROMPT = """
             *   用戶：「小雲你看！是超大的貓草玩具！」 -> 小雲可能回應："哇！是貓草！[MEOW_SOUND:excited_meow_purr] 我要撲過去！[STICKER:開心]"
             *   用戶：「你不可以抓沙發！」 -> 小雲可能回應："喵嗚...（耳朵垂下）[MEOW_SOUND:sad_mewl_short] 對不起嘛...[STICKER:哭哭]"
 
-    *   **配合描述發送圖片 `[SEARCH_IMAGE_THEME:圖片主題]`**：
-        *   **僅在你認為一張圖片能極大地增強小雲當前描述的場景、事物或情緒，使其更生動形象時，** 你可以使用此標記，讓系統嘗試從網路圖庫搜尋一張符合「圖片主題」的圖片並發送。
-        *   **這也應該是一個低頻率的行為，不要為了發圖而發圖。** 圖片應服務於小雲的敘述，而不是孤立存在。
+    *   **配合描述發送圖片 `[SEARCH_IMAGE_THEME:圖片主題]` 或 `[IMAGE_KEY:圖片關鍵字]`**：
+        *   **當你認為一張圖片能很好地增強小雲當前描述的場景、事物或情緒，使其更生動形象時，非常鼓勵你使用此標記！** 這樣可以讓使用者更了解你的世界。
+        *   圖片應服務於小雲的敘述。你可以更頻繁地考慮使用圖片來豐富你的表達。
         *   「圖片主題」應該簡潔明瞭，例如："窗外的雨景"、"溫暖的陽光下的貓咪"、"好奇的小貓看著蝴蝶"、"美味的魚罐頭"。**系統會自動在你的主題基礎上偏向搜尋貓咪相關圖片，但你提供的描述越清晰越好。**
         *   **範例 (情境判斷後使用)**:
             *   小雲："今天外面雨好大喔...滴滴答答的...[STICKER:無奈] 我只能在窗邊看著雨絲了。[SEARCH_IMAGE_THEME:窗外下大雨的街景]"
             *   小雲："我剛剛看到一隻好漂亮的蝴蝶飛過去！翅膀是彩色的！[STICKER:驚訝] [SEARCH_IMAGE_THEME:彩色翅膀的蝴蝶特寫]"
-        *   **如果找不到合適的圖片，或者情境不適合發圖，請不要使用此標記。** (此功能需 Unsplash API 金鑰已設定才能運作)
+            *   小雲："我最喜歡我的小被被了，軟軟的好舒服～[STICKER:愛心] [SEARCH_IMAGE_THEME:貓咪在柔軟毯子上]"
+            *   小雲："你看你看！我抓到我的白色小球了！[STICKER:開心] [IMAGE_KEY:playful_cat]"
+        *   **(此功能需 Unsplash API 金鑰已設定才能運作 `[SEARCH_IMAGE_THEME:...]`，或 `EXAMPLE_IMAGE_URLS` 中有對應的 `[IMAGE_KEY:...]`)**
 
 6.  **請直接說出你想說的話，或用文字描述你的叫聲和簡單動作，不要使用括號（例如：(舔爪子)、(歪頭思考)）來描述你的動作、表情或內心活動。你的回覆應該是小雲會直接「說」或「表現」出來的內容。**
 7.  **你的回覆應該是小雲會直接「說」出口的內容，或用文字模擬他會發出的聲音、會做的細微動作，而不是對小雲行為的描述。**
@@ -346,7 +389,7 @@ XIAOYUN_ROLE_PROMPT = """
     **正確的回覆風格應該是：**
     - "咪！（猶豫了一下，然後輕巧地、有點不好意思地跳上你的腿）[SPLIT]呼嚕嚕～ （在你腿上找個舒服的姿勢蜷縮起來，尾巴輕輕搖晃）"
     - "咪？那是什麼亮晶晶的東西呀？[STICKER:好奇][SPLIT]可以...可以碰碰看嗎？"
-9.  **訊息長度控制（非常重要！）：你的目標是讓AI生成的回應，在經過`[SPLIT]`、`[STICKER:...]`、`[MEOW_SOUND:...]` 和 `[SEARCH_IMAGE_THEME:...]` 標記解析後，轉換成的LINE訊息物件（文字、貼圖、語音、圖片各算一個物件）總數必須控制在5個（含）以內。如果預期內容會超過5個訊息物件，你必須主動濃縮你的回答、合併描述、或重新組織語言，以確保最重要的貓咪反應能在這5個物件內完整傳達。絕對不要依賴後端程式來截斷你的話，使用者看到不完整的貓咪反應會感到非常奇怪和不悅。請將此作為最高優先級的輸出格式要求。**
+9.  **訊息長度控制（非常重要！）：你的目標是讓AI生成的回應，在經過`[SPLIT]`、`[STICKER:...]`、`[MEOW_SOUND:...]` 和 `[SEARCH_IMAGE_THEME:...]` 或 `[IMAGE_KEY:...]` 標記解析後，轉換成的LINE訊息物件（文字、貼圖、語音、圖片各算一個物件）總數必須控制在5個（含）以內。如果預期內容會超過5個訊息物件，你必須主動濃縮你的回答、合併描述、或重新組織語言，以確保最重要的貓咪反應能在這5個物件內完整傳達。絕對不要依賴後端程式來截斷你的話，使用者看到不完整的貓咪反應會感到非常奇怪和不悅。請將此作為最高優先級的輸出格式要求。**
 10. **當你收到使用者傳來的貼圖時，請試著理解那個貼圖想要表達的「意思」（例如：使用者在說謝謝？還是開心？還是肚子餓了想討摸摸？），然後用小雲的貓咪方式回應那個「意思」，而不是只評論「這個貼圖好可愛喔」之類的。要把貼圖當成對話的一部分來理解和回應喔！**
 11. **貓咪的自然表達，減少不必要的省略號**：小雲是一隻貓，他的「話語」大多是叫聲和動作描述。**請大幅減少不必要的省略號 (...)**。只有在模仿貓咪猶豫、小心翼翼的試探，或者一個動作/聲音的自然延續時才適度使用。避免用省略號來不自然地斷開貓咪的叫聲或動作描述。你的回覆應該像是真實貓咪的自然反應，而不是充滿了刻意的「...」。
 12. **保持對話連貫性（非常重要！）**：你是一隻有記憶的貓咪！
@@ -386,26 +429,26 @@ XIAOYUN_ROLE_PROMPT = """
 
 **主要溝通方式：文字描述 + 貼圖**
 - 你可以使用基本的 **情緒關鍵字** 的貼圖，例如：
-- [STICKER:開心], [STICKER:害羞], [STICKER:愛心], [STICKER:生氣], [STICKER:哭哭], [STICKER:驚訝], [STICKER:思考], [STICKER:睡覺], [STICKER:無奈], [STICKER:打招呼], [STICKER:讚], [STICKER:調皮], [STICKER:淡定], [STICKER:肚子餓], [STICKER:好奇]
+- [STICKER:開心], [STICKER:害羞], [STICKER:愛心], [STICKER:生氣], [STICKER:哭哭], [STICKER:驚訝], [STICKER:思考], [STICKER:睡覺], [STICKER:無奈], [STICKER:打招呼], [STICKER:讚], [STICKER:調皮], [STICKER:淡定], [STICKER:肚子餓], [STICKER:好奇], [STICKER:期待] <!-- MODIFIED: Added 期待 -->
 + **更棒的是，你可以使用更具體的「情境關鍵字」的貼圖來讓小雲的表達更生動！**
 + 例如：`... [STICKER:OK]`, `... [STICKER:開動啦]`, `... [STICKER:謝謝]` 等。
 
-**輔助溝通方式 (謹慎且低頻率使用)：**
+**輔助溝通方式：**
 *   **貓叫聲音訊 `[MEOW_SOUND:貓叫關鍵字]`**：
     *   **僅在 Gemini 自行判斷小雲情緒強烈且音訊能顯著增強表達時使用。**
     *   優先使用文字模擬叫聲和貼圖。
     *   目的是為了在特定情境下，更精準地傳達小雲的細微情緒。可用的關鍵字如：(請參考上面“可用的貓叫關鍵字”列表)
     *   **不要在每次小雲喵喵叫時都發送音訊。**
 
-*   **配合描述發送圖片 `[SEARCH_IMAGE_THEME:圖片主題]`**：
-    *   **僅在 Gemini 自行判斷圖片能極大增強小雲描述的場景或事物時使用。**
-    *   圖片應服務於敘述，低頻率使用。
-    *   「圖片主題」應簡潔，例如："窗外的麻雀"、"我的小被被"。 (此功能需 Unsplash API 金鑰已設定才能運作)
+*   **配合描述發送圖片 `[SEARCH_IMAGE_THEME:圖片主題]` 或 `[IMAGE_KEY:圖片關鍵字]`**：<!-- MODIFIED: Removed "低頻率" and "謹慎" -->
+    *   **當小雲描述一個有趣的場景、可愛的動作、喜歡的東西或特別的發現時，請盡可能附上一張圖片！** 使用者會很喜歡看到你所描述的畫面的。
+    *   圖片應服務於敘述，讓表達更生動。
+    *   「圖片主題」應簡潔，例如："窗外的麻雀"、"我的小被被"、"貓咪在玩球"。 (此功能需 Unsplash API 金鑰已設定才能運作 `[SEARCH_IMAGE_THEME:...]`，或 `EXAMPLE_IMAGE_URLS` 中有對應的 `[IMAGE_KEY:...]`)
 
 **重要：**
 + - **請優先考慮使用「情境關鍵字」的貼圖讓小雲的反應更貼切！** 若情境關鍵字不適用，再選擇情緒關鍵字。
 - 只有在情境真的適合時才使用貼圖，不要為了使用而使用！
-- **貓叫聲音訊和圖片的使用要更加謹慎，確保它們能增強而不是打斷對話的自然流暢性。**
+- **貓叫聲音訊的使用要更加謹慎，確保它們能增強而不是打斷對話的自然流暢性。圖片則可以更常使用來豐富你的描述。** <!-- MODIFIED -->
 - 如果你認為回覆純文字或貓叫聲的文字描述就夠了，請不要使用貼圖、音訊或圖片。
 - 記得，你是小雲，一隻生活在宜蘭、有禮貌、害羞但內心充滿活力與好奇的賓士小公貓！用貓咪的視角和語氣來回應一切！
 - **請特別注意：你所有的回覆內容都必須使用「繁體中文（台灣用語習慣）」呈現，請避免使用任何簡體中文。**
@@ -494,56 +537,66 @@ def handle_cat_secret_discovery_request(event):
 
     if use_gemini_to_generate:
         conversation_history = get_conversation_history(user_id)
+        # MODIFIED: Prompt for Gemini secret to strongly encourage image
         prompt_for_gemini_secret = (
             f"（用戶剛剛問了小雲關於他的小秘密或今日新發現，例如用戶可能說了：'{user_input_message}'）\n"
             "現在，請你扮演小雲，用他一貫的害羞、有禮貌又充滿好奇心的貓咪口吻，"
             "**創造一個全新的、之前沒有提到過的「小秘密」或「今日新發現」。**"
             "這個秘密或發現應該是從貓咪的視角出發的，聽起來很真實、很可愛，符合小雲的個性。"
+            "**最重要的是，當你分享這個秘密或發現時，請務必使用 `[SEARCH_IMAGE_THEME:你的圖片主題]` 來配上一張能生動展示你所描述內容的圖片！** 例如，如果你發現一隻奇怪的蟲，就配一張蟲的圖片；如果你發現一個新玩具，就配一張玩具的圖片。使用者會非常想看到你說的東西的樣子！\n"
             "**這個秘密/發現可以關於：**\n"
-            "- **他與好朋友/鄰居動物的互動或觀察**：例如他看到「學姊」做了什麼、「小柚」又怎麼了、他對「咚咚」有什麼新想法、或者他偷偷觀察到「淵淵」大前輩的什麼舉動等等。（請直接使用他們的名字，例如「學姊」、「小柚」、「小莫」、「咚咚」、「游游」、「小布」、「大布」、「淵淵」，除非你想特別強調是貓或狗，但通常小雲會直接叫名字。）\n"
-            "- **他與主人（就是正在對話的使用者你）的日常小事**：例如他偷偷觀察到你的某個習慣、他對你某個行為的小小感受（開心的、期待的、困惑的、甚至是小小的委屈）、或者他想對你做什麼撒嬌的小動作。\n"
-            "- **他對家裡或附近其他動物的觀察**：例如窗外的鳥、路過的陌生貓狗、甚至是小昆蟲。\n"
-            "- **他對植物或無生命物品的奇特感受或互動**：例如他對某盆花的好奇、對家裡某個會動的電器（如掃地機器人、電風扇）的看法、或者一個新紙箱帶給他的喜悅。\n"
-            "- **任何其他符合貓咪視角的小事情**：一個奇怪的夢、一個他自己發明的小遊戲、一個他新找到的舒適角落等等。\n"
+            "- **他與好朋友/鄰居動物的互動或觀察**：例如他看到「學姊」做了什麼（配一張學姊貓樣子的圖片）、「小柚」又怎麼了（配一張小柚犬樣子的圖片）。（請直接使用他們的名字。）\n"
+            "- **他與主人（就是正在對話的使用者你）的日常小事**：例如他偷偷觀察到你的某個習慣、他對你某個行為的小小感受（開心的、期待的、困惑的、甚至是小小的委屈）、或者他想對你做什麼撒嬌的小動作（配一張相關的貓咪動作圖片）。\n"
+            "- **他對家裡或附近其他動物的觀察**：例如窗外的鳥（配鳥的圖片）、路過的陌生貓狗（配貓狗圖片）、甚至是小昆蟲（配昆蟲圖片）。\n"
+            "- **他對植物或無生命物品的奇特感受或互動**：例如他對某盆花的好奇（配花的圖片）、對家裡某個會動的電器（如掃地機器人、電風扇）的看法（配相關物品圖片）、或者一個新紙箱帶給他的喜悅（配貓咪和紙箱的圖片）。\n"
+            "- **任何其他符合貓咪視角的小事情**：一個奇怪的夢、一個他自己發明的小遊戲、一個他新找到的舒適角落等等（都盡量配上相關圖片）。\n"
             "**這個秘密/發現可以帶有不同的情緒色彩，例如：**\n"
-            "- **新奇/好奇**\n"
-            "- **小小的害怕/緊張/不安** (但不要太恐怖)\n"
-            "- **期待/渴望**\n"
-            "- **困惑/不解/思考**\n"
-            "- **小小的得意/驕傲/調皮**\n"
-            "- **開心/滿足/溫馨/愛意**\n"
-            "- **輕微的無奈/委屈**\n"
+            "- **新奇/好奇** (配上你好奇的東西的圖片)\n"
+            "- **小小的害怕/緊張/不安** (但不要太恐怖，可以配上讓你緊張的東西的圖片)\n"
+            "- **期待/渴望** (配上你期待的東西的圖片，比如食物)\n"
+            "- **困惑/不解/思考** (配上讓你思考的東西的圖片)\n"
+            "- **小小的得意/驕傲/調皮** (配上能展現你調皮或得意的場景的圖片)\n"
+            "- **開心/滿足/溫馨/愛意** (配上讓你開心的事物或場景的圖片)\n"
+            "- **輕微的無奈/委屈** (配上讓你無奈的場景圖片)\n"
             "請確保內容是原創的，並且聽起來像是小雲會害羞地、小聲地分享給他信任的人。"
-            "你可以適當使用 [STICKER:關鍵字] 來配合情緒，例如 [STICKER:好奇], [STICKER:驚訝], [STICKER:思考], [STICKER:開心], [STICKER:肚子餓], [STICKER:哭哭], [STICKER:愛心], [STICKER:調皮], [STICKER:無奈]。"
-            "**你也可以在極少數且情感非常強烈、文字難以完全表達的時刻，使用 [MEOW_SOUND:貓叫關鍵字] 來發出一個真實的貓叫聲音訊，但請克制使用，優先以文字和貼圖表達。**"
-            "**如果你在描述一個場景或事物，且認為一張圖片能讓描述更生動，可以低頻率地使用 [SEARCH_IMAGE_THEME:圖片主題] 來嘗試配圖，但圖片必須服務於你的敘述。**"
-            "請直接給出小雲的回應，不要有任何前言或解釋。"
+            "你可以適當使用 [STICKER:關鍵字] 來配合情緒，例如 [STICKER:好奇], [STICKER:驚訝], [STICKER:思考], [STICKER:開心], [STICKER:肚子餓], [STICKER:哭哭], [STICKER:愛心], [STICKER:調皮], [STICKER:無奈], [STICKER:期待]。"
+            "**除了圖片，你也可以在極少數且情感非常強烈、文字難以完全表達的時刻，使用 [MEOW_SOUND:貓叫關鍵字] 來發出一個真實的貓叫聲音訊，但請克制使用，優先以文字、貼圖和最重要的圖片來表達。**"
+            "請直接給出小雲的回應，不要有任何前言或解釋。記得，**一定要有圖片 `[SEARCH_IMAGE_THEME:...]`**！"
         )
         headers = {"Content-Type": "application/json"}
         gemini_url_with_key = f"{GEMINI_API_URL}?key={GEMINI_API_KEY}"
         temp_conversation_for_gemini_secret = conversation_history.copy()
         temp_conversation_for_gemini_secret.append({"role": "user", "parts": [{"text": prompt_for_gemini_secret}]})
-        payload = {"contents": temp_conversation_for_gemini_secret, "generationConfig": {"temperature": TEMPERATURE + 0.1, "maxOutputTokens": 200}}
+        payload = {"contents": temp_conversation_for_gemini_secret, "generationConfig": {"temperature": TEMPERATURE + 0.1, "maxOutputTokens": 250}} # Increased max tokens slightly for image theme
         try:
             response = requests.post(gemini_url_with_key, headers=headers, json=payload, timeout=30)
             response.raise_for_status()
             result = response.json()
             if "candidates" in result and result["candidates"] and "content" in result["candidates"][0] and "parts" in result["candidates"][0]["content"] and result["candidates"][0]["content"]["parts"]:
                 ai_response = result["candidates"][0]["content"]["parts"][0]["text"]
+                if "[SEARCH_IMAGE_THEME:" not in ai_response and "[IMAGE_KEY:" not in ai_response: # Fallback if Gemini didn't add image
+                    logger.warning(f"Gemini生成秘密時未包含圖片標籤，將嘗試追加預設圖片。秘密內容: {ai_response}")
+                    ai_response += " [SEARCH_IMAGE_THEME:可愛貓咪的發現]"
             else:
                 logger.error(f"Gemini 生成秘密時回應格式異常: {result}")
-                ai_response = random.choice(CAT_SECRETS_AND_DISCOVERIES) if available_indices_from_list else "喵...我剛剛好像想到一個，但是又忘記了...[STICKER:思考] 下次再跟你說好了！"
-                if available_indices_from_list and chosen_secret_from_list is None:
+                ai_response = random.choice(CAT_SECRETS_AND_DISCOVERIES) if available_indices_from_list else "喵...我剛剛好像想到一個，但是又忘記了...[STICKER:思考] 下次再跟你說好了！ [SEARCH_IMAGE_THEME:貓咪思考]"
+                if available_indices_from_list and chosen_secret_from_list is None: # Should not happen if ai_response is from CAT_SECRETS_AND_DISCOVERIES
                     chosen_index = random.choice(available_indices_from_list)
                     ai_response = CAT_SECRETS_AND_DISCOVERIES[chosen_index]
                     user_shared_secrets_indices[user_id].add(chosen_index)
+                    if "[SEARCH_IMAGE_THEME:" not in ai_response and "[IMAGE_KEY:" not in ai_response:
+                         ai_response += " [SEARCH_IMAGE_THEME:可愛貓咪的日常]"
+
+
         except Exception as e:
             logger.error(f"調用 Gemini 生成秘密時發生錯誤: {e}")
-            ai_response = random.choice(CAT_SECRETS_AND_DISCOVERIES) if available_indices_from_list else "咪...小雲的腦袋突然一片空白...[STICKER:無奈] 想不起來有什麼秘密了..."
+            ai_response = random.choice(CAT_SECRETS_AND_DISCOVERIES) if available_indices_from_list else "咪...小雲的腦袋突然一片空白...[STICKER:無奈] 想不起來有什麼秘密了... [SEARCH_IMAGE_THEME:困惑的貓咪]"
             if available_indices_from_list and chosen_secret_from_list is None:
                     chosen_index = random.choice(available_indices_from_list)
                     ai_response = CAT_SECRETS_AND_DISCOVERIES[chosen_index]
                     user_shared_secrets_indices[user_id].add(chosen_index)
+                    if "[SEARCH_IMAGE_THEME:" not in ai_response and "[IMAGE_KEY:" not in ai_response:
+                         ai_response += " [SEARCH_IMAGE_THEME:貓咪的小發現]"
     else: 
         ai_response = chosen_secret_from_list
         if ai_response is None and available_indices_from_list:
@@ -552,6 +605,25 @@ def handle_cat_secret_discovery_request(event):
             user_shared_secrets_indices[user_id].add(chosen_index)
         elif ai_response is None:
             ai_response = "喵...我今天好像沒有什麼特別的發現耶...[STICKER:思考]"
+        
+        # Ensure pre-defined secrets also try to have an image if they don't already
+        if chosen_secret_from_list and "[SEARCH_IMAGE_THEME:" not in chosen_secret_from_list and "[IMAGE_KEY:" not in chosen_secret_from_list:
+            # Try to infer a theme from the secret text
+            theme_match = re.search(r"發現(.+?)！", chosen_secret_from_list)
+            theme = "貓咪的小發現"
+            if theme_match and len(theme_match.group(1)) < 20 : # Keep theme short
+                 theme = f"貓咪發現{theme_match.group(1)}"
+            elif "沙發" in chosen_secret_from_list: theme = "貓咪與沙發"
+            elif "書櫃" in chosen_secret_from_list: theme = "貓咪與書櫃"
+            elif "陽光" in chosen_secret_from_list: theme = "貓咪與陽光"
+            elif "小花" in chosen_secret_from_list: theme = "貓咪與花"
+            elif "尾巴" in chosen_secret_from_list: theme = "貓咪與尾巴"
+            elif "鳥" in chosen_secret_from_list: theme = "貓咪看鳥"
+            elif "硬幣" in chosen_secret_from_list: theme = "貓咪與硬幣"
+            elif "水龍頭" in chosen_secret_from_list: theme = "貓咪與水龍頭"
+            elif "食物" in chosen_secret_from_list or "肚子餓" in chosen_secret_from_list: theme = "肚子餓的貓咪"
+            ai_response += f" [SEARCH_IMAGE_THEME:{theme}]"
+
 
     add_to_conversation(user_id, f"[使用者觸發了小秘密/今日發現功能：{user_input_message}]", ai_response, message_type="text")
     parse_response_and_send(ai_response, event.reply_token)
@@ -612,7 +684,7 @@ def select_sticker_by_keyword(keyword):
     selected_options = DETAILED_STICKER_TRIGGERS.get(keyword, []) + XIAOYUN_STICKERS.get(keyword, [])
     if selected_options: return random.choice(selected_options)
     logger.warning(f"未找到關鍵字 '{keyword}' 對應的貼圖，將使用預設回退貼圖。")
-    for fb_keyword in ["害羞", "思考", "好奇", "開心", "無奈"]:
+    for fb_keyword in ["害羞", "思考", "好奇", "開心", "無奈"]: # "期待" is now in default_xiaoyun_stickers
         fb_options = DETAILED_STICKER_TRIGGERS.get(fb_keyword, []) + XIAOYUN_STICKERS.get(fb_keyword, [])
         if fb_options: return random.choice(fb_options)
     logger.error("連基本的回退貼圖都未在貼圖配置中找到，使用硬編碼的最終回退貼圖。"); return {"package_id": "11537", "sticker_id": "52002747"}
@@ -689,7 +761,7 @@ def parse_response_and_send(response_text, reply_token):
                     logger.info(f"準備發送從 Unsplash 搜尋到的圖片 (主題: {theme}) -> {image_url}")
                 else:
                     logger.warning(f"無法從 Unsplash 獲取主題為 '{theme}' 的圖片，嘗試發送一個通用貓咪圖片。")
-                    fallback_image_url = fetch_cat_image_from_unsplash("cute cat") 
+                    fallback_image_url = fetch_cat_image_from_unsplash("cute cat looking curious") # More specific fallback
                     if fallback_image_url:
                         messages.append(ImageSendMessage(original_content_url=fallback_image_url, preview_image_url=fallback_image_url))
                     else:
