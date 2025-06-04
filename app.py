@@ -538,16 +538,16 @@ def _translate_text_to_english_with_gemini_sync(text_to_translate: str) -> str |
 def fetch_cat_image_from_unsplash_sync(raw_theme_content: str) -> tuple[str | None, str]:
     """
     從 Unsplash API 獲取與主題相關的圖片 (同步版本)。
+    使用 /search/photos 端點並取回第一個結果以提高相關性。
     返回 (圖片URL | None, 用於顯示的中文主題名稱)
     """
     if not UNSPLASH_ACCESS_KEY:
         logger.warning("fetch_cat_image_from_unsplash_sync called but UNSPLASH_ACCESS_KEY is not set.")
-        # 如果 raw_theme_content 包含 |，只取第一部分作為顯示名稱
         display_theme_name_fallback = raw_theme_content.split('|', 1)[0].strip()
         return None, display_theme_name_fallback
 
     parts = raw_theme_content.split('|', 1)
-    display_theme_name = parts[0].strip() 
+    display_theme_name = parts[0].strip()
     search_query_for_unsplash = ""
 
     if len(parts) == 2 and parts[1].strip():
@@ -556,36 +556,45 @@ def fetch_cat_image_from_unsplash_sync(raw_theme_content: str) -> tuple[str | No
     else:
         logger.info(f"標籤中未提供英文主題，嘗試翻譯中文主題: '{display_theme_name}'")
         english_translation = _translate_text_to_english_with_gemini_sync(display_theme_name)
-        if english_translation and english_translation.lower() != display_theme_name.lower(): # 確保翻譯有意義
+        if english_translation and english_translation.lower() != display_theme_name.lower():
             search_query_for_unsplash = english_translation
             logger.info(f"中文主題 '{display_theme_name}' 成功翻譯為英文: '{search_query_for_unsplash}'，用於 Unsplash 搜尋。")
         else:
-            search_query_for_unsplash = display_theme_name 
+            search_query_for_unsplash = display_theme_name
             logger.warning(f"無法翻譯中文主題 '{display_theme_name}' 或翻譯結果與原文相同，將使用原始中文主題 '{display_theme_name}' 進行 Unsplash 搜尋。")
     
-    api_url = f"https://api.unsplash.com/photos/random"
+    # 改用 /search/photos 端點
+    api_url = f"https://api.unsplash.com/search/photos"
     params = {
         "query": search_query_for_unsplash,
-        "orientation": "landscape",
-        "content_filter": "low",
+        "page": 1,
+        "per_page": 1, # 我們只需要第一張最相關的
+        "orientation": "landscape", # 保持橫向
+        "content_filter": "low", # 可以考慮 'high' 如果你的 API key 支援
         "client_id": UNSPLASH_ACCESS_KEY
     }
     
     try:
-        headers = {'User-Agent': 'XiaoyunCatBot/1.0', "Accept-Version": "v1"} 
+        headers = {'User-Agent': 'XiaoyunCatBot/1.0', "Accept-Version": "v1"}
         response = requests.get(api_url, params=params, timeout=10, headers=headers)
         response.raise_for_status()
         data = response.json()
         
-        if data and data.get("urls") and data["urls"].get("regular"):
-            image_url = data["urls"]["regular"]
-            logger.info(f"成功從 Unsplash 獲取圖片 (搜尋: '{search_query_for_unsplash}'): {image_url}")
-            return image_url, display_theme_name
+        # /search/photos 返回的結構是 {"total": ..., "total_pages": ..., "results": [...]}
+        if data and data.get("results") and len(data["results"]) > 0:
+            first_image_result = data["results"][0]
+            if first_image_result.get("urls") and first_image_result["urls"].get("regular"):
+                image_url = first_image_result["urls"]["regular"]
+                logger.info(f"成功從 Unsplash 獲取圖片 (搜尋: '{search_query_for_unsplash}', 端點: /search/photos): {image_url}")
+                return image_url, display_theme_name
+            else:
+                logger.warning(f"Unsplash 搜尋結果中第一張圖片缺少 URL (搜尋: '{search_query_for_unsplash}'). 結果: {first_image_result}")
+                return None, display_theme_name
         elif data and data.get("errors"):
             logger.error(f"Unsplash API 錯誤 (搜尋: '{search_query_for_unsplash}'): {data['errors']}")
             return None, display_theme_name
         else:
-            logger.warning(f"在 Unsplash 上未找到合適圖片或回應結構異常 (搜尋: '{search_query_for_unsplash}'). 回應: {data}")
+            logger.warning(f"在 Unsplash 上未找到符合條件的圖片或回應結構異常 (搜尋: '{search_query_for_unsplash}'). 回應: {data}")
             return None, display_theme_name
             
     except requests.exceptions.HTTPError as http_err:
@@ -597,6 +606,8 @@ def fetch_cat_image_from_unsplash_sync(raw_theme_content: str) -> tuple[str | No
     except Exception as e:
         logger.error(f"fetch_cat_image_from_unsplash_sync 發生未知錯誤 (搜尋: '{search_query_for_unsplash}'): {e}")
         return None, display_theme_name
+
+# ... (其餘程式碼保持不變) ...
 
 def get_taiwan_time():
     utc_now = datetime.now(timezone.utc)
