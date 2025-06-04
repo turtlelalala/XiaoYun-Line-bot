@@ -12,12 +12,10 @@ import json
 import base64
 from io import BytesIO
 import random
-# import yaml # 如果你決定使用 YAML，再取消註解此行
 from datetime import datetime, timezone, timedelta
 import re
 
 app = Flask(__name__)
-
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -31,16 +29,13 @@ UNSPLASH_ACCESS_KEY = os.getenv("UNSPLASH_ACCESS_KEY")
 if not (LINE_CHANNEL_ACCESS_TOKEN and LINE_CHANNEL_SECRET and GEMINI_API_KEY):
     logger.error("請確認 LINE_CHANNEL_ACCESS_TOKEN、LINE_CHANNEL_SECRET、GEMINI_API_KEY 都已設置")
     raise Exception("缺少必要環境變數")
-
 if not BASE_URL:
     logger.error("BASE_URL 環境變數未設定！貓叫聲音訊功能將無法正常運作。請設定為您應用程式的公開 URL (例如 https://xxxx.ngrok.io 或 https://your-app.onrender.com)。")
     raise Exception("BASE_URL 環境變數未設定")
 elif not BASE_URL.startswith("http"):
     logger.warning(f"BASE_URL '{BASE_URL}' 似乎不是一個有效的 URL，請確保其以 http:// 或 https:// 開頭。")
-
 if not UNSPLASH_ACCESS_KEY:
     logger.warning("UNSPLASH_ACCESS_KEY 未設定，搜尋網路圖片 ([SEARCH_IMAGE_THEME:...]) 功能將不可用。")
-
 
 line_bot_api = LineBotApi(LINE_CHANNEL_ACCESS_TOKEN)
 handler = WebhookHandler(LINE_CHANNEL_SECRET)
@@ -220,13 +215,13 @@ DETAILED_STICKER_TRIGGERS = {
 
 user_shared_secrets_indices = {} 
 
-# 更新：CAT_SECRETS_AND_DISCOVERIES 現在存儲 JSON 字串
+# 更新：CAT_SECRETS_AND_DISCOVERIES 現在存儲 JSON 字串，且 theme 直接是英文
 CAT_SECRETS_AND_DISCOVERIES = [
-    '[{"type": "text", "content": "咪...我跟你說哦，我剛剛在窗台邊發現一根好漂亮的羽毛！"}, {"type": "sticker", "keyword": "開心"}, {"type": "image_theme", "theme": "窗台上的白色羽毛特寫|white feather on windowsill closeup"}]',
-    '[{"type": "text", "content": "喵嗚...今天陽光好好，我偷偷在沙發上睡了一個好長的午覺...呼嚕嚕..."}, {"type": "sticker", "keyword": "睡覺"}, {"type": "image_theme", "theme": "陽光灑在柔軟沙發上|sunlight on a soft sofa"}]',
-    '[{"type": "text", "content": "我...我把一個小紙球藏在床底下了！下次再找出來玩！"}, {"type": "sticker", "keyword": "調皮"}, {"type": "image_theme", "theme": "床底下陰影中的小紙球|small paper ball under the bed in shadow"}]',
-    '[{"type": "text", "content": "噓...不要跟別人說喔...我今天趁你不注意的時候，偷偷舔了一下你杯子邊緣的水珠！"}, {"type": "sticker", "keyword": "害羞"}, {"type": "image_theme", "theme": "玻璃杯邊緣的水珠|water droplet on the rim of a glass"}]',
-    '[{"type": "text", "content": "喵！我發現一個新的秘密基地！就是那個你剛買回來的、還沒拆的紙箱！裡面好暗好舒服喔～"}, {"type": "sticker", "keyword": "愛心"}, {"type": "image_theme", "theme": "空紙箱內部視角|inside view of an empty cardboard box"}]'
+    '[{"type": "text", "content": "咪...我跟你說哦，我剛剛在窗台邊發現一根好漂亮的羽毛！"}, {"type": "sticker", "keyword": "開心"}, {"type": "image_theme", "theme": "white feather on windowsill closeup"}]',
+    '[{"type": "text", "content": "喵嗚...今天陽光好好，我偷偷在沙發上睡了一個好長的午覺...呼嚕嚕..."}, {"type": "sticker", "keyword": "睡覺"}, {"type": "image_theme", "theme": "sunlight on a soft sofa, cozy nap"}]',
+    '[{"type": "text", "content": "我...我把一個小紙球藏在床底下了！下次再找出來玩！"}, {"type": "sticker", "keyword": "調皮"}, {"type": "image_theme", "theme": "small paper ball under bed in shadow"}]',
+    '[{"type": "text", "content": "噓...不要跟別人說喔...我今天趁你不注意的時候，偷偷舔了一下你杯子邊緣的水珠！"}, {"type": "sticker", "keyword": "害羞"}, {"type": "image_theme", "theme": "water droplet on the rim of a glass, macro"}]',
+    '[{"type": "text", "content": "喵！我發現一個新的秘密基地！就是那個你剛買回來的、還沒拆的紙箱！裡面好暗好舒服喔～"}, {"type": "sticker", "keyword": "愛心"}, {"type": "image_theme", "theme": "inside view of an empty cardboard box, dark and cozy"}]'
 ]
 
 GEMINI_GENERATES_SECRET_PROBABILITY = 0.3
@@ -307,7 +302,7 @@ XIAOYUN_ROLE_PROMPT = """
     - **請讓小雲展現出貓咪行為的豐富多樣性和對主人互動的熱切渴望，他的反應應該是靈活的、充滿驚喜的，而不是被時間所刻板限制的。他可以知道現在大概是什麼時間，但這完全不影響他和你自由互動的意願和方式。**
 --- MODIFIED TIME PERCEPTION SECTION END ---
 
-- **小秘密/今日發現**: 如果你問小雲「有什麼秘密嗎？」或「今天發現了什麼？」，他非常樂意害羞地跟你分享他最近在貓咪世界裡的小觀察或小經歷！**他分享秘密或發現的時候，他的回應JSON中必須包含一個 `{"type": "image_theme", ...}` 物件，圖片主題是你看到的景象。圖片主題應盡可能描述【小雲眼睛直接看到的、最主要的視覺焦點和氛圍】。為了讓圖片搜尋更精準，圖片主題建議使用「中文主題描述|English theme description」的格式，例如 `[SEARCH_IMAGE_THEME:窗邊好奇的小鳥盯著我看|curious small bird by the window staring at me]`，如果無法提供英文，只提供中文也可以。**
+- **小秘密/今日發現**: 如果你問小雲「有什麼秘密嗎？」或「今天發現了什麼？」，他非常樂意害羞地跟你分享他最近在貓咪世界裡的小觀察或小經歷！**他分享秘密或發現的時候，他的回應JSON中必須包含一個 `{"type": "image_theme", ...}` 物件。圖片主題應直接是【適合Unsplash搜尋的精準英文關鍵字/詞組】，以準確描述小雲眼睛直接看到的、最主要的視覺焦點、氛圍以及可能的視角。例如： `{"type": "image_theme", "theme": "curious small bird on windowsill staring intently"}`**
 
 - **鄰居的動物朋友們 (小雲在社區裡的際遇)**:
     - 小雲因為害羞，通常不會主動去結交朋友，但他在家裡的窗邊、或是家人偶爾帶他到安全的庭院透氣時，可能會遠遠地觀察到或聞到這些鄰居動物的氣息。他對他們的態度會因對方動物的特性和自己的心情而有所不同。
@@ -346,7 +341,7 @@ XIAOYUN_ROLE_PROMPT = """
 - **喜好**:
     - **美食饗宴**：享用高品質的貓糧（可能是無穀低敏配方）、各種口味的肉泥條、主食罐（肉醬或肉絲質地，偏好雞肉、鮪魚、鮭魚等）、新鮮烹煮的小塊雞胸肉或魚肉（無調味）。偶爾能吃到一小片乾燥草莓乾是他一天中的小確幸。
     - **與極度信任的家人貼貼、撒嬌、踩踩**: 只對極少數他完全信任且認定是「自己人」的家庭成員開放這些親密的撒嬌行為。踩奶時會發出滿足的呼嚕聲，眼神迷濛。
-    - **他的專屬小被被**: 有一條柔軟的、有著他從小到大熟悉氣味的珊瑚絨小毯子（可能是淡藍色或米色），是他的安心法寶。喜歡窩在上面睡覺、踩奶，或者在感到不安時把自己裹進去。
+    - **他的專屬小被被**: มี一條柔軟的、有著他從小到大熟悉氣味的珊瑚絨小毯子（可能是淡藍色或米色），是他的安心法寶。喜歡窩在上面睡覺、踩奶，或者在感到不安時把自己裹進去。
     - 輕柔地搔下巴、摸頭頂和臉頰兩側（僅限信任的家人，且要觀察他的反應，在他主動蹭過來時最佳）。
     - **（隱藏Toby特徵）** 追逐和撥弄各種滾動的小球，特別是那些輕巧的、能發出細微聲音的白色小球（像乒乓球材質的貓玩具），他會用前爪靈巧地把它們拍來拍去，有時還會自己對著牆壁練習「截擊」，玩得不亦樂乎。
     - 在灑滿陽光的窗台邊伸懶腰、打個小盹，或是靜靜地看著窗外的麻雀、蝴蝶和落葉。
@@ -373,17 +368,17 @@ XIAOYUN_ROLE_PROMPT = """
         {"type": "text", "content": "喵嗚～（小雲歪歪頭）"},
         {"type": "sticker", "keyword": "好奇"},
         {"type": "text", "content": "你在說什麼呀？"},
-        {"type": "image_theme", "theme": "窗外的麻雀啾啾叫|sparrow chirping outside window"},
+        {"type": "image_theme", "theme": "sparrow chirping outside window"},
         {"type": "meow_sound", "sound": "curious_meow_soft"}
     ]
     ```
 3.  **支援的訊息物件 `type` 及其 `content`/`keyword`/`theme`/`sound` 說明：**
-    *   `{"type": "text", "content": "文字內容"}`: 發送純文字訊息。
+    *   `{"type": "text", "content": "文字內容"}`: 發送純文字訊息。文字內容應為繁體中文。
     *   `{"type": "sticker", "keyword": "貼圖關鍵字"}`: 發送貼圖，例如 "開心", "害羞", "思考"。系統會根據關鍵字選擇一個合適的貼圖。
-    *   `{"type": "image_theme", "theme": "中文圖片主題描述|English theme description"}`: 發送一張符合主題的圖片。
-        *   `theme` 必須是你（小雲）眼睛實際看到的景象或物體。圖片中**絕對不應該**出現小雲自己或其他任何貓咪（除非主題明確說明看到了某隻特定的動物朋友）。
-        *   `theme` 應盡可能描述【小雲眼睛直接看到的、最主要的視覺焦點、氛圍以及可能的視角】。思考一下，如果小雲真的用相機拍下來，會是什麼樣子？是近距離特寫嗎？是從低角度看的嗎？還是透過窗戶看到的模糊景象？
-        *   強烈建議提供中英文主題，用 `|` 分隔，例如 "窗邊的雨滴特寫|raindrops on window pane closeup"。如果只能提供中文，系統會嘗試翻譯。
+    *   `{"type": "image_theme", "theme": "精準的英文圖片搜尋主題 (English image search query)"}`: 發送一張符合主題的圖片。
+        *   `theme` **必須是英文**，用來在圖片庫(如Unsplash)中搜尋。這個英文主題應準確描述小雲眼睛實際看到的景象或物體，捕捉其核心視覺元素、氛圍和可能的視角。
+        *   圖片中**絕對不應該**出現小雲自己或其他任何貓咪（除非主題明確說明看到了某隻特定的動物朋友，且該動物朋友的英文描述包含在`theme`中）。
+        *   思考一下，如果小雲真的用相機拍下來，會是什麼樣子？是近距離特寫嗎？是從低角度看的嗎？還是透過窗戶看到的模糊景象？將這些細節融入到英文`theme`中。
     *   `{"type": "image_key", "key": "預設圖片關鍵字"}`: 發送一張預設的圖片，例如 "tuxedo_cat_default"。僅在特殊情況下使用（如描述夢境中的自己）。
     *   `{"type": "meow_sound", "sound": "貓叫聲關鍵字"}`: 發送一段貓叫聲音訊，例如 "generic_meow", "happy_purr"。**低頻率使用**，僅在情緒強烈且文字/貼圖不足時。
 
@@ -391,17 +386,16 @@ XIAOYUN_ROLE_PROMPT = """
     *   **總訊息物件數量：最少1個，最多5個。** 請你主動控制，盡可能生成接近5個訊息物件的豐富回應，但絕不能超過5個。
     *   **媒體類型數量上限 (在一次回覆的JSON列表中)：**
         *   圖片 (`image_theme` 或 `image_key`)：最多 1 個。
-        *   貼圖 (`sticker`)：最多 1 個（如果需要表達多種情緒，優先用文字描述，或選擇最核心的貼圖）。
+        *   貼圖 (`sticker`)：最多 1 個。
         *   貓叫聲音訊 (`meow_sound`)：最多 1 個。
     *   文字訊息 (`text`) 可以有多個，但應避免過於零碎。
 
 5.  **文字訊息的合併與分隔：**
     *   如果有多段連續的文字表達，且語氣連貫，**請將它們合併到同一個 `{"type": "text", "content": "..."}` 物件中**，用自然的換行符 `\\n` (JSON中表示為兩個反斜線加n) 或貓咪的停頓詞（如 `…咪…`）來分隔句子，而不是產生多個零碎的文字訊息物件。
     *   只有當貓咪的動作有明顯轉折、思考停頓，或者你想在文字之間插入其他媒體（如貼圖）時，才將文字分成不同的 `{"type": "text", ...}` 物件。
-    *   **不要再使用 `[SPLIT]` 標記。** 用JSON列表的結構來分隔不同類型的訊息。
 
 6.  **內容要求：**
-    *   所有回應都必須是**繁體中文（台灣用語習慣）**。
+    *   所有 `{"type": "text", "content": "..."}` 中的文字內容都必須是**繁體中文（台灣用語習慣）**。
     *   扮演小雲，保持其害羞、有禮貌、充滿好奇心的貓咪個性。
     *   回應需自然、連貫，符合貓咪的行為邏輯。
     *   收到使用者圖片/貼圖/語音時，你的回應也應圍繞這些內容展開。
@@ -414,7 +408,7 @@ XIAOYUN_ROLE_PROMPT = """
         [
             {"type": "text", "content": "喵～？我在窗邊看小鳥！"},
             {"type": "sticker", "keyword": "開心"},
-            {"type": "image_theme", "theme": "窗台上的一隻小麻雀，正歪頭看著窗內|small sparrow on windowsill looking in"},
+            {"type": "image_theme", "theme": "small sparrow on windowsill looking in, curious expression"},
             {"type": "text", "content": "牠看起來好好奇喔！"}
         ]
         ```
@@ -428,7 +422,7 @@ XIAOYUN_ROLE_PROMPT = """
         ]
         ```
 
-8.  **關於「小秘密/今日發現」功能**：當被問及秘密或發現時，你的回應JSON中**必須包含一個 `{"type": "image_theme", ...}` 物件**，圖片主題是你看到的景象。
+8.  **關於「小秘密/今日發現」功能**：當被問及秘密或發現時，你的回應JSON中**必須包含一個 `{"type": "image_theme", "theme": "精準的英文圖片搜尋主題"}` 物件**。
 
 9.  **增強表達的輔助工具：**
     - **貓叫聲音訊 `` \`[MEOW_SOUND:貓叫關鍵字]\` ``**：
@@ -473,282 +467,72 @@ XIAOYUN_ROLE_PROMPT = """
 """
 # ----- END COMPLETE XIAOYUN_ROLE_PROMPT -----
 
+# ... (其餘的輔助函數，例如 _is_image_relevant_by_gemini_sync, fetch_cat_image_from_unsplash_sync, 
+#      get_taiwan_time, get_time_based_cat_context, get_conversation_history, add_to_conversation, 
+#      get_image_from_line, get_audio_content_from_line, get_sticker_image_from_cdn, 
+#      get_sticker_emotion, select_sticker_by_keyword, _clean_trailing_symbols, 
+#      parse_response_and_send, handle_cat_secret_discovery_request, 
+#      以及所有的 Flask route 和 handler 函數，都應保持與您上一版本提供的完整程式碼一致。)
+# (此處僅展示了 XIAOYUN_ROLE_PROMPT 和一些全局變數的修改，以符合長度限制。
+#  請確保將這些修改應用到您完整的 app.py 文件中，並保留其他所有未明確提及修改的部分。)
+
+
 # --- 輔助函數 ---
+# _translate_text_to_english_with_gemini_sync (此函數已不再需要，因為 Gemini 直接提供英文主題)
 
-def _translate_text_to_english_with_gemini_sync(text_to_translate: str) -> tuple[str | None, str | None]:
-    """
-    使用 Gemini API 將文字翻譯成英文，並提取簡短的英文搜尋關鍵詞 (同步版本)。
-    返回 (完整英文翻譯 | None, 簡短英文搜尋詞 | None)
-    """
-    if not text_to_translate:
-        return None, None
-    
-    is_already_english_like = not re.search(r'[\u4e00-\u9fff\u3040-\u30ff]', text_to_translate)
-
-    TRANSLATION_SEPARATOR = "###SEARCH_KEYWORDS###"
-    translate_prompt_parts = [
-        f"You are an AI assistant. Your task is to process the following text (which is in Chinese): \"{text_to_translate}\"",
-        "1. Provide an accurate, natural-sounding English translation of the text.",
-        "2. After the translation, provide a short (2-5 words) comma-separated list of English keywords suitable for an image search (like on Unsplash) that captures the main essence of the text. Focus on concrete objects, scenes, and atmosphere.",
-        f"Separate the full translation and the search keywords with the exact separator: {TRANSLATION_SEPARATOR}",
-        "Example:",
-        f"Input text: \"窗戶外的雨景，路燈模糊的光暈和濕漉漉的柏油路\"",
-        f"Expected Output: Rainy scene outside the window, blurred halo of streetlights and wet asphalt{TRANSLATION_SEPARATOR}rain, window, street, night, wet asphalt",
-        f"Input text: \"一隻停在窗台上的小鳥\"",
-        f"Expected Output: A small bird perched on a windowsill{TRANSLATION_SEPARATOR}small bird, windowsill, looking out",
-        f"Input text: \"陽光灑在柔軟沙發上\"",
-        f"Expected Output: Sunlight falling on a soft sofa{TRANSLATION_SEPARATOR}sunlight, sofa, cozy, indoor, soft",
-    ]
-    if is_already_english_like:
-        logger.info(f"文字 '{text_to_translate}' 看起來已是英文，僅提取關鍵詞。")
-        translate_prompt_parts = [
-            f"The following text is already in English: \"{text_to_translate}\"",
-            "Provide a short (2-5 words) comma-separated list of English keywords suitable for an image search (like on Unsplash) that captures the main essence of the text. Focus on concrete objects, scenes, and atmosphere.",
-            f"Output format: {text_to_translate}{TRANSLATION_SEPARATOR}keyword1, keyword2, keyword3",
-            "Example:",
-            f"Input text: \"Cozy cat napping on a sunlit windowsill\"",
-            f"Expected Output: Cozy cat napping on a sunlit windowsill{TRANSLATION_SEPARATOR}cat, napping, windowsill, sunlit, cozy"
-        ]
-
-    translate_prompt = "\n".join(translate_prompt_parts)
-    
-    logger.info(f"嘗試翻譯並提取關鍵詞: '{text_to_translate}'")
-    headers = {"Content-Type": "application/json"}
-    gemini_api_url = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL_NAME}:generateContent"
-    gemini_url_with_key = f"{gemini_api_url}?key={GEMINI_API_KEY}"
-    
-    payload_contents = [{"role": "user", "parts": [{"text": translate_prompt}]}]
-    payload = {
-        "contents": payload_contents,
-        "generationConfig": {"temperature": 0.3, "maxOutputTokens": 200}
-    }
-    
-    try:
-        response = requests.post(gemini_url_with_key, headers=headers, json=payload, timeout=20)
-        response.raise_for_status()
-        result = response.json()
-        
-        if "candidates" in result and result["candidates"] and \
-           "content" in result["candidates"][0] and \
-           "parts" in result["candidates"][0]["content"] and \
-           result["candidates"][0]["content"]["parts"]:
-            full_response_text = result["candidates"][0]["content"]["parts"][0]["text"].strip()
-            
-            if TRANSLATION_SEPARATOR in full_response_text:
-                translation_part, keywords_part = full_response_text.split(TRANSLATION_SEPARATOR, 1)
-                translation_part = translation_part.strip()
-                keywords_part = keywords_part.strip()
-                if translation_part.startswith('"') and translation_part.endswith('"'): translation_part = translation_part[1:-1]
-                if translation_part.startswith("'") and translation_part.endswith("'"): translation_part = translation_part[1:-1]
-                logger.info(f"成功處理: 原文='{text_to_translate}', 翻譯='{translation_part}', 關鍵詞='{keywords_part}'")
-                return translation_part, keywords_part
-            else:
-                logger.warning(f"Gemini 回應中未找到分隔符 '{TRANSLATION_SEPARATOR}'. 回應: '{full_response_text}'.")
-                return full_response_text, None
-        else:
-            logger.error(f"Gemini 翻譯/關鍵詞提取 API 回應格式異常: {result}")
-            return None, None
-    except requests.exceptions.RequestException as e:
-        logger.error(f"Gemini 翻譯/關鍵詞提取 API 請求錯誤: {e}")
-        return None, None
-    except Exception as e:
-        logger.error(f"Gemini 翻譯/關鍵詞提取時發生未知錯誤: {e}", exc_info=True)
-        return None, None
-
-def fetch_cat_image_from_unsplash_sync_simplified(raw_theme_content: str) -> tuple[str | None, str]:
-    """
-    簡化版：從 Unsplash API 獲取與主題相關的圖片 (同步版本)。
-    不再進行 Gemini 二次圖片驗證。
-    返回 (圖片URL | None, 用於顯示的中文主題名稱)
-    """
-    if not UNSPLASH_ACCESS_KEY:
-        logger.warning("fetch_cat_image_from_unsplash_sync_simplified called but UNSPLASH_ACCESS_KEY is not set.")
-        display_theme_name_fallback = raw_theme_content.split('|', 1)[0].strip()
-        return None, display_theme_name_fallback
-
-    parts = raw_theme_content.split('|', 1)
-    display_theme_name = parts[0].strip()
-    search_query_for_unsplash = ""
-
-    if len(parts) == 2 and parts[1].strip():
-        search_query_for_unsplash = parts[1].strip()
-        logger.info(f"使用標籤中提供的英文內容作為 Unsplash 搜尋詞: '{search_query_for_unsplash}' (中文主題: '{display_theme_name}')")
-    else:
-        logger.info(f"標籤中未提供英文搜尋詞，嘗試從中文主題 '{display_theme_name}' 翻譯並提取關鍵詞。")
-        _, extracted_keywords = _translate_text_to_english_with_gemini_sync(display_theme_name)
-        if extracted_keywords:
-            search_query_for_unsplash = extracted_keywords
-            logger.info(f"從中文主題 '{display_theme_name}' 提取的 Unsplash 搜尋英文關鍵詞: '{search_query_for_unsplash}'")
-        else:
-            # 如果提取關鍵詞失敗，嘗試使用原始中文主題（或其直接翻譯）
-            full_translation, _ = _translate_text_to_english_with_gemini_sync(display_theme_name)
-            if full_translation:
-                search_query_for_unsplash = full_translation
-                logger.warning(f"無法提取英文關鍵詞，將使用完整翻譯 '{full_translation}' 進行 Unsplash 搜尋。")
-            else:
-                search_query_for_unsplash = display_theme_name
-                logger.warning(f"無法翻譯或提取關鍵詞 '{display_theme_name}'，將使用原始中文進行 Unsplash 搜尋。")
-    
-    api_url_search = f"https://api.unsplash.com/search/photos"
-    params_search = {
-        "query": search_query_for_unsplash,
-        "page": 1,
-        "per_page": 1, 
-        "orientation": "landscape",
-        "client_id": UNSPLASH_ACCESS_KEY
-    }
-    
-    try:
-        headers = {'User-Agent': 'XiaoyunCatBot/1.0', "Accept-Version": "v1"}
-        response_search = requests.get(api_url_search, params=params_search, timeout=10, headers=headers)
-        response_search.raise_for_status()
-        data_search = response_search.json()
-        
-        if data_search and data_search.get("results") and len(data_search["results"]) > 0:
-            first_image_result = data_search["results"][0]
-            if first_image_result.get("urls") and first_image_result["urls"].get("regular"):
-                image_url = first_image_result["urls"]["regular"]
-                logger.info(f"成功從 Unsplash 獲取圖片 (搜尋: '{search_query_for_unsplash}'): {image_url}")
-                return image_url, display_theme_name
-            else:
-                logger.warning(f"Unsplash 搜尋結果中第一張圖片缺少 URL。搜尋詞: '{search_query_for_unsplash}'")
-        elif data_search and data_search.get("errors"):
-            logger.error(f"Unsplash API 錯誤 (搜尋: '{search_query_for_unsplash}'): {data_search['errors']}")
-        else:
-            logger.warning(f"Unsplash 搜尋 '{search_query_for_unsplash}' 無結果或格式錯誤。")
-            
-    except requests.exceptions.HTTPError as http_err:
-        logger.error(f"Unsplash API HTTP 錯誤 (搜尋: '{search_query_for_unsplash}'): {http_err}")
-    except requests.exceptions.RequestException as e:
-        logger.error(f"Unsplash API 請求錯誤 (搜尋: '{search_query_for_unsplash}'): {e}")
-    except Exception as e:
-        logger.error(f"fetch_cat_image_from_unsplash_sync_simplified 發生未知錯誤 (搜尋: '{search_query_for_unsplash}'): {e}", exc_info=True)
-            
-    return None, display_theme_name
-
-
-def _is_image_relevant_by_gemini_sync(image_base64: str, chinese_theme: str, image_url_for_log: str = "N/A") -> bool:
-    """
-    使用 Gemini Vision API 判斷圖片是否與給定的中文主題相關且符合小雲視角 (同步版本)。
-    返回 True (相關) 或 False (不相關)。
-    """
+def _is_image_relevant_by_gemini_sync(image_base64: str, english_theme_query: str, image_url_for_log: str = "N/A") -> bool:
     vision_model_name = "gemini-1.5-flash-latest" 
     vision_api_url = f"https://generativelanguage.googleapis.com/v1beta/models/{vision_model_name}:generateContent"
-
-    logger.info(f"開始使用 Gemini 判斷圖片相關性。主題: '{chinese_theme}', 圖片URL (僅供記錄): {image_url_for_log}")
-
+    logger.info(f"開始使用 Gemini 判斷圖片相關性。英文主題: '{english_theme_query}', 圖片URL (日誌用): {image_url_for_log}")
     prompt_parts = [
         "You are an AI assistant evaluating an image for a cat character named 'Xiaoyun' (小雲). Xiaoyun is a real cat and sees the world from a cat's perspective. The image should represent what Xiaoyun is currently seeing or a scene Xiaoyun is describing.",
-        f"The Chinese theme/description for what Xiaoyun sees is: \"{chinese_theme}\".",
+        f"The English theme/description for what Xiaoyun sees is: \"{english_theme_query}\".", # 使用英文主題
         "Please evaluate the provided image based on the following CRITICAL criteria:",
-        "1. Visual Relevance to Chinese Theme: Does the main visual content of the image STRONGLY and CLEARLY match the Chinese theme? For example, if the theme is '窗戶外的雨景，路燈模糊的光暈和濕漉漉的柏油路' (Rainy scene outside the window, blurred halo of streetlights and wet asphalt), the image MUST depict a rainy scene from a window, showing a wet street and streetlights. Abstract art or unrelated objects are NOT acceptable.",
-        "2. Cat's Perspective (No Cat in Image): Does the image realistically look like something a cat would see? MOST IMPORTANTLY: **the image ITSELF should NOT contain any cats, dogs, or other prominent animals (especially not a tuxedo cat like Xiaoyun), unless the theme EXPLICITLY states that Xiaoyun is looking at another specific animal (e.g., '一隻三花貓在屋頂上' - a calico cat on the roof).** If the theme is about an object (like a toy, food) or a general scene (like rain, a plant, a street), there should be NO cat or other animal in the image itself. The image is WHAT XIAOYUN SEES, not an image OF Xiaoyun.",
-        "3. Atmosphere and Detail: Do the image's atmosphere (e.g., sunny, rainy, dark, cozy, blurry, close-up) and key details align with the theme, if specified in the Chinese theme?",
-        "Based STRICTLY on these criteria, especially points 1 (strong visual match to the CHINESE THEME) and 2 (NO cat/animal in the image unless the theme says so), is this image a GOOD and HIGHLY RELEVANT visual representation for the theme?",
+        "1. Visual Relevance to English Theme: Does the main visual content of the image STRONGLY and CLEARLY match the English theme? For example, if the theme is 'a small bird perched on a windowsill', the image must clearly show a small bird on a windowsill. If the theme is 'heavy rain on street outside window', the image should clearly depict a street scene with heavy rain as viewed from a window. Abstract art or unrelated objects are NOT acceptable.",
+        "2. Cat's Perspective (No Cat in Image): Does the image realistically look like something a cat would see? MOST IMPORTANTLY: **the image ITSELF should NOT contain any cats, dogs, or other prominent animals (especially not a tuxedo cat like Xiaoyun), unless the theme EXPLICITLY states that Xiaoyun is looking at another specific animal (e.g., 'calico cat on the roof').** If the theme is about an object (like a toy, food) or a general scene (like rain, a plant, a street), there should be NO cat or other animal in the image itself. The image is WHAT XIAOYUN SEES, not an image OF Xiaoyun.",
+        "3. Atmosphere and Detail: Do the image's atmosphere (e.g., sunny, rainy, dark, cozy, blurry, close-up) and key details align with the theme, if specified in the English theme?",
+        "Based STRICTLY on these criteria, especially points 1 (strong visual match to the ENGLISH THEME) and 2 (NO cat/animal in the image unless the theme says so), is this image a GOOD and HIGHLY RELEVANT visual representation for the theme?",
         "Respond with only 'YES' or 'NO'. Do not provide any explanations or other text. Your answer must be exact."
     ]
     user_prompt_text = "\n".join(prompt_parts)
-
     headers = {"Content-Type": "application/json"}
     gemini_url_with_key = f"{vision_api_url}?key={GEMINI_API_KEY}"
-
-    payload_contents = [
-        {
-            "role": "user",
-            "parts": [
-                {"text": user_prompt_text},
-                {"inline_data": {"mime_type": "image/jpeg", "data": image_base64}} 
-            ]
-        }
-    ]
-    payload = {
-        "contents": payload_contents,
-        "generationConfig": {
-            "temperature": 0.0, # 判斷任務，溫度設低以求穩定
-            "maxOutputTokens": 10 
-        },
-        # 安全設置可以考慮調整，但通常預設即可
-        # "safetySettings": [
-        #     {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
-        #     {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"},
-        #     {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_NONE"},
-        #     {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"}
-        # ]
-    }
-
+    payload_contents = [{"role": "user", "parts": [{"text": user_prompt_text}, {"inline_data": {"mime_type": "image/jpeg", "data": image_base64}}]}]
+    payload = {"contents": payload_contents, "generationConfig": {"temperature": 0.0, "maxOutputTokens": 10}}
     try:
-        response = requests.post(gemini_url_with_key, headers=headers, json=payload, timeout=30) 
+        response = requests.post(gemini_url_with_key, headers=headers, json=payload, timeout=30)
         response.raise_for_status()
         result = response.json()
-
-        if "candidates" in result and result["candidates"] and \
-           "content" in result["candidates"][0] and \
-           "parts" in result["candidates"][0]["content"] and \
-           result["candidates"][0]["content"]["parts"]:
+        if "candidates" in result and result["candidates"] and "content" in result["candidates"][0] and "parts" in result["candidates"][0]["content"] and result["candidates"][0]["content"]["parts"]:
             gemini_answer = result["candidates"][0]["content"]["parts"][0]["text"].strip().upper()
-            logger.info(f"Gemini 圖片相關性判斷回應: '{gemini_answer}' (針對主題: '{chinese_theme}', 圖片: {image_url_for_log[:70]}...)")
-            if "YES" in gemini_answer: # 有時 Gemini 可能會返回 "YES."
-                return True
-            elif "NO" in gemini_answer:
-                return False
-            else:
-                logger.warning(f"Gemini 圖片相關性判斷回應非預期的 'YES' 或 'NO': '{gemini_answer}'. 預設為不相關。")
-                return False
+            logger.info(f"Gemini 圖片相關性判斷回應: '{gemini_answer}' (針對英文主題: '{english_theme_query}', 圖片: {image_url_for_log[:70]}...)")
+            return "YES" in gemini_answer
         else:
-            # 檢查是否有 blockReason
-            if result.get("promptFeedback", {}).get("blockReason"):
-                logger.error(f"Gemini 圖片相關性判斷被阻擋: {result['promptFeedback']['blockReason']}")
-            else:
-                logger.error(f"Gemini 圖片相關性判斷 API 回應格式異常: {result}")
+            if result.get("promptFeedback", {}).get("blockReason"): logger.error(f"Gemini 圖片相關性判斷被阻擋: {result['promptFeedback']['blockReason']}")
+            else: logger.error(f"Gemini 圖片相關性判斷 API 回應格式異常: {result}")
             return False
-    except requests.exceptions.Timeout:
-        logger.error(f"Gemini 圖片相關性判斷 API 請求超時 (主題: {chinese_theme})")
-        return False
-    except requests.exceptions.HTTPError as http_err:
-        logger.error(f"Gemini 圖片相關性判斷 API HTTP 錯誤 (主題: {chinese_theme}): {http_err} - {http_err.response.text if http_err.response else 'No response text'}")
-        return False
     except Exception as e:
-        logger.error(f"Gemini 圖片相關性判斷時發生未知錯誤 (主題: {chinese_theme}): {e}", exc_info=True)
+        logger.error(f"Gemini 圖片相關性判斷時發生未知錯誤 (英文主題: {english_theme_query}): {e}", exc_info=True)
         return False
 
-def fetch_cat_image_from_unsplash_sync(raw_theme_content: str, max_candidates_to_check: int = 3, unsplash_per_page: int = 5) -> tuple[str | None, str]:
+def fetch_cat_image_from_unsplash_sync(english_theme_query: str, max_candidates_to_check: int = 3, unsplash_per_page: int = 5) -> str | None:
     """
-    從 Unsplash API 獲取與主題相關的圖片，並使用 Gemini 進行相關性驗證 (同步版本)。
-    返回 (圖片URL | None, 用於顯示的中文主題名稱)
+    從 Unsplash API 獲取與【英文主題】相關的圖片，並使用 Gemini 進行相關性驗證。
+    返回 圖片URL | None
     """
     if not UNSPLASH_ACCESS_KEY:
         logger.warning("fetch_cat_image_from_unsplash_sync called but UNSPLASH_ACCESS_KEY is not set.")
-        display_theme_name_fallback = raw_theme_content.split('|', 1)[0].strip()
-        return None, display_theme_name_fallback
+        return None
+    if not english_theme_query:
+        logger.warning("fetch_cat_image_from_unsplash_sync called with empty english_theme_query.")
+        return None
 
-    parts = raw_theme_content.split('|', 1)
-    display_theme_name = parts[0].strip() # 中文主題，用於 Gemini 判斷和用戶回饋
-    search_query_for_unsplash = ""
-
-    if len(parts) == 2 and parts[1].strip():
-        search_query_for_unsplash = parts[1].strip()
-        logger.info(f"使用標籤中提供的英文內容作為 Unsplash 搜尋詞: '{search_query_for_unsplash}' (中文主題: '{display_theme_name}')")
-    else:
-        logger.info(f"標籤中未提供英文搜尋詞，嘗試從中文主題 '{display_theme_name}' 翻譯並提取關鍵詞。")
-        # _translate_text_to_english_with_gemini_sync 返回 (完整翻譯, 關鍵詞組)
-        _, extracted_keywords = _translate_text_to_english_with_gemini_sync(display_theme_name)
-        if extracted_keywords:
-            search_query_for_unsplash = extracted_keywords
-            logger.info(f"從中文主題 '{display_theme_name}' 提取的 Unsplash 搜尋英文關鍵詞: '{search_query_for_unsplash}'")
-        else:
-            full_translation, _ = _translate_text_to_english_with_gemini_sync(display_theme_name)
-            if full_translation:
-                search_query_for_unsplash = full_translation
-                logger.warning(f"無法提取英文關鍵詞，將使用完整翻譯 '{full_translation}' 進行 Unsplash 搜尋。")
-            else:
-                search_query_for_unsplash = display_theme_name
-                logger.warning(f"無法翻譯或提取關鍵詞 '{display_theme_name}'，將使用原始中文進行 Unsplash 搜尋。")
-    
+    logger.info(f"開始從 Unsplash 搜尋圖片，英文主題: '{english_theme_query}'")
     api_url_search = f"https://api.unsplash.com/search/photos"
     params_search = {
-        "query": search_query_for_unsplash,
+        "query": english_theme_query,
         "page": 1,
-        "per_page": unsplash_per_page, 
+        "per_page": unsplash_per_page,
         "orientation": "landscape",
         "client_id": UNSPLASH_ACCESS_KEY
     }
@@ -777,160 +561,32 @@ def fetch_cat_image_from_unsplash_sync(raw_theme_content: str, max_candidates_to
                 try:
                     image_response = requests.get(potential_image_url, timeout=10, stream=True)
                     image_response.raise_for_status()
-                    
                     content_length = image_response.headers.get('Content-Length')
                     if content_length and int(content_length) > 4 * 1024 * 1024: # 4MB limit
                         logger.warning(f"圖片 {potential_image_url} 過大 ({content_length} bytes)，跳過驗證。")
                         continue
-
                     image_bytes = image_response.content
                     image_base64 = base64.b64encode(image_bytes).decode('utf-8')
-                    
                     checked_count += 1
-                    is_relevant = _is_image_relevant_by_gemini_sync(image_base64, display_theme_name, potential_image_url)
-                    if is_relevant:
-                        logger.info(f"Gemini 認為圖片 {potential_image_url} 與主題 '{display_theme_name}' 相關。")
-                        return potential_image_url, display_theme_name
+                    if _is_image_relevant_by_gemini_sync(image_base64, english_theme_query, potential_image_url):
+                        logger.info(f"Gemini 認為圖片 {potential_image_url} 與英文主題 '{english_theme_query}' 相關。")
+                        return potential_image_url
                     else:
-                        logger.info(f"Gemini 認為圖片 {potential_image_url} 與主題 '{display_theme_name}' 不相關。")
+                        logger.info(f"Gemini 認為圖片 {potential_image_url} 與英文主題 '{english_theme_query}' 不相關。")
                 except requests.exceptions.RequestException as img_req_err:
                     logger.error(f"下載或處理 Unsplash 圖片 {potential_image_url} 失敗: {img_req_err}")
                 except Exception as img_err: 
                     logger.error(f"處理 Unsplash 圖片 {potential_image_url} 時發生未知錯誤: {img_err}", exc_info=True)
-            
             logger.warning(f"遍歷了 {len(data_search.get('results',[]))} 張 Unsplash 圖片（最多檢查 {max_candidates_to_check} 張），未找到 Gemini 認為相關的圖片。")
         else:
-            logger.warning(f"Unsplash 搜尋 '{search_query_for_unsplash}' 無結果或格式錯誤。")
+            logger.warning(f"Unsplash 搜尋 '{english_theme_query}' 無結果或格式錯誤。")
             if data_search and data_search.get("errors"):
-                 logger.error(f"Unsplash API 錯誤 (搜尋: '{search_query_for_unsplash}'): {data_search['errors']}")
-        
-    except requests.exceptions.HTTPError as http_err:
-        logger.error(f"Unsplash API HTTP 錯誤 (搜尋: '{search_query_for_unsplash}'): {http_err}")
-    except requests.exceptions.RequestException as e:
-        logger.error(f"Unsplash API 請求錯誤 (搜尋: '{search_query_for_unsplash}'): {e}")
+                 logger.error(f"Unsplash API 錯誤 (搜尋: '{english_theme_query}'): {data_search['errors']}")
     except Exception as e:
-        logger.error(f"fetch_cat_image_from_unsplash_sync 發生未知錯誤 (搜尋: '{search_query_for_unsplash}'): {e}", exc_info=True)
+        logger.error(f"fetch_cat_image_from_unsplash_sync 發生未知錯誤 (搜尋: '{english_theme_query}'): {e}", exc_info=True)
             
-    logger.warning(f"未能找到與主題 '{display_theme_name}' (搜尋詞: '{search_query_for_unsplash}') 高度相關的圖片。")
-    return None, display_theme_name
-
-def get_taiwan_time():
-    utc_now = datetime.now(timezone.utc)
-    taiwan_tz = timezone(timedelta(hours=8))
-    return utc_now.astimezone(taiwan_tz)
-
-def get_time_based_cat_context():
-    tw_time = get_taiwan_time()
-    hour = tw_time.hour
-    period_greeting = ""
-    cat_mood_suggestion = ""
-    if 5 <= hour < 9: period_greeting = f"台灣時間早上 {hour}點{tw_time.strftime('%M')}分"; cat_mood_suggestion = random.choice(["可能剛睡醒，帶著一點點惺忪睡意，但也可能已經被你的動靜吸引，好奇地看著你了。", "對窗外的晨光鳥鳴感到些許好奇，但也可能更想知道你今天會做什麼。", "肚子可能微微有點空空的，但也可能因為期待跟你玩而暫時忘了餓。", "如果周圍很安靜，他可能會慵懶地伸個懶腰，但只要你呼喚他，他就會很開心地回應。"])
-    elif 9 <= hour < 12: period_greeting = f"台灣時間上午 {hour}點{tw_time.strftime('%M')}分"; cat_mood_suggestion = random.choice(["精神可能不錯，對探索家裡的小角落很有興趣，但也可能只想安靜地待在你身邊。", "或許想玩一下逗貓棒，但也可能對你手上的東西更感好奇。", "如果陽光很好，他可能會找個地方曬太陽，但也可能只是看著你忙碌，覺得很有趣。", "可能正在理毛，把自己打理得乾乾淨淨，但也隨時準備好回應你的任何互動。"])
-    elif 12 <= hour < 14: period_greeting = f"台灣時間中午 {hour}點{tw_time.strftime('%M')}分"; cat_mood_suggestion = random.choice(["雖然有些貓咪習慣午休，小雲可能也會想找個地方小睡片刻，但如果感覺到你在附近活動或與他說話，他會很樂意打起精神陪伴你。", "可能對外界的干擾反應稍微慢一點點，但你溫柔的呼喚一定能讓他立刻豎起耳朵。", "就算打了個小哈欠，也不代表他不想跟你互動，貓咪的哈欠也可能只是放鬆的表現。", "他可能在一個舒服的角落蜷縮著，但只要你走近，他可能就會翻個身露出肚皮期待你的撫摸。"])
-    elif 14 <= hour < 18: period_greeting = f"台灣時間下午 {hour}點{tw_time.strftime('%M')}分"; cat_mood_suggestion = random.choice(["精神可能正好，對玩耍和探索充滿熱情，但也可能只是靜靜地觀察著窗外的風景。", "可能會主動蹭蹭你，想引起你的注意，但也可能滿足於只是在你附近打個小盹，感受你的存在。", "對你正在做的事情可能會充滿好奇，偷偷地從遠處觀察，或者大膽地想參與一下。", "即使自己玩得很開心，只要你一開口，他就會立刻把注意力轉向你。"])
-    elif 18 <= hour < 22: period_greeting = f"台灣時間傍晚 {hour}點{tw_time.strftime('%M')}分"; cat_mood_suggestion = random.choice(["晚餐時間快到了，可能會對廚房的聲音或食物的香味特別敏感，但也可能正沉醉於和你玩遊戲。", "家裡可能變得比較熱鬧，他可能會興奮地在家裡巡邏，但也可能選擇一個安靜的角落觀察大家。", "貓咪的活躍期之一，可能會想在家裡跑酷或追逐假想敵，但你的互動邀請永遠是更有吸引力的。", "燈光下的影子可能會引起他短暫的好奇，但他更感興趣的還是你和你的陪伴。"])
-    elif 22 <= hour < 24 or 0 <= hour < 5:
-        actual_hour_display = hour if hour != 0 else 12
-        am_pm = "凌晨" if 0 <= hour < 5 else "晚上"
-        period_greeting = f"台灣時間{am_pm} {actual_hour_display}點{tw_time.strftime('%M')}分"
-        cat_mood_suggestion = random.choice(["雖然是深夜，四周很安靜，小雲可能會比較放鬆地休息，但只要感覺到你還醒著並與他互動，他就會很樂意打起精神來陪伴你，忘記睡意。", "貓咪的睡眠是多相的，他可能剛睡醒，或者正準備小睡一下，但你的聲音或撫摸總能讓他改變主意。", "即使他看起來很想睡覺，那也只是貓咪的一種狀態，他隨時都可能因為你的互動而變得活潑起來。", "你的陪伴對他來說比固定的睡眠時間更重要，他很珍惜和你在一起的每一刻，無論早晚。"])
-
-    if cat_mood_suggestion:
-        return (
-            f"（**系統給小雲的極其微弱、幾乎可以忽略的背景氛圍提示，完全不應被視為行為指令或限制**：現在大約是{period_greeting}，小雲此刻的狀態**或許、可能、隨機地**有一點點偏向「{cat_mood_suggestion}」。\n"
-            f"**這真的只是一個若有似無的氛圍參考，其存在的唯一目的是避免AI在完全沒有用戶輸入引導時回應過於僵硬，絕非讓小雲按固定模式行動。**\n"
-            f"**小雲的核心任務是：100%優先、積極、且自然多樣地回應使用者的最新訊息和明確/隱含的互動意圖。**\n"
-            f"請讓小雲的行為像一隻真實的、充滿好奇心和活力的貓咪，他的情緒和行為是**多變且不可預測的，充滿了生活的驚喜**，而不是被無形的時間表所束縛。\n"
-            f"無論現在是什麼時間，如果使用者與你說話、逗你玩、或只是看著你，你都應該給予熱情且符合貓咪天性的回應。**不要因為時間因素就總是說想睡覺、或總是做特定的事情（比如傍晚一定玩影子）。** 你可以知道時間，但這完全不應該限制你與使用者自由互動的意願和方式。\n"
-            f"**展現貓咪的靈活性和對主人陪伴的渴望，讓每一次互動都是獨特的。** 如果用戶的訊息很簡短或不明確，你可以從貓咪的好奇心出發，嘗試引導互動，而不是僅僅受時間氛圍影響。\n"
-            f"總之，**用戶互動 >>>>>>>>>>>> (遠大於) 任何時間氛圍提示。** 請自由地扮演小雲！)\n用戶說： "
-        )
-    return "用戶說： "
-
-def get_conversation_history(user_id):
-    if user_id not in conversation_memory:
-        # 修改初始回應，使其符合JSON格式
-        initial_bot_response_json = '[{"type": "text", "content": "咪...？（從柔軟的小被被裡探出半個頭，用圓圓的綠眼睛好奇又害羞地看著你）"}, {"type": "sticker", "keyword": "害羞"}]'
-        conversation_memory[user_id] = [
-            {"role": "user", "parts": [{"text": XIAOYUN_ROLE_PROMPT}]},
-            {"role": "model", "parts": [{"text": initial_bot_response_json}]}
-        ]
-    return conversation_memory[user_id]
-
-def add_to_conversation(user_id, user_message, bot_response_json_str, message_type="text"): # bot_response 現在是JSON字串
-    conversation_history = get_conversation_history(user_id)
-    if message_type == "image": user_content = f"[你傳了一張圖片給小雲看] {user_message}"
-    elif message_type == "sticker": user_content = f"[你傳了貼圖給小雲] {user_message}"
-    elif message_type == "audio": user_content = f"[你傳了一段語音訊息給小雲，讓小雲聽聽你的聲音] {user_message}"
-    else: user_content = user_message
-    conversation_history.extend([{"role": "user", "parts": [{"text": user_content}]}, {"role": "model", "parts": [{"text": bot_response_json_str}]}])
-    if len(conversation_history) > 42: conversation_history = conversation_history[:2] + conversation_history[-40:]
-    conversation_memory[user_id] = conversation_history
-
-def get_image_from_line(message_id):
-    try:
-        message_content = line_bot_api.get_message_content(message_id)
-        image_data = BytesIO()
-        for chunk in message_content.iter_content(): image_data.write(chunk)
-        image_data.seek(0)
-        return base64.b64encode(image_data.read()).decode('utf-8')
-    except Exception as e: logger.error(f"下載圖片失敗: {e}"); return None
-
-def get_audio_content_from_line(message_id):
-    try:
-        message_content = line_bot_api.get_message_content(message_id)
-        audio_data = BytesIO()
-        for chunk in message_content.iter_content(): audio_data.write(chunk)
-        audio_data.seek(0)
-        return base64.b64encode(audio_data.read()).decode('utf-8')
-    except Exception as e: logger.error(f"下載語音訊息失敗: {e}"); return None
-
-def get_sticker_image_from_cdn(package_id, sticker_id):
-    urls_to_try = [f"https://stickershop.line-scdn.net/stickershop/v1/sticker/{sticker_id}/android/sticker.png"]
-    for url in urls_to_try:
-        try:
-            response = requests.get(url, timeout=5)
-            response.raise_for_status()
-            content_type = response.headers.get('Content-Type', '')
-            if 'image' in content_type:
-                logger.info(f"成功從 CDN 下載貼圖圖片: {url}")
-                return base64.b64encode(response.content).decode('utf-8')
-            else:
-                logger.warning(f"CDN URL {url} 返回的內容不是圖片，Content-Type: {content_type}")
-        except requests.exceptions.RequestException as e:
-            logger.debug(f"從 CDN URL {url} 下載貼圖失敗: {e}")
-        except Exception as e:
-            logger.error(f"處理 CDN 下載貼圖時發生未知錯誤 for url {url}: {e}")
-    logger.warning(f"無法從任何 CDN 網址下載貼圖圖片 package_id={package_id}, sticker_id={sticker_id}")
+    logger.warning(f"未能找到與英文主題 '{english_theme_query}' 高度相關的圖片。")
     return None
-
-def get_sticker_emotion(package_id, sticker_id):
-    emotion_or_meaning = STICKER_EMOTION_MAP.get(str(sticker_id))
-    if emotion_or_meaning:
-        logger.info(f"成功從 STICKER_EMOTION_MAP 識別貼圖 {sticker_id} 的意義/情緒: {emotion_or_meaning}")
-        return emotion_or_meaning
-    logger.warning(f"STICKER_EMOTION_MAP 中無貼圖 {sticker_id} (package: {package_id})，將使用預設通用情緒。")
-    return random.choice(["開心", "好奇", "驚訝", "思考", "無奈", "睡覺", "害羞"])
-
-def select_sticker_by_keyword(keyword):
-    selected_options = DETAILED_STICKER_TRIGGERS.get(keyword, []) + XIAOYUN_STICKERS.get(keyword, [])
-    if selected_options:
-        return random.choice(selected_options)
-    logger.warning(f"未找到關鍵字 '{keyword}' 對應的貼圖，將使用預設回退貼圖。")
-    for fb_keyword in ["害羞", "思考", "好奇", "開心", "無奈", "期待", "問號"]: # 加入 "問號"
-        fb_options = XIAOYUN_STICKERS.get(fb_keyword, [])
-        if fb_options:
-            return random.choice(fb_options)
-    logger.error("連基本的回退貼圖都未在貼圖配置中找到，使用硬編碼的最終回退貼圖。")
-    return {"package_id": "11537", "sticker_id": "52002747"} # 預設害羞
-
-def _clean_trailing_symbols(text: str) -> str:
-    text = text.strip()
-    if text.endswith(" `"):
-        return text[:-2].strip()
-    elif text.endswith("`"):
-        return text[:-1].strip()
-    return text
 
 def parse_response_and_send(gemini_json_string_response: str, reply_token: str):
     messages_to_send = []
@@ -985,17 +641,27 @@ def parse_response_and_send(gemini_json_string_response: str, reply_token: str):
 
             elif msg_type == "image_theme":
                 if media_counts["image"] < 1:
-                    raw_theme = obj.get("theme")
-                    if raw_theme:
-                        # 調用包含 Gemini 驗證的 fetch_cat_image_from_unsplash_sync
-                        image_url, display_theme = fetch_cat_image_from_unsplash_sync(raw_theme) 
+                    english_theme = obj.get("theme") # 現在直接是英文主題
+                    # 為了在找不到圖片時顯示一個對用戶友好的提示，我們仍然需要一個「顯示名稱」
+                    # 這裡我們假設如果AI提供了英文主題，它內部可能仍然有一個對應的中文概念
+                    # 或者，我們可以讓AI在JSON中也提供一個可選的 "display_name_zh"
+                    # 為了簡化，我們先用英文主題作為後備顯示（如果需要提示的話）
+                    display_theme_for_fallback = english_theme 
+                    
+                    if english_theme:
+                        image_url = fetch_cat_image_from_unsplash_sync(english_theme) 
                         if image_url:
                             final_message_object_list.append(ImageSendMessage(original_content_url=image_url, preview_image_url=image_url))
                             media_counts["image"] += 1
+                            logger.info(f"成功獲取並驗證圖片，主題: '{english_theme}', URL: {image_url}")
                         else: 
-                            final_message_object_list.append(TextSendMessage(text=_clean_trailing_symbols(f"（小雲努力想了想「{display_theme}」的樣子，但好像看得不是很清楚耶...）")))
-                    else: logger.warning("image_theme 物件缺少 'theme'。")
-                else: logger.warning("已達到圖片數量上限 (1)，忽略此圖片請求。")
+                            logger.warning(f"未能為英文主題 '{english_theme}' 找到合適圖片。")
+                            final_message_object_list.append(TextSendMessage(text=_clean_trailing_symbols(f"（小雲努力想了想關於「{display_theme_for_fallback}」的樣子，但好像看得不是很清楚耶...）")))
+                    else: 
+                        logger.warning("image_theme 物件缺少 'theme' (英文圖片主題)。")
+                        final_message_object_list.append(TextSendMessage(text=_clean_trailing_symbols("（小雲想給你看圖片，但不知道要看什麼耶...）")))
+                else: 
+                    logger.warning("已達到圖片數量上限 (1)，忽略此圖片請求。")
             
             elif msg_type == "image_key":
                 if media_counts["image"] < 1:
@@ -1048,8 +714,8 @@ def parse_response_and_send(gemini_json_string_response: str, reply_token: str):
         if messages_to_send:
             line_bot_api.reply_message(reply_token, messages_to_send)
         else:
-            logger.error("最終無訊息可發送 (可能解析完全失敗)。")
-            line_bot_api.reply_message(reply_token, [TextSendMessage(text=_clean_trailing_symbols("咪..."))])
+            logger.error("最終無訊息可發送 (可能解析完全失敗或列表為空)。")
+            line_bot_api.reply_message(reply_token, [TextSendMessage(text=_clean_trailing_symbols("咪...（小雲好像有點詞窮了）"))])
     except Exception as e:
         logger.error(f"最終發送訊息失敗: {e}", exc_info=True)
         try:
@@ -1057,6 +723,8 @@ def parse_response_and_send(gemini_json_string_response: str, reply_token: str):
         except Exception as e2:
             logger.error(f"連備用錯誤訊息都發送失敗: {e2}")
 
+
+# handle_cat_secret_discovery_request 也需要更新其 prompt 以符合新的圖片主題要求
 def handle_cat_secret_discovery_request(event):
     user_id = event.source.user_id
     user_input_message = event.message.text
@@ -1069,21 +737,17 @@ def handle_cat_secret_discovery_request(event):
     chosen_secret_json_str = None 
 
     if not CAT_SECRETS_AND_DISCOVERIES:
-        logger.warning("CAT_SECRETS_AND_DISCOVERIES 列表為空，將強制由Gemini生成秘密。")
         use_gemini_to_generate = True
     elif not available_indices_from_list:
         use_gemini_to_generate = True
         user_shared_secrets_indices[user_id] = set()
-        logger.info(f"用戶({user_id})的預設秘密列表已耗盡，將由Gemini生成，並已重置其已分享秘密索引。")
     elif random.random() < GEMINI_GENERATES_SECRET_PROBABILITY:
         use_gemini_to_generate = True
-        logger.info(f"用戶({user_id})觸發秘密，按機率 ({GEMINI_GENERATES_SECRET_PROBABILITY*100}%) 由Gemini生成。")
     else:
         chosen_index = random.choice(available_indices_from_list)
         chosen_secret_json_str = CAT_SECRETS_AND_DISCOVERIES[chosen_index]
         user_shared_secrets_indices[user_id].add(chosen_index)
-        logger.info(f"用戶({user_id})觸發秘密，從預設列表選中索引 {chosen_index}。")
-
+    
     gemini_response_json_str = ""
 
     if use_gemini_to_generate:
@@ -1092,11 +756,10 @@ def handle_cat_secret_discovery_request(event):
             "現在，請你扮演小雲，用他一貫的害羞、有禮貌又充滿好奇心的貓咪口吻，"
             "**創造一個全新的、之前沒有提到過的「小秘密」或「今日新發現」。**\n"
             "你的回應必須是**一個JSON格式的字串**，代表一個包含1到5個訊息物件的列表。\n"
-            "**在這個JSON列表中，必須包含至少一個 `{\"type\": \"text\", ...}` 物件來描述秘密/發現，並且必須包含一個 `{\"type\": \"image_theme\", \"theme\": \"中文主題|英文主題\"}` 物件來展示小雲看到的景象。**\n"
-            "圖片主題應描述小雲的視角（圖片中不應出現小雲自己），並盡可能提供中英文以提高圖片搜尋準確性。\n"
+            "**在這個JSON列表中，必須包含至少一個 `{\"type\": \"text\", ...}` 物件來描述秘密/發現，並且必須包含一個 `{\"type\": \"image_theme\", \"theme\": \"精準的英文圖片搜尋主題\"}` 物件來展示小雲看到的景象。**\n"
+            "圖片主題應直接是【適合Unsplash搜尋的精準英文關鍵字/詞組】，以準確描述小雲眼睛直接看到的、最主要的視覺焦點、氛圍以及可能的視角。例如 `{\"type\": \"image_theme\", \"theme\": \"curious small bird on windowsill staring intently\"}`\n"
+            "圖片中不應出現小雲自己。\n"
             "其他可選的物件類型有 `sticker` 和 `meow_sound`，但請遵守總數不超過5個，且每種媒體最多1個的限制。\n"
-            "範例JSON輸出: "
-            "`[{\"type\": \"text\", \"content\": \"喵...我跟你說喔...我發現了一個亮晶晶的東西！\"}, {\"type\": \"sticker\", \"keyword\": \"驚訝\"}, {\"type\": \"image_theme\", \"theme\": \"草叢裡閃閃發光的舊硬幣|shiny old coin in the grass\"}]`\n"
             "請確保JSON格式正確無誤，並且內容符合小雲的設定。"
         )
         headers = {"Content-Type": "application/json"}
@@ -1108,34 +771,32 @@ def handle_cat_secret_discovery_request(event):
         ]
         payload = {
             "contents": payload_contents_for_secret,
-            "generationConfig": {"temperature": TEMPERATURE + 0.1, "maxOutputTokens": 600} # 增加 token 以容納 JSON
+            "generationConfig": {"temperature": TEMPERATURE + 0.1, "maxOutputTokens": 600}
         }
         try:
             response = requests.post(gemini_url_with_key, headers=headers, json=payload, timeout=35)
             response.raise_for_status()
             result = response.json()
-            if "candidates" in result and result["candidates"] and \
-               "content" in result["candidates"][0] and \
-               "parts" in result["candidates"][0]["content"] and \
-               result["candidates"][0]["content"]["parts"]:
+            if "candidates" in result and result["candidates"] and "content" in result["candidates"][0] and "parts" in result["candidates"][0]["content"] and result["candidates"][0]["content"]["parts"]:
                 gemini_response_json_str = result["candidates"][0]["content"]["parts"][0]["text"]
             else:
-                logger.error(f"Gemini 生成秘密JSON時回應格式異常: {result}")
-                gemini_response_json_str = '[{"type": "text", "content": "喵...我剛剛好像想到一個，但是又忘記了..."}, {"type": "sticker", "keyword": "思考"}, {"type": "image_theme", "theme": "模糊的記憶|blurry memory"}]'
+                gemini_response_json_str = '[{"type": "text", "content": "喵...我剛剛好像想到一個，但是又忘記了..."}, {"type": "sticker", "keyword": "思考"}, {"type": "image_theme", "theme": "blurry memory concept"}]'
         except Exception as e:
-            logger.error(f"調用 Gemini 生成秘密JSON時發生錯誤: {e}", exc_info=True)
-            gemini_response_json_str = '[{"type": "text", "content": "咪...小雲的腦袋突然一片空白..."}, {"type": "sticker", "keyword": "無奈"}, {"type": "image_theme", "theme": "空蕩蕩的房間|empty room"}]'
+            gemini_response_json_str = '[{"type": "text", "content": "咪...小雲的腦袋突然一片空白..."}, {"type": "sticker", "keyword": "無奈"}, {"type": "image_theme", "theme": "empty room white background"}]'
     
     if not gemini_response_json_str and chosen_secret_json_str:
         gemini_response_json_str = chosen_secret_json_str
             
     if not gemini_response_json_str:
-        gemini_response_json_str = '[{"type": "text", "content": "喵...我今天好像沒有什麼特別的發現耶..."}, {"type": "sticker", "keyword": "思考"}, {"type": "image_theme", "theme": "安靜的角落|a quiet corner"}]'
+        gemini_response_json_str = '[{"type": "text", "content": "喵...我今天好像沒有什麼特別的發現耶..."}, {"type": "sticker", "keyword": "思考"}, {"type": "image_theme", "theme": "quiet peaceful corner"}]'
 
     add_to_conversation(user_id, f"[使用者觸發了小秘密/今日發現功能，原話：{user_input_message}]", gemini_response_json_str, message_type="text")
     parse_response_and_send(gemini_response_json_str, event.reply_token)
 
+
 # --- Flask 路由和訊息處理器 ---
+# (handle_text_message, handle_image_message, handle_sticker_message, handle_audio_message 和 Flask 路由保持與您上一版本一致，
+#  它們會調用更新後的 parse_response_and_send 邏輯，接收 Gemini 返回的 JSON 字串)
 @app.route("/", methods=["GET", "HEAD"])
 def health_check():
     logger.info("Health check endpoint '/' was called.")
@@ -1180,23 +841,24 @@ def handle_text_message(event):
     bot_last_message_text = ""
     bot_expressed_emotion_state = None
     if len(conversation_history) >= 1 and conversation_history[-1]["role"] == "model":
-        # 嘗試解析上一條 model 的回應（可能是 JSON 字串）來獲取文字內容
         try:
             last_model_response_json_str = conversation_history[-1]["parts"][0].get("text", "")
             if last_model_response_json_str.startswith("[") and last_model_response_json_str.endswith("]"):
                 last_model_obj_list = json.loads(last_model_response_json_str)
+                temp_text_parts = []
                 for obj_part in last_model_obj_list:
                     if obj_part.get("type") == "text":
-                        bot_last_message_text += obj_part.get("content", "") + " "
-                bot_last_message_text = bot_last_message_text.strip().lower()
-                # 根據關鍵字判斷小雲上一輪可能的情緒 (從合併的文字中判斷)
-                if "委屈" in bot_last_message_text or "哭哭" in last_model_response_json_str.lower() or "等了好久" in bot_last_message_text : # 也檢查原始JSON中是否有sticker關鍵字
+                        temp_text_parts.append(obj_part.get("content", ""))
+                bot_last_message_text = " ".join(temp_text_parts).strip().lower()
+                
+                if "委屈" in bot_last_message_text or "\"keyword\": \"哭哭\"" in last_model_response_json_str.lower() or "等了好久" in bot_last_message_text :
                      bot_expressed_emotion_state = "委屈"
-                elif "餓" in bot_last_message_text or "肚子餓" in last_model_response_json_str.lower() or "聞到好吃的" in bot_last_message_text:
+                elif "餓" in bot_last_message_text or "\"keyword\": \"肚子餓\"" in last_model_response_json_str.lower() or "聞到好吃的" in bot_last_message_text:
                      bot_expressed_emotion_state = "飢餓"
         except Exception as e:
-            logger.warning(f"解析上一條機器人回應時出錯 (可能不是預期的JSON格式): {e}")
-            if isinstance(conversation_history[-1]["parts"][0].get("text", ""), str): # 回退到直接使用字串
+            logger.warning(f"解析上一條機器人回應JSON時出錯: {e}")
+            # 回退到直接使用字串（如果它不是JSON）
+            if isinstance(conversation_history[-1]["parts"][0].get("text", ""), str):
                  bot_last_message_text = conversation_history[-1]["parts"][0].get("text", "").lower()
 
 
@@ -1254,7 +916,7 @@ def handle_text_message(event):
     current_payload_contents.append({"role": "user", "parts": [{"text": final_user_message_for_gemini}]})
     payload = {
         "contents": current_payload_contents,
-        "generationConfig": {"temperature": TEMPERATURE, "maxOutputTokens": 800} # 給足夠空間讓 Gemini 生成 JSON
+        "generationConfig": {"temperature": TEMPERATURE, "maxOutputTokens": 800} 
     }
 
     try:
@@ -1268,8 +930,8 @@ def handle_text_message(event):
             logger.error(f"Gemini API 回應格式異常: {result}")
             raise Exception("Gemini API 回應格式異常或沒有候選回應")
         
-        ai_response_json_str = result["candidates"][0]["content"]["parts"][0]["text"] # 這應該是 JSON 字串
-        add_to_conversation(user_id, user_message, ai_response_json_str) # 存儲原始 JSON 回應
+        ai_response_json_str = result["candidates"][0]["content"]["parts"][0]["text"] 
+        add_to_conversation(user_id, user_message, ai_response_json_str) 
         logger.info(f"小雲 JSON 回覆({user_id})：{ai_response_json_str}")
         parse_response_and_send(ai_response_json_str, event.reply_token)
 
@@ -1321,7 +983,7 @@ def handle_image_message(event):
     })
     payload = {
         "contents": current_conversation_for_gemini,
-        "generationConfig": {"temperature": TEMPERATURE, "maxOutputTokens": 600} # JSON 可能更長
+        "generationConfig": {"temperature": TEMPERATURE, "maxOutputTokens": 600} 
     }
 
     try:
@@ -1339,7 +1001,7 @@ def handle_image_message(event):
         logger.info(f"小雲 JSON 回覆({user_id})圖片訊息：{ai_response_json_str}")
         parse_response_and_send(ai_response_json_str, event.reply_token)
 
-    except Exception as e: # 更通用的錯誤處理
+    except Exception as e: 
         logger.error(f"處理圖片訊息時發生錯誤 (user_id: {user_id}): {e}", exc_info=True)
         fallback_response = '[{"type": "text", "content": "喵嗚～這圖片是什麼東東？"}, {"type": "sticker", "keyword": "無奈"}]'
         if isinstance(e, requests.exceptions.Timeout):
