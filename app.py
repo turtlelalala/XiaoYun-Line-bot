@@ -69,13 +69,13 @@ MEOW_SOUNDS_MAP = {
     "excited_meow_purr": {"file": "excited_meow_purr.m4a", "duration": 8998}, # 您的檔名是 excited_meow_purr.m4a
     "food_demanding_call": {"file": "food_demanding_call.m4a", "duration": 5205},
     "generic_meow": {"file": "generic_meow.m4a", "duration": 1655},
-    "greeting_trill": {"file": "greeting_thrill.m4a", "duration": 1275}, 
+    "greeting_trill": {"file": "greeting_trill.m4a", "duration": 1275}, 
     "hello_meow": {"file": "hello_meow.m4a", "duration": 624},
     "hungry_meow_loud": {"file": "hungry_meow_loud.m4a", "duration": 567},
     "lonely_cry_short": {"file": "lonely_cry_short.m4a", "duration": 3827},
     "loud_cat_purring": {"file": "loud_cat_purring.m4a", "duration": 7919},
     "pathetic_cat_screaming": {"file": "pathetic_cat_screaming.m4a", "duration": 2842},
-    "playful_trill": {"file": "playful_thrill.m4a", "duration": 17003},  
+    "playful_trill": {"file": "playful_trill.m4a", "duration": 17003},  
     "questioning_meow_upward": {"file": "questioning_meow_upward.m4a", "duration": 632},
     "sad_mewl_short": {"file": "sad_mewl_short.m4a", "duration": 1625}, # 您的檔名是 sad_mewl_short.m4a
     "sad_whimper_soft": {"file": "sad_whimper_soft.m4a", "duration": 8837},
