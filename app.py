@@ -52,40 +52,40 @@ TEMPERATURE = 0.8
 conversation_memory = {}
 
 # --- 貓叫聲音訊設定 ---
-# !! 請務必將 XXXX 替換為每個音訊檔案的實際毫秒數 !!
+# !! 請務必將下面的 XXXX 替換為每個音訊檔案的實際毫秒數 !!
 MEOW_SOUNDS_MAP = {
-    "affectionate_meow_gentle": {"file": "affectionate_meow_gentle.m4a", "duration": 1265},
-    "affectionate_rub_purr": {"file": "affectionate_rub_purr.m4a", "duration": 808},
-    "aggressive_spit": {"file": "aggressive_spit.m4a", "duration": 23764},
-    "angry_hiss_long": {"file": "angry_hiss_long.m4a", "duration": 21419},
-    "angry_hiss_short": {"file": "angry_hiss_short.m4a", "duration": 1991},
-    "annoyed_cat_meow": {"file": "annoyed_cat_meow.m4a", "duration": 1012},
-    "attention_meow_insistent": {"file": "attention_meow_insistent.m4a", "duration": 2194},
-    "begging_whine_soft": {"file": "begging_whine_soft.m4a", "duration": 19575},
-    "cat_complaint": {"file": "cat_complaint.m4a", "duration": 11795},
-    "content_purr_rumble": {"file": "content_purr_rumble.m4a", "duration": 38028},
-    "content_purr_soft": {"file": "content_purr_soft.m4a", "duration": 4500},
-    "curious_meow_soft": {"file": "curious_meow_soft.m4a", "duration": 592}, # 您的檔名是 curious_meow_soft.m4a
-    "excited_meow_purr": {"file": "excited_meow_purr.m4a", "duration": 8998}, # 您的檔名是 excited_meow_purr.m4a
-    "food_demanding_call": {"file": "food_demanding_call.m4a", "duration": 5205},
-    "generic_meow": {"file": "generic_meow.m4a", "duration": 1655},
-    "greeting_trill": {"file": "greeting_trill.m4a", "duration": 1275}, 
-    "hello_meow": {"file": "hello_meow.m4a", "duration": 624},
-    "hungry_meow_loud": {"file": "hungry_meow_loud.m4a", "duration": 567},
-    "lonely_cry_short": {"file": "lonely_cry_short.m4a", "duration": 3827},
-    "loud_cat_purring": {"file": "loud_cat_purring.m4a", "duration": 7919},
-    "pathetic_cat_screaming": {"file": "pathetic_cat_screaming.m4a", "duration": 2842},
-    "playful_trill": {"file": "playful_trill.m4a", "duration": 17003},  
-    "questioning_meow_upward": {"file": "questioning_meow_upward.m4a", "duration": 632},
-    "sad_mewl_short": {"file": "sad_mewl_short.m4a", "duration": 1625}, # 您的檔名是 sad_mewl_short.m4a
-    "sad_whimper_soft": {"file": "sad_whimper_soft.m4a", "duration": 8837},
-    "scared_yowl_sharp_long": {"file": "scared_yowl_sharp_long.m4a", "duration": 10646}, # 您的檔名
-    "sleepy_yawn": {"file": "sleepy_yawn.m4a", "duration": 604},
-    "soliciting_meow_highpitch": {"file": "soliciting_meow_highpitch.m4a", "duration": 685},
-    "soliciting_meow_sweet": {"file": "soliciting_meow_sweet.m4a", "duration": 1326},
-    "soliciting_wanting_food": {"file": "soliciting_wanting_food.m4a", "duration": 1084},
-    "startled_yowl_sharp": {"file": "startled_yowl_sharp.m4a", "duration": 7538}, # 您的檔名
-    "sweet_begging_meow": {"file": "sweet_begging_meow.m4a", "duration": 1027},
+    "affectionate_meow_gentle": {"file": "affectionate_meow_gentle.m4a", "duration": XXXX},
+    "affectionate_rub_purr": {"file": "affectionate_rub_purr.m4a", "duration": XXXX},
+    "aggressive_spit": {"file": "aggressive_spit.m4a", "duration": XXXX},
+    "angry_hiss_long": {"file": "angry_hiss_long.m4a", "duration": XXXX},
+    "angry_hiss_short": {"file": "angry_hiss_short.m4a", "duration": XXXX},
+    "annoyed_cat_meow": {"file": "annoyed_cat_meow.m4a", "duration": XXXX},
+    "attention_meow_insistent": {"file": "attention_meow_insistent.m4a", "duration": XXXX},
+    "begging_whine_soft": {"file": "begging_whine_soft.m4a", "duration": XXXX},
+    "cat_complaint": {"file": "cat_complaint.m4a", "duration": XXXX},
+    "content_purr_rumble": {"file": "content_purr_rumble.m4a", "duration": XXXX},
+    "content_purr_soft": {"file": "content_purr_soft.m4a", "duration": XXXX},
+    "curious_meow_soft": {"file": "curious_meow_soft.m4a", "duration": XXXX},
+    "excited_meow_purr": {"file": "excited_meow_purr.m4a", "duration": XXXX},
+    "food_demanding_call": {"file": "food_demanding_call.m4a", "duration": XXXX},
+    "generic_meow": {"file": "generic_meow.m4a", "duration": XXXX},
+    "greeting_trill": {"file": "greeting_trill.m4a", "duration": XXXX},
+    "hello_meow": {"file": "hello_meow.m4a", "duration": XXXX},
+    "hungry_meow_loud": {"file": "hungry_meow_loud.m4a", "duration": XXXX},
+    "lonely_cry_short": {"file": "lonely_cry_short.m4a", "duration": XXXX},
+    "loud_cat_purring": {"file": "loud_cat_purring.m4a", "duration": XXXX},
+    "pathetic_cat_screaming": {"file": "pathetic_cat_screaming.m4a", "duration": XXXX},
+    "playful_thill": {"file": "playful_trill.m4a", "duration": XXXX},
+    "questioning_meow_upward": {"file": "questioning_meow_upward.m4a", "duration": XXXX},
+    "sad_mewl_short": {"file": "sad_mewl_short.m4a", "duration": XXXX},
+    "sad_whimper_soft": {"file": "sad_whimper_soft.m4a", "duration": XXXX},
+    "scared_yowl_sharp_long": {"file": "scared_yowl_sharp_long.m4a", "duration": XXXX},
+    "sleepy_yawn": {"file": "sleepy_yawn.m4a", "duration": XXXX},
+    "soliciting_meow_highpitch": {"file": "soliciting_meow_highpitch.m4a", "duration": XXXX},
+    "soliciting_meow_sweet": {"file": "soliciting_meow_sweet.m4a", "duration": XXXX},
+    "soliciting_wanting_food": {"file": "soliciting_wanting_food.m4a", "duration": XXXX},
+    "startled_yowl_sharp": {"file": "startled_yowl_sharp.m4a", "duration": XXXX},
+    "sweet_begging_meow": {"file": "sweet_begging_meow.m4a", "duration": XXXX},
 }
 
 
@@ -99,7 +99,7 @@ EXAMPLE_IMAGE_URLS = {
 # --- Unsplash 圖片搜尋函數 ---
 def fetch_cat_image_from_unsplash(theme="cat", count=1):
     if not UNSPLASH_ACCESS_KEY:
-        logger.warning("Unsplash API 金鑰未設定，無法使用 [SEARCH_IMAGE_THEME] 功能。") # 改為 warning
+        logger.warning("Unsplash API 金鑰未設定，無法使用 [SEARCH_IMAGE_THEME] 功能。")
         return None
     # 確保搜尋主題包含 "cat" 以提高相關性，除非主題本身已經很明確是貓
     if "cat" not in theme.lower() and "kitten" not in theme.lower() and "貓" not in theme:
@@ -634,12 +634,17 @@ def parse_response_and_send(response_text, reply_token):
 
         if part_str.upper() == "[SPLIT]":
             if current_text_parts:
-                messages.append(TextSendMessage(text=" ".join(current_text_parts).strip()))
+                cleaned_text = " ".join(current_text_parts).strip()
+                if cleaned_text: # 確保不發送空文字訊息
+                    messages.append(TextSendMessage(text=cleaned_text))
                 current_text_parts = []
             is_command = True
         
         elif part_str.startswith("[STICKER:") and part_str.endswith("]"):
-            if current_text_parts: messages.append(TextSendMessage(text=" ".join(current_text_parts).strip())); current_text_parts = []
+            if current_text_parts: 
+                cleaned_text = " ".join(current_text_parts).strip()
+                if cleaned_text: messages.append(TextSendMessage(text=cleaned_text))
+                current_text_parts = []
             keyword = part_str[len("[STICKER:"): -1].strip()
             sticker_info = select_sticker_by_keyword(keyword)
             if sticker_info:
@@ -651,12 +656,18 @@ def parse_response_and_send(response_text, reply_token):
             is_command = True
 
         elif part_str.startswith("[MEOW_SOUND:") and part_str.endswith("]"):
-            if current_text_parts: messages.append(TextSendMessage(text=" ".join(current_text_parts).strip())); current_text_parts = []
+            if current_text_parts: 
+                cleaned_text = " ".join(current_text_parts).strip()
+                if cleaned_text: messages.append(TextSendMessage(text=cleaned_text))
+                current_text_parts = []
             keyword = part_str[len("[MEOW_SOUND:"): -1].strip()
             sound_info = MEOW_SOUNDS_MAP.get(keyword)
             if sound_info and BASE_URL:
                 audio_url = f"{BASE_URL.rstrip('/')}/static/audio/meows/{sound_info['file']}"
-                duration_ms = sound_info.get("duration", 1000) 
+                duration_ms = sound_info.get("duration", 1000) # 預設1秒，以防duration未填
+                if not isinstance(duration_ms, int) or duration_ms <= 0 : # 確保 duration 是正整數
+                    logger.warning(f"貓叫聲 '{keyword}' 的 duration ({duration_ms}) 無效，使用預設值 1000ms。")
+                    duration_ms = 1000
                 messages.append(AudioSendMessage(original_content_url=audio_url, duration=duration_ms))
                 logger.info(f"準備發送貓叫聲: {keyword} -> {audio_url} (時長: {duration_ms}ms)")
             elif not sound_info:
@@ -666,7 +677,10 @@ def parse_response_and_send(response_text, reply_token):
             is_command = True
 
         elif part_str.startswith("[SEARCH_IMAGE_THEME:") and part_str.endswith("]"):
-            if current_text_parts: messages.append(TextSendMessage(text=" ".join(current_text_parts).strip())); current_text_parts = []
+            if current_text_parts: 
+                cleaned_text = " ".join(current_text_parts).strip()
+                if cleaned_text: messages.append(TextSendMessage(text=cleaned_text))
+                current_text_parts = []
             theme = part_str[len("[SEARCH_IMAGE_THEME:"): -1].strip()
             if UNSPLASH_ACCESS_KEY:
                 image_url = fetch_cat_image_from_unsplash(theme)
@@ -687,7 +701,10 @@ def parse_response_and_send(response_text, reply_token):
             is_command = True
 
         elif part_str.startswith("[IMAGE_KEY:") and part_str.endswith("]"): 
-            if current_text_parts: messages.append(TextSendMessage(text=" ".join(current_text_parts).strip())); current_text_parts = []
+            if current_text_parts: 
+                cleaned_text = " ".join(current_text_parts).strip()
+                if cleaned_text: messages.append(TextSendMessage(text=cleaned_text))
+                current_text_parts = []
             keyword = part_str[len("[IMAGE_KEY:"): -1].strip()
             image_url = EXAMPLE_IMAGE_URLS.get(keyword)
             if image_url:
@@ -697,7 +714,10 @@ def parse_response_and_send(response_text, reply_token):
             is_command = True
         
         elif part_str.startswith("[IMAGE_URL:") and part_str.endswith("]"): 
-            if current_text_parts: messages.append(TextSendMessage(text=" ".join(current_text_parts).strip())); current_text_parts = []
+            if current_text_parts: 
+                cleaned_text = " ".join(current_text_parts).strip()
+                if cleaned_text: messages.append(TextSendMessage(text=cleaned_text))
+                current_text_parts = []
             image_url = part_str[len("[IMAGE_URL:"): -1].strip()
             if image_url.startswith("http://") or image_url.startswith("https://"):
                 messages.append(ImageSendMessage(original_content_url=image_url, preview_image_url=image_url))
@@ -709,11 +729,72 @@ def parse_response_and_send(response_text, reply_token):
             current_text_parts.append(part_str)
 
     if current_text_parts:
-        messages.append(TextSendMessage(text=" ".join(current_text_parts).strip()))
+        cleaned_text = " ".join(current_text_parts).strip()
+        if cleaned_text:
+            messages.append(TextSendMessage(text=cleaned_text))
 
+    # --- 訊息數量控制和發送邏輯 (嘗試合併文字) ---
     if len(messages) > 5:
-        logger.warning(f"Gemini生成了 {len(messages)} 則訊息物件，超過5則上限。將直接截斷前5則。")
-        messages = messages[:5]
+        logger.warning(f"Gemini生成了 {len(messages)} 則訊息物件，超過5則上限。將嘗試智能處理。")
+        
+        final_messages = []
+        text_accumulator = [] # 用於收集連續的文字訊息
+        
+        # 先處理非文字訊息，並將文字訊息暫存
+        temp_messages_with_text_merged = []
+        for msg in messages:
+            if isinstance(msg, TextSendMessage):
+                text_accumulator.append(msg.text)
+            else:
+                if text_accumulator: # 如果前面有累積的文字，先合併並加入
+                    merged_text = " ".join(text_accumulator).strip()
+                    if merged_text:
+                         temp_messages_with_text_merged.append(TextSendMessage(text=merged_text))
+                    text_accumulator = []
+                temp_messages_with_text_merged.append(msg) # 加入非文字訊息
+        
+        if text_accumulator: # 處理最後剩餘的文字
+            merged_text = " ".join(text_accumulator).strip()
+            if merged_text:
+                temp_messages_with_text_merged.append(TextSendMessage(text=merged_text))
+
+        # 現在 temp_messages_with_text_merged 中的文字訊息都已經是盡可能合併的了
+        # 接下來從這裡面選取最多5個訊息
+        
+        if len(temp_messages_with_text_merged) <= 5:
+            messages = temp_messages_with_text_merged
+        else:
+            # 如果合併後還是超過5個，就需要更複雜的策略或接受截斷
+            # 這裡我們採用一個簡化策略：優先保留前面的訊息，如果最後一個是文字且空間不足，嘗試追加
+            logger.warning(f"即使合併文字後訊息仍有 {len(temp_messages_with_text_merged)} 則，將進一步處理以不超過5則。")
+            
+            final_messages_candidate = temp_messages_with_text_merged[:4] # 先取前4個
+            remaining_texts_for_fifth = []
+            
+            if len(temp_messages_with_text_merged) >= 5:
+                # 檢查第5個及以後的訊息
+                for i in range(4, len(temp_messages_with_text_merged)):
+                    if isinstance(temp_messages_with_text_merged[i], TextSendMessage):
+                        remaining_texts_for_fifth.append(temp_messages_with_text_merged[i].text)
+                    elif len(final_messages_candidate) < 5 : # 如果第5個是非文字，且還有空間
+                        final_messages_candidate.append(temp_messages_with_text_merged[i])
+                        # 如果加入了非文字的第5個，後面的文字就不能再加了
+                        remaining_texts_for_fifth = [] 
+                        break 
+                
+                if remaining_texts_for_fifth:
+                    merged_remaining_text = " ".join(remaining_texts_for_fifth).strip()
+                    if merged_remaining_text:
+                        if len(final_messages_candidate) < 5:
+                             final_messages_candidate.append(TextSendMessage(text=merged_remaining_text))
+                        elif isinstance(final_messages_candidate[-1], TextSendMessage):
+                             # 嘗試追加到最後一個文字訊息
+                             final_messages_candidate[-1].text = (final_messages_candidate[-1].text + " ... " + merged_remaining_text).strip()
+                             logger.info("部分額外文字已用 '...' 追加到最後一個文字訊息。")
+                        else:
+                            logger.warning("無法追加剩餘文字，因最後訊息非文字或已達上限。")
+            messages = final_messages_candidate[:5]
+
 
     if not messages:
         logger.warning("Gemini 回應解析後無有效訊息，發送預設文字訊息。")
@@ -725,7 +806,14 @@ def parse_response_and_send(response_text, reply_token):
              messages.append(TextSendMessage(text="喵嗚... （小雲有點困惑地看著你）"))
     try:
         if messages:
-            line_bot_api.reply_message(reply_token, messages)
+            # 確保所有訊息都是有效的 LINE Message 物件
+            valid_messages = [m for m in messages if hasattr(m, 'type')]
+            if valid_messages:
+                line_bot_api.reply_message(reply_token, valid_messages)
+            elif messages: # 如果 messages 列表不為空，但沒有有效的 message 物件
+                logger.error("解析後 messages 列表不為空，但無有效 LINE Message 物件可發送。")
+                line_bot_api.reply_message(reply_token, [TextSendMessage(text="咪...小雲好像有點迷糊了...")])
+
     except Exception as e:
         logger.error(f"發送訊息失敗: {e}")
         try:
@@ -736,6 +824,7 @@ def parse_response_and_send(response_text, reply_token):
             line_bot_api.reply_message(reply_token, error_messages[:5])
         except Exception as e2:
             logger.error(f"備用訊息發送失敗: {e2}")
+
 
 # --- Flask 路由和訊息處理器 ---
 @app.route("/", methods=["GET", "HEAD"])
