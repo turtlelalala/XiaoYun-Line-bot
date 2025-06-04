@@ -69,13 +69,13 @@ MEOW_SOUNDS_MAP = {
     "excited_meow_purr": {"file": "excited_meow_purr.m4a", "duration": XXXX}, # 您的檔名是 excited_meow_purr.m4a
     "food_demanding_call": {"file": "food_demanding_call.m4a", "duration": XXXX},
     "generic_meow": {"file": "generic_meow.m4a", "duration": XXXX},
-    "greeting_thrill": {"file": "greeting_thrill.m4a", "duration": XXXX}, # 可能是 trill?
+    "greeting_trill": {"file": "greeting_thrill.m4a", "duration": XXXX}, 
     "hello_meow": {"file": "hello_meow.m4a", "duration": XXXX},
     "hungry_meow_loud": {"file": "hungry_meow_loud.m4a", "duration": XXXX},
     "lonely_cry_short": {"file": "lonely_cry_short.m4a", "duration": XXXX},
     "loud_cat_purring": {"file": "loud_cat_purring.m4a", "duration": XXXX},
     "pathetic_cat_screaming": {"file": "pathetic_cat_screaming.m4a", "duration": XXXX},
-    "playful_thrill": {"file": "playful_thrill.m4a", "duration": XXXX}, # 可能是 trill?
+    "playful_trill": {"file": "playful_thrill.m4a", "duration": XXXX},  
     "questioning_meow_upward": {"file": "questioning_meow_upward.m4a", "duration": XXXX},
     "sad_mewl_short": {"file": "sad_mewl_short.m4a", "duration": XXXX}, # 您的檔名是 sad_mewl_short.m4a
     "sad_whimper_soft": {"file": "sad_whimper_soft.m4a", "duration": XXXX},
