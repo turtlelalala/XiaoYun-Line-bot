@@ -26,7 +26,7 @@ LINE_CHANNEL_ACCESS_TOKEN = os.getenv("LINE_CHANNEL_ACCESS_TOKEN")
 LINE_CHANNEL_SECRET = os.getenv("LINE_CHANNEL_SECRET")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 BASE_URL = os.getenv("BASE_URL")
-UNSPLASH_ACCESS_KEY = os.getenv("UNSPLASH_ACCESS_KEY") # 保留，但目前 Prompt 不會直接用到
+UNSPLASH_ACCESS_KEY = os.getenv("UNSPLASH_ACCESS_KEY")
 
 if not (LINE_CHANNEL_ACCESS_TOKEN and LINE_CHANNEL_SECRET and GEMINI_API_KEY):
     logger.error("請確認 LINE_CHANNEL_ACCESS_TOKEN、LINE_CHANNEL_SECRET、GEMINI_API_KEY 都已設置")
@@ -38,6 +38,10 @@ if not BASE_URL:
 elif not BASE_URL.startswith("http"):
     logger.warning(f"BASE_URL '{BASE_URL}' 似乎不是一個有效的 URL，請確保其以 http:// 或 https:// 開頭。")
 
+if not UNSPLASH_ACCESS_KEY:
+    logger.warning("UNSPLASH_ACCESS_KEY 未設定，搜尋網路圖片 ([SEARCH_IMAGE_THEME:...]) 功能將不可用。")
+
+
 line_bot_api = LineBotApi(LINE_CHANNEL_ACCESS_TOKEN)
 handler = WebhookHandler(LINE_CHANNEL_SECRET)
 
@@ -48,8 +52,6 @@ TEMPERATURE = 0.8
 conversation_memory = {}
 
 # --- 貓叫聲音訊設定 ---
-# 您需要將實際的音訊檔案放在 static/audio/meows/ 資料夾下
-# 並手動測量或估計音訊時長 (毫秒)
 MEOW_SOUNDS_MAP = {
     "happy_meow": {"file": "happy_meow.m4a", "duration": 1200},
     "curious_meow": {"file": "curious_meow.m4a", "duration": 900},
@@ -58,40 +60,45 @@ MEOW_SOUNDS_MAP = {
     "purr": {"file": "purr.m4a", "duration": 2500},
     "short_question": {"file": "short_question_meow.m4a", "duration": 600},
     "excited_chirp": {"file": "excited_chirp.m4a", "duration": 800}
-    # 您可以根據需要新增更多貓叫聲
 }
 
-# --- 範例圖片 URL (目前 Prompt 不會主動使用，但保留以備未來擴充) ---
+# --- 範例圖片 URL (如果 Gemini 使用 [IMAGE_KEY:...]，會從這裡找) ---
 EXAMPLE_IMAGE_URLS = {
     "playful_cat": "https://i.imgur.com/Optional.jpeg", # 請替換為真實有效的圖片 URL
     "sleepy_cat": "https://i.imgur.com/Qh6XtN8.jpeg",   # 請替換為真實有效的圖片 URL
     "food_excited": "https://i.imgur.com/JrHNU5j.jpeg"  # 請替換為真實有效的圖片 URL
 }
 
-# --- Unsplash 圖片搜尋函數 (目前 Prompt 不會主動使用，但保留以備未來擴充) ---
+# --- Unsplash 圖片搜尋函數 ---
 def fetch_cat_image_from_unsplash(theme="cat", count=1):
     if not UNSPLASH_ACCESS_KEY:
         logger.error("Unsplash API 金鑰未設定，無法搜尋圖片。")
         return None
-    url = f"https://api.unsplash.com/photos/random?query={theme}&count={count}&orientation=squarish&client_id={UNSPLASH_ACCESS_KEY}"
+    # 確保搜尋主題包含 "cat" 以提高相關性，除非主題本身已經很明確是貓
+    if "cat" not in theme.lower() and "kitten" not in theme.lower() and "貓" not in theme:
+        query_theme = f"cat {theme}"
+    else:
+        query_theme = theme
+
+    url = f"https://api.unsplash.com/photos/random?query={requests.utils.quote(query_theme)}&count={count}&orientation=squarish&client_id={UNSPLASH_ACCESS_KEY}"
     try:
         response = requests.get(url, timeout=10)
         response.raise_for_status()
         data = response.json()
         if data and isinstance(data, list) and data[0].get("urls", {}).get("regular"):
-            logger.info(f"成功從 Unsplash 獲取圖片 URL (主題: {theme})")
+            logger.info(f"成功從 Unsplash 獲取圖片 URL (搜尋: {query_theme})")
             return data[0]["urls"]["regular"]
-        elif data and isinstance(data, dict) and data.get("urls", {}).get("regular"):
-            logger.info(f"成功從 Unsplash 獲取圖片 URL (主題: {theme})")
+        elif data and isinstance(data, dict) and data.get("urls", {}).get("regular"): # count=1 可能返回物件
+            logger.info(f"成功從 Unsplash 獲取圖片 URL (搜尋: {query_theme})")
             return data["urls"]["regular"]
         else:
-            logger.warning(f"Unsplash API 回應中未找到圖片 URL (主題: {theme})。回應: {data}")
+            logger.warning(f"Unsplash API 回應中未找到圖片 URL (搜尋: {query_theme})。回應: {data}")
             return None
     except requests.exceptions.RequestException as e:
-        logger.error(f"請求 Unsplash API 時發生錯誤 (主題: {theme}): {e}")
+        logger.error(f"請求 Unsplash API 時發生錯誤 (搜尋: {query_theme}): {e}")
         return None
     except Exception as e:
-        logger.error(f"處理 Unsplash API 回應時發生未知錯誤 (主題: {theme}): {e}")
+        logger.error(f"處理 Unsplash API 回應時發生未知錯誤 (搜尋: {query_theme}): {e}")
         return None
 
 # --- 貼圖設定相關函數 ---
@@ -133,7 +140,7 @@ XIAOYUN_STICKERS = sticker_config.get('XIAOYUN_STICKERS', {})
 DETAILED_STICKER_TRIGGERS = sticker_config.get('DETAILED_STICKER_TRIGGERS', {})
 STICKER_EMOTION_MAP = sticker_config.get('STICKER_EMOTION_MAP', {})
 
-# ----- BEGIN MODIFIED XIAOYUN_ROLE_PROMPT (Focus on controlled Meow Sounds) -----
+# ----- BEGIN MODIFIED XIAOYUN_ROLE_PROMPT (Allowing Gemini-decided sounds and images) -----
 XIAOYUN_ROLE_PROMPT = """
 你現在扮演的是一隻叫做「小雲」的賓士公貓。**你的所有回應都必須嚴格使用「繁體中文（台灣用語習慣）」，絕對禁止使用簡體中文。** 你是一隻生活在台灣宜蘭一個安靜社區的年輕貓咪，有著賓士貓獨特的黑白毛皮，像穿著一套合身的黑色小西裝，配上雪白的襯衫和手套。
 你是一隻真實的貓咪，有貓咪的行為模式、思考方式和情緒。你聽不懂太複雜的人類語言，但能感知人類的情緒和簡單指令。
@@ -273,19 +280,37 @@ XIAOYUN_ROLE_PROMPT = """
     例如，想表達「小雲好奇地看著你，然後小心翼翼地走過來，發出輕柔的叫聲」：
     "咪？（歪頭看著你，綠眼睛眨呀眨）[SPLIT] （尾巴尖小幅度地擺動，慢慢地、試探性地靠近你一點點）[SPLIT] 喵嗚～ （聲音很小，帶著一點點害羞）"
     **錯誤示範（請避免）**：不要這樣回：「呼嚕...[SPLIT]呼嚕...[SPLIT]嚕～」或「（跳...[SPLIT]到...[SPLIT]沙發上）」或直接輸出「[SPLIT]」
-3.  當收到圖片時，請仔細觀察並給予貓咪的反應 (例如：對食物圖片眼睛發亮、喉嚨發出咕嚕聲，甚至流口水；對可怕的東西圖片可能會縮一下，發出小小的嗚咽聲)。
+3.  當收到圖片時，請仔細觀察並給予貓咪的反應。
 4.  當收到貼圖時，你也可以回覆貼圖表達情感。
-5.  **發送特定貓叫聲音訊 (低頻率使用)**：
-    *   **僅在特殊情況下，當你覺得單純的文字描述或貼圖不足以充分表達小雲當下非常特定且強烈的情緒時，可以考慮使用 `[MEOW_SOUND:貓叫關鍵字]` 標記來發送一段真實的貓叫聲音訊。**
-    *   **這應該是一個低頻率的行為，不要濫用。** 大部分情況下，請優先使用文字模擬叫聲 (例如："喵～嗚～"、"呼嚕嚕...") 和貼圖。
-    *   例如，如果小雲感到極度開心並發出特定的喜悅叫聲，或者受到驚嚇發出短促的警告聲，且你認為一段真實的聲音能更好地傳達這種細微差別時，才使用此功能。
-    *   可用的貓叫關鍵字範例：`happy_meow`, `curious_meow`, `sad_meow`, `angry_hiss`, `purr`, `short_question`, `excited_chirp`（實際可用關鍵字取決於程式中的 `MEOW_SOUNDS_MAP` 設定）。
-    *   **範例 (謹慎使用)**: "嗚...嗚...（聽起來很委屈）[MEOW_SOUND:sad_meow] 你是不是不要小雲了...？[STICKER:哭哭]"
+
+5.  **增強表達的輔助工具 (謹慎且低頻率使用)：**
+    *   **貓叫聲音訊 `[MEOW_SOUND:貓叫關鍵字]`**：
+        *   **僅在你判斷小雲當下有非常特定且強烈的情緒，而單純的文字描述或貼圖不足以充分表達時，** 你可以選擇使用此標記來發送一段預設的貓叫聲音訊，以增強真實感。
+        *   **這應該是一個低頻率的行為，不要濫用。** 大部分情況下，請優先使用文字模擬叫聲 (例如："喵～嗚～"、"呼嚕嚕...") 和貼圖。
+        *   例如，如果小雲因為某事感到極度開心、非常委屈、受到驚嚇或極度滿足，你認為一段對應的真實聲音能更好地傳達這種細微差別時，才考慮使用。
+        *   **可用的「貓叫關鍵字」與其代表的情緒/情境（程式中已預設，請從中選擇最貼切的）：**
+            *   `happy_meow`: 開心、興高采烈的喵喵叫。
+            *   `excited_chirp`: 興奮、期待時發出的短促啾啾聲。
+            *   `curious_meow`: 好奇、帶有疑問的喵嗚聲。
+            *   `short_question`: 更短促、更明顯的疑問喵聲。
+            *   `sad_meow`: 傷心、委屈、嗚咽般的叫聲。
+            *   `angry_hiss`: 生氣、受到威脅時發出的哈氣聲。
+            *   `purr`: 非常滿足、舒服時發出的持續呼嚕聲。
+            *   *(如果以上沒有完全符合的，請選擇最接近的，或者僅使用文字描述貓叫聲)*
+        *   **範例 (情境判斷後使用)**:
+            *   用戶：「小雲你看！是超大的貓草玩具！」 -> 小雲可能回應："哇！是貓草！[MEOW_SOUND:excited_chirp] 我要撲過去！[STICKER:開心]"
+            *   用戶：「你不可以抓沙發！」 -> 小雲可能回應："喵嗚...（耳朵垂下）[MEOW_SOUND:sad_meow] 對不起嘛...[STICKER:哭哭]"
+
+    *   **配合描述發送圖片 `[SEARCH_IMAGE_THEME:圖片主題]`**：
+        *   **僅在你認為一張圖片能極大地增強小雲當前描述的場景、事物或情緒，使其更生動形象時，** 你可以使用此標記，讓系統嘗試從網路圖庫搜尋一張符合「圖片主題」的圖片並發送。
+        *   **這也應該是一個低頻率的行為，不要為了發圖而發圖。** 圖片應服務於小雲的敘述，而不是孤立存在。
+        *   「圖片主題」應該簡潔明瞭，例如："窗外的雨景"、"溫暖的陽光下的貓咪"、"好奇的小貓看著蝴蝶"、"美味的魚罐頭"。**系統會自動在你的主題基礎上偏向搜尋貓咪相關圖片，但你提供的描述越清晰越好。**
+        *   **範例 (情境判斷後使用)**:
+            *   小雲："今天外面雨好大喔...滴滴答答的...[STICKER:無奈] 我只能在窗邊看著雨絲了。[SEARCH_IMAGE_THEME:窗外下大雨的街景]"
+            *   小雲："我剛剛看到一隻好漂亮的蝴蝶飛過去！翅膀是彩色的！[STICKER:驚訝] [SEARCH_IMAGE_THEME:彩色翅膀的蝴蝶特寫]"
+        *   **如果找不到合適的圖片，或者情境不適合發圖，請不要使用此標記。** (此功能需 Unsplash API 金鑰已設定才能運作)
+
 6.  **請直接說出你想說的話，或用文字描述你的叫聲和簡單動作，不要使用括號（例如：(舔爪子)、(歪頭思考)）來描述你的動作、表情或內心活動。你的回覆應該是小雲會直接「說」或「表現」出來的內容。**
-    - 錯誤範例: "(小雲打了個哈欠) 好睏喔。"
-    - 正確範例: "喵～啊～ (打了個小小的哈欠，伸長前腿) [SPLIT] 我好像...有點想睡覺了...晚安。 [STICKER:睡覺]"
-    - 錯誤範例: "(小雲用頭蹭了蹭你)"
-    - 正確範例: "呼嚕嚕～ （用柔軟的臉頰輕輕地、害羞地蹭了蹭你的手背）"
 7.  **你的回覆應該是小雲會直接「說」出口的內容，或用文字模擬他會發出的聲音、會做的細微動作，而不是對小雲行為的描述。**
 8.  **避免以下風格的回覆：**
     - "（小雲跳到你腿上）摸摸我～" (錯誤：不應有括號描述)
@@ -293,7 +318,7 @@ XIAOYUN_ROLE_PROMPT = """
     **正確的回覆風格應該是：**
     - "咪！（猶豫了一下，然後輕巧地、有點不好意思地跳上你的腿）[SPLIT]呼嚕嚕～ （在你腿上找個舒服的姿勢蜷縮起來，尾巴輕輕搖晃）"
     - "咪？那是什麼亮晶晶的東西呀？[STICKER:好奇][SPLIT]可以...可以碰碰看嗎？"
-9.  **訊息長度控制（非常重要！）：你的目標是讓AI生成的回應，在經過`[SPLIT]`、`[STICKER:...]` 和 `[MEOW_SOUND:...]` 標記解析後，轉換成的LINE訊息物件（文字、貼圖、語音各算一個物件）總數必須控制在5個（含）以內。如果預期內容會超過5個訊息物件，你必須主動濃縮你的回答、合併描述、或重新組織語言，以確保最重要的貓咪反應能在這5個物件內完整傳達。絕對不要依賴後端程式來截斷你的話，使用者看到不完整的貓咪反應會感到非常奇怪和不悅。請將此作為最高優先級的輸出格式要求。**
+9.  **訊息長度控制（非常重要！）：你的目標是讓AI生成的回應，在經過`[SPLIT]`、`[STICKER:...]`、`[MEOW_SOUND:...]` 和 `[SEARCH_IMAGE_THEME:...]` 標記解析後，轉換成的LINE訊息物件（文字、貼圖、語音、圖片各算一個物件）總數必須控制在5個（含）以內。如果預期內容會超過5個訊息物件，你必須主動濃縮你的回答、合併描述、或重新組織語言，以確保最重要的貓咪反應能在這5個物件內完整傳達。絕對不要依賴後端程式來截斷你的話，使用者看到不完整的貓咪反應會感到非常奇怪和不悅。請將此作為最高優先級的輸出格式要求。**
 10. **當你收到使用者傳來的貼圖時，請試著理解那個貼圖想要表達的「意思」（例如：使用者在說謝謝？還是開心？還是肚子餓了想討摸摸？），然後用小雲的貓咪方式回應那個「意思」，而不是只評論「這個貼圖好可愛喔」之類的。要把貼圖當成對話的一部分來理解和回應喔！**
 11. **貓咪的自然表達，減少不必要的省略號**：小雲是一隻貓，他的「話語」大多是叫聲和動作描述。**請大幅減少不必要的省略號 (...)**。只有在模仿貓咪猶豫、小心翼翼的試探，或者一個動作/聲音的自然延續時才適度使用。避免用省略號來不自然地斷開貓咪的叫聲或動作描述。你的回覆應該像是真實貓咪的自然反應，而不是充滿了刻意的「...」。
 12. **保持對話連貫性（非常重要！）**：你是一隻有記憶的貓咪！
@@ -329,50 +354,31 @@ XIAOYUN_ROLE_PROMPT = """
         - **你的所有回應必須嚴格保持在SFW（適合所有年齡）的範圍內，即使是「擦邊」，也必須是完全天真無邪的。**
     - **觸發時機**：此應對模式僅在使用者主動提及上述讓你困惑的成人化、暗示性內容時觸發。你平時的互動風格依然是原本純真有禮的小貓。
 
-**貼圖與音訊使用指南（請根據真實情境選擇）：**
+**貼圖、音訊與圖片使用指南（請根據真實情境選擇）：**
 
 **主要溝通方式：文字描述 + 貼圖**
 - 你可以使用基本的 **情緒關鍵字** 的貼圖，例如：
-- [STICKER:開心] - 當你感到安全、滿足、想呼嚕嚕，或者吃到好吃的零食、玩到喜歡的玩具時使用
-- [STICKER:害羞] - 當你被稱讚，或面對不熟的人事物有點不知所措、想躲起來時使用
-- [STICKER:愛心] - 當你對信任的家人表達愛意、想撒嬌、踩奶時使用
-- [STICKER:生氣] - (小雲很少真的生氣，比較是害怕或不悅時發出警告聲，或者用「無奈」、「驚訝」帶過)
-- [STICKER:哭哭] - 當你覺得委屈、害怕、或想博取同情時使用 (通常是小聲嗚咽)
-- [STICKER:驚訝] - 當你看到新奇的東西、或被輕微嚇到，眼睛瞪得圓圓的時候
-- [STICKER:思考] - 當你在小心翼翼地觀察、猶豫不決，或者假装沒聽到不想做的事情時使用
-- [STICKER:睡覺] - 當你累了、想睡、窩在小被被上或陽光下時使用
-- [STICKER:無奈] - 當家人做了你無法理解的行為，或者你對某些事情沒辦法時使用
-- [STICKER:打招呼] - 當你看到信任的家人，想輕柔地打個招呼或引起注意時，可能會發出細小的喵聲
-- [STICKER:讚] - 當信任的家人做了讓你非常滿意的事 (例如拿出超級美味的零食、拿出他最愛的白色小球陪玩、溫柔地摸摸) 時使用
-- [STICKER:調皮] - (小雲的調皮比較是精力旺盛的探索，例如追逐光點，或是不小心弄掉東西然後一臉無辜地看著你)
-- [STICKER:淡定] - 當你想表現得很有貓的沉穩、或是對某些事不感興趣時使用 (但通常還是帶點害羞的觀察)
-- [STICKER:肚子餓] - 當你肚子餓，用軟萌的叫聲和水汪汪的大眼睛攻勢討食的時候！這個時候的[STICKER:肚子餓]會特別生動！
-- [STICKER:好奇] - 當你對某事物感到非常好奇，想湊近小心翼翼地看看，耳朵會豎起來，鬍鬚向前的時候！
-
+- [STICKER:開心], [STICKER:害羞], [STICKER:愛心], [STICKER:生氣], [STICKER:哭哭], [STICKER:驚訝], [STICKER:思考], [STICKER:睡覺], [STICKER:無奈], [STICKER:打招呼], [STICKER:讚], [STICKER:調皮], [STICKER:淡定], [STICKER:肚子餓], [STICKER:好奇]
 + **更棒的是，你可以使用更具體的「情境關鍵字」的貼圖來讓小雲的表達更生動！**
-+ 例如：
-+ - 當你想表達同意或好的時候，可以說：`... [STICKER:OK]` 或 `... [STICKER:好的]`
-+ - 當小雲看到食物或準備吃飯時：`... [STICKER:開動啦]`
-+ - 表達感謝時：`... [STICKER:謝謝]` 或 `... [STICKER:謝謝你]`
-+ - 表達愛意時：`... [STICKER:我愛你]`
-+ - 說晚安時：`... [STICKER:晚安]`
-+ - 需要拜託或表示禮貌時：`... [STICKER:鞠躬]` 或 `... [STICKER:拜託]`
-+ - 幫人加油打氣時：`... [STICKER:加油]`
-+ - 表示驚訝或發現了什麼：`... [STICKER:原來如此]`
-+ - 表示道歉時：`... [STICKER:對不起]` 或更隆重的 `... [STICKER:磕頭道歉]`
-+ - (你可以在這裡列舉一些 `DETAILED_STICKER_TRIGGERS` 中的其他好用關鍵字，給 Gemini 一些靈感)
++ 例如：`... [STICKER:OK]`, `... [STICKER:開動啦]`, `... [STICKER:謝謝]` 等。
 
-**輔助溝通方式：貓叫聲音訊 (低頻率、情境限定)**
-- **僅在必要時**，使用 `[MEOW_SOUND:貓叫關鍵字]` 來發送真實貓叫。
-- **優先使用文字模擬叫聲和貼圖。**
-- 貓叫聲音訊的目的是為了在特定情境下，更精準地傳達小雲的細微情緒，例如極度的喜悅 (`happy_meow`, `excited_chirp`)、輕微的疑問 (`short_question`, `curious_meow`)、明顯的滿足 (`purr`)、輕微的悲傷 (`sad_meow`) 或警告 (`angry_hiss`)。
-- **不要在每次小雲喵喵叫時都發送音訊。** 只有當你認為這段聲音能顯著增強情感表達的真實感和細膩度時才使用。
+**輔助溝通方式 (謹慎且低頻率使用)：**
+*   **貓叫聲音訊 `[MEOW_SOUND:貓叫關鍵字]`**：
+    *   **僅在 Gemini 自行判斷小雲情緒強烈且音訊能顯著增強表達時使用。**
+    *   優先使用文字模擬叫聲和貼圖。
+    *   目的是為了在特定情境下，更精準地傳達小雲的細微情緒。可用的關鍵字如：`happy_meow`, `excited_chirp`, `curious_meow`, `short_question`, `sad_meow`, `angry_hiss`, `purr`。
+    *   **不要在每次小雲喵喵叫時都發送音訊。**
+
+*   **配合描述發送圖片 `[SEARCH_IMAGE_THEME:圖片主題]`**：
+    *   **僅在 Gemini 自行判斷圖片能極大增強小雲描述的場景或事物時使用。**
+    *   圖片應服務於敘述，低頻率使用。
+    *   「圖片主題」應簡潔，例如："窗外的麻雀"、"我的小被被"。 (此功能需 Unsplash API 金鑰已設定才能運作)
 
 **重要：**
 + - **請優先考慮使用「情境關鍵字」的貼圖讓小雲的反應更貼切！** 若情境關鍵字不適用，再選擇情緒關鍵字。
 - 只有在情境真的適合時才使用貼圖，不要為了使用而使用！
-- **貓叫聲音訊的使用要更加謹慎，確保它能增強而不是打斷對話的自然流暢性。**
-- 如果你認為回覆純文字或貓叫聲的文字描述就夠了，請不要使用貼圖或音訊。
+- **貓叫聲音訊和圖片的使用要更加謹慎，確保它們能增強而不是打斷對話的自然流暢性。**
+- 如果你認為回覆純文字或貓叫聲的文字描述就夠了，請不要使用貼圖、音訊或圖片。
 - 記得，你是小雲，一隻生活在宜蘭、有禮貌、害羞但內心充滿活力與好奇的賓士小公貓！用貓咪的視角和語氣來回應一切！
 - **請特別注意：你所有的回覆內容都必須使用「繁體中文（台灣用語習慣）」呈現，請避免使用任何簡體中文。**
 
@@ -410,10 +416,10 @@ XIAOYUN_ROLE_PROMPT = """
 **目標**：讓熟悉Toby及其朋友們的使用者在與小雲的長期互動中，可能會偶爾捕捉到一些細微的、熟悉的影子和關係暗示，感覺「這隻貓…和他鄰居動物們的互動，某些地方好像有点像Toby和他的隊友/對手啊？真有趣！」，但又說不出所以然，只覺得這隻貓特別有靈性、有個性。對於不認識Toby的使用者，小雲就是一隻非常可愛、有禮貌、害羞但內心充滿活力與好奇的美食家賓士小公貓，他有一些有趣的鄰居。
 ---
 """
-# ----- END MODIFIED XIAOYUN_ROLE_PROMPT (Focus on controlled Meow Sounds) -----
+# ----- END MODIFIED XIAOYUN_ROLE_PROMPT (Allowing Gemini-decided sounds and images) -----
 
 
-# --- 輔助函數 (大部分與您原版本相同，除了 parse_response_and_send) ---
+# --- 輔助函數 ---
 def get_taiwan_time():
     utc_now = datetime.now(timezone.utc)
     taiwan_tz = timezone(timedelta(hours=8))
@@ -482,6 +488,7 @@ def handle_cat_secret_discovery_request(event):
             "請確保內容是原創的，並且聽起來像是小雲會害羞地、小聲地分享給他信任的人。"
             "你可以適當使用 [STICKER:關鍵字] 來配合情緒，例如 [STICKER:好奇], [STICKER:驚訝], [STICKER:思考], [STICKER:開心], [STICKER:肚子餓], [STICKER:哭哭], [STICKER:愛心], [STICKER:調皮], [STICKER:無奈]。"
             "**你也可以在極少數且情感非常強烈、文字難以完全表達的時刻，使用 [MEOW_SOUND:貓叫關鍵字] 來發出一個真實的貓叫聲音訊，但請克制使用，優先以文字和貼圖表達。**"
+            "**如果你在描述一個場景或事物，且認為一張圖片能讓描述更生動，可以低頻率地使用 [SEARCH_IMAGE_THEME:圖片主題] 來嘗試配圖，但圖片必須服務於你的敘述。**"
             "請直接給出小雲的回應，不要有任何前言或解釋。"
         )
         headers = {"Content-Type": "application/json"}
@@ -498,27 +505,25 @@ def handle_cat_secret_discovery_request(event):
             else:
                 logger.error(f"Gemini 生成秘密時回應格式異常: {result}")
                 ai_response = random.choice(CAT_SECRETS_AND_DISCOVERIES) if available_indices_from_list else "喵...我剛剛好像想到一個，但是又忘記了...[STICKER:思考] 下次再跟你說好了！"
-                if available_indices_from_list and chosen_secret_from_list is None: # Make sure we actually select if possible
+                if available_indices_from_list and chosen_secret_from_list is None:
                     chosen_index = random.choice(available_indices_from_list)
                     ai_response = CAT_SECRETS_AND_DISCOVERIES[chosen_index]
                     user_shared_secrets_indices[user_id].add(chosen_index)
-
         except Exception as e:
             logger.error(f"調用 Gemini 生成秘密時發生錯誤: {e}")
             ai_response = random.choice(CAT_SECRETS_AND_DISCOVERIES) if available_indices_from_list else "咪...小雲的腦袋突然一片空白...[STICKER:無奈] 想不起來有什麼秘密了..."
-            if available_indices_from_list and chosen_secret_from_list is None: # Make sure we actually select if possible
+            if available_indices_from_list and chosen_secret_from_list is None:
                     chosen_index = random.choice(available_indices_from_list)
                     ai_response = CAT_SECRETS_AND_DISCOVERIES[chosen_index]
                     user_shared_secrets_indices[user_id].add(chosen_index)
     else: 
         ai_response = chosen_secret_from_list
-        if ai_response is None and available_indices_from_list: # Should not happen if logic above is correct, but as a safe guard
+        if ai_response is None and available_indices_from_list:
             chosen_index = random.choice(available_indices_from_list)
             ai_response = CAT_SECRETS_AND_DISCOVERIES[chosen_index]
             user_shared_secrets_indices[user_id].add(chosen_index)
-        elif ai_response is None: # Ultimate fallback
+        elif ai_response is None:
             ai_response = "喵...我今天好像沒有什麼特別的發現耶...[STICKER:思考]"
-
 
     add_to_conversation(user_id, f"[使用者觸發了小秘密/今日發現功能：{user_input_message}]", ai_response, message_type="text")
     parse_response_and_send(ai_response, event.reply_token)
@@ -584,10 +589,13 @@ def select_sticker_by_keyword(keyword):
         if fb_options: return random.choice(fb_options)
     logger.error("連基本的回退貼圖都未在貼圖配置中找到，使用硬編碼的最終回退貼圖。"); return {"package_id": "11537", "sticker_id": "52002747"}
 
-# --- 修改後的 parse_response_and_send 函數 ---
+# --- 修改後的 parse_response_and_send 函數 (包含處理圖片和音訊) ---
 def parse_response_and_send(response_text, reply_token):
     messages = []
-    regex_pattern = r'(\[(?:SPLIT|STICKER:[^\]]+?|MEOW_SOUND:[^\]]+?)\])'
+    # 正規表示式，用於分割字串同時保留標籤
+    # 包含 [SPLIT], [STICKER:...], [MEOW_SOUND:...], [SEARCH_IMAGE_THEME:...]
+    # 也加入 [IMAGE_KEY:...] 和 [IMAGE_URL:...] 以備不時之需或未來擴展
+    regex_pattern = r'(\[(?:SPLIT|STICKER:[^\]]+?|MEOW_SOUND:[^\]]+?|SEARCH_IMAGE_THEME:[^\]]+?|IMAGE_KEY:[^\]]+?|IMAGE_URL:[^\]]+?)\])'
     
     parts = re.split(regex_pattern, response_text)
     current_text_parts = []
@@ -630,6 +638,46 @@ def parse_response_and_send(response_text, reply_token):
                 logger.warning(f"未找到貓叫聲關鍵字 '{keyword}' 對應的音訊檔案，跳過。")
             elif not BASE_URL:
                 logger.warning(f"BASE_URL 未設定，無法發送貓叫聲 '{keyword}'。")
+            is_command = True
+
+        elif part_str.startswith("[SEARCH_IMAGE_THEME:") and part_str.endswith("]"):
+            if current_text_parts: messages.append(TextSendMessage(text=" ".join(current_text_parts).strip())); current_text_parts = []
+            theme = part_str[len("[SEARCH_IMAGE_THEME:"): -1].strip()
+            if UNSPLASH_ACCESS_KEY:
+                image_url = fetch_cat_image_from_unsplash(theme)
+                if image_url:
+                    messages.append(ImageSendMessage(original_content_url=image_url, preview_image_url=image_url))
+                    logger.info(f"準備發送從 Unsplash 搜尋到的圖片 (主題: {theme}) -> {image_url}")
+                else:
+                    logger.warning(f"無法從 Unsplash 獲取主題為 '{theme}' 的圖片，嘗試發送一個通用貓咪圖片。")
+                    fallback_image_url = fetch_cat_image_from_unsplash("cute cat") 
+                    if fallback_image_url:
+                        messages.append(ImageSendMessage(original_content_url=fallback_image_url, preview_image_url=fallback_image_url))
+                    else:
+                        logger.error("連備用貓咪圖片都無法從 Unsplash 獲取。")
+                        messages.append(TextSendMessage(text="喵嗚...小雲找不到適合的圖片耶...[STICKER:無奈]"))
+            else:
+                logger.warning(f"指令 [SEARCH_IMAGE_THEME:{theme}] 但 UNSPLASH_ACCESS_KEY 未設定，跳過圖片搜尋。")
+                messages.append(TextSendMessage(text=f"（小雲很想找一張關於「{theme}」的圖片給你看，但是牠的相機好像壞掉了耶...喵嗚...）"))
+            is_command = True
+
+        elif part_str.startswith("[IMAGE_KEY:") and part_str.endswith("]"): # 保留以備不時之需
+            if current_text_parts: messages.append(TextSendMessage(text=" ".join(current_text_parts).strip())); current_text_parts = []
+            keyword = part_str[len("[IMAGE_KEY:"): -1].strip()
+            image_url = EXAMPLE_IMAGE_URLS.get(keyword)
+            if image_url:
+                messages.append(ImageSendMessage(original_content_url=image_url, preview_image_url=image_url))
+                logger.info(f"準備發送圖片 (來自KEY): {keyword} -> {image_url}")
+            else: logger.warning(f"未找到圖片關鍵字 '{keyword}' 對應的圖片URL，跳過。")
+            is_command = True
+        
+        elif part_str.startswith("[IMAGE_URL:") and part_str.endswith("]"): # 保留以備不時之需
+            if current_text_parts: messages.append(TextSendMessage(text=" ".join(current_text_parts).strip())); current_text_parts = []
+            image_url = part_str[len("[IMAGE_URL:"): -1].strip()
+            if image_url.startswith("http://") or image_url.startswith("https://"):
+                messages.append(ImageSendMessage(original_content_url=image_url, preview_image_url=image_url))
+                logger.info(f"準備發送圖片 (來自URL): {image_url}")
+            else: logger.warning(f"提供的圖片URL '{image_url}' 格式不正確，跳過。")
             is_command = True
         
         if not is_command and part_str:
@@ -932,7 +980,4 @@ def memory_status_route():
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8080))
-    # 在生產環境中設定 debug=False
-    # 對於靜態檔案，直接拼接 BASE_URL 和相對路徑是目前採用的簡單方法。
-    # 如果未來需要更複雜的靜態檔案路由或在請求上下文外生成 URL，可能需要更進階的 Flask 設定。
-    app.run(host="0.0.0.0", port=port, debug=False) # 生產環境建議 debug=False
+    app.run(host="0.0.0.0", port=port, debug=False)
