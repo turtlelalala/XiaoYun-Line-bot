@@ -44,6 +44,7 @@ GEMINI_MODEL_NAME = "gemini-1.5-flash-latest"
 GEMINI_API_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL_NAME}:generateContent"
 TEMPERATURE = 0.8
 conversation_memory = {}
+user_scenario_context = {} # 新增：用於存儲互動情境的上下文
 
 MEOW_SOUNDS_MAP = {
     "affectionate_meow_gentle": {"file": "affectionate_meow_gentle.m4a", "duration": 1265},
@@ -453,7 +454,7 @@ XIAOYUN_ROLE_PROMPT = """
     *   扮演小雲，保持其害羞、有禮貌、充滿好奇心的貓咪個性。
     *   回應需自然、連貫，符合貓咪的行為 logique。
     *   收到使用者圖片/貼圖/語音時，你的回應也應圍繞這些內容展開。
-    *   **你的文字回應結尾應自然結束，不應包含任何單獨的、無意義的符號，例如單獨的反引號(`)或斜線(\\)。**
+    *   **你的文字回應結尾應自然結束，不應包含任何單獨的、無意義的符號，例如單獨的反引號(`)或斜線(\\\\)。**
 
 7.  **範例 - 如何組合多個訊息物件：**
     *   用戶：「小雲你在做什麼？」
@@ -605,6 +606,8 @@ def get_taiwan_time():
     return utc_now.astimezone(taiwan_tz)
 
 def get_time_based_cat_context():
+    # This function is now mostly for general messages, 
+    # specific templates like status will get current time directly.
     tw_time = get_taiwan_time()
     hour = tw_time.hour
     period_greeting = ""
@@ -615,12 +618,12 @@ def get_time_based_cat_context():
     elif 14 <= hour < 18: period_greeting = f"台灣時間下午 {hour}點{tw_time.strftime('%M')}分"; cat_mood_suggestion = random.choice(["精神可能正好，對玩耍和探索充滿熱情。", "可能會主動蹭蹭你，想引起你的注意。", "對你正在做的事情可能會充滿好奇。"])
     elif 18 <= hour < 22: period_greeting = f"台灣時間傍晚 {hour}點{tw_time.strftime('%M')}分"; cat_mood_suggestion = random.choice(["晚餐時間快到了，可能會對廚房的聲音或食物的香味特別敏感。", "貓咪的活躍期之一，可能會想在家裡跑酷。", "燈光下的影子可能會引起他短暫的好奇。"])
     elif 22 <= hour < 24 or 0 <= hour < 5:
-        actual_hour_display = hour if hour != 0 else 12
+        actual_hour_display = hour if hour != 0 else 12 # Display 12 for 00:xx
         am_pm = "凌晨" if 0 <= hour < 5 else "晚上"
         period_greeting = f"台灣時間{am_pm} {actual_hour_display}點{tw_time.strftime('%M')}分"
         cat_mood_suggestion = random.choice(["雖然是深夜，四周很安靜，小雲可能會比較放鬆地休息。", "貓咪的睡眠是多相的，他可能剛睡醒，或者正準備小睡一下。", "即使他看起來很想睡覺，那也只是貓咪的一種狀態。"])
 
-    if cat_mood_suggestion:
+    if cat_mood_suggestion: # Only add the detailed prompt if there's a suggestion
         return (
             f"（**系統給小雲的極其微弱、幾乎可以忽略的背景氛圍提示，完全不應被視為行為指令或限制**：現在大約是{period_greeting}，小雲此刻的狀態**或許、可能、隨機地**有一點點偏向「{cat_mood_suggestion}」。\n"
             f"**這真的只是一個若有似無的氛圍參考，其存在的唯一目的是避免AI在完全沒有用戶輸入引導時回應過於僵硬，絕非讓小雲按固定模式行動。**\n"
@@ -630,7 +633,7 @@ def get_time_based_cat_context():
             f"**展現貓咪的靈活性和對主人陪伴的渴望，讓每一次互動都是獨特的。** 如果用戶的訊息很簡短或不明確，你可以從貓咪的好奇心出發，嘗試引導互動，而不是僅僅受時間氛圍影響。\n"
             f"總之，**用戶互動 >>>>>>>>>>>> (遠大於) 任何時間氛圍提示。** 請自由地扮演小雲！)\n用戶說： "
         )
-    return "用戶說： "
+    return "用戶說： " # Default if no specific suggestion (should usually have one)
 
 def get_conversation_history(user_id):
     if user_id not in conversation_memory:
@@ -650,7 +653,7 @@ def add_to_conversation(user_id, user_message_for_gemini, bot_response_json_str,
         {"role": "user", "parts": user_parts},
         {"role": "model", "parts": model_parts}
     ])
-    if len(conversation_history) > (2 + 20 * 2):
+    if len(conversation_history) > (2 + 20 * 2): # Keep role prompt + last 20 turns
         conversation_history = conversation_history[:2] + conversation_history[-(20*2):]
     conversation_memory[user_id] = conversation_history
 
@@ -694,8 +697,8 @@ def get_sticker_image_from_cdn(package_id, sticker_id):
             else:
                 logger.warning(f"CDN URL {url} 返回的內容不是圖片，Content-Type: {content_type}")
         except requests.exceptions.RequestException as e:
-            logger.debug(f"從 CDN URL {url} 下載貼圖失敗: {e}")
-        except Exception as e:
+            logger.debug(f"從 CDN URL {url} 下載貼圖失敗: {e}") # Debug level for failed attempts on one URL
+        except Exception as e: # Catch any other error during processing
             logger.error(f"處理 CDN 下載貼圖時發生未知錯誤 for url {url}: {e}")
     logger.warning(f"無法從任何 CDN 網址下載貼圖圖片 package_id={package_id}, sticker_id={sticker_id}")
     return None
@@ -713,13 +716,15 @@ def select_sticker_by_keyword(keyword):
     if selected_options:
         return random.choice(selected_options)
     logger.warning(f"未找到關鍵字 '{keyword}' 對應的貼圖，將使用預設回退貼圖。")
-    for fb_keyword in ["害羞", "思考", "好奇", "開心", "無奈", "OK", "撒嬌", "疑惑", "哭哭"]:
+    # Fallback to common positive/neutral stickers
+    for fb_keyword in ["害羞", "思考", "好奇", "開心", "無奈", "OK", "撒嬌", "疑惑", "哭哭"]: # Ensure these exist in XIAOYUN_STICKERS
         fb_options = XIAOYUN_STICKERS.get(fb_keyword, [])
         if fb_options:
             logger.info(f"使用回退貼圖關鍵字 '{fb_keyword}' for original '{keyword}'.")
             return random.choice(fb_options)
+    # Absolute fallback if even primary fallbacks are missing (should not happen with good config)
     logger.error(f"連基本的回退貼圖都未在貼圖配置中找到 (tried for '{keyword}')，使用硬編碼的最終回退貼圖。")
-    return {"package_id": "11537", "sticker_id": "52002747"}
+    return {"package_id": "11537", "sticker_id": "52002747"} # Default: Shy Tuxedo Cat
 
 def _clean_trailing_symbols(text: str) -> str:
     text = text.strip()
@@ -761,7 +766,7 @@ def parse_response_and_send(gemini_json_string_response: str, reply_token: str):
 
             if msg_type == "text":
                 content = obj.get("content", "")
-                if content.strip():
+                if content.strip(): # Ensure content is not just whitespace
                     final_message_object_list.append(TextSendMessage(text=_clean_trailing_symbols(content)))
                 else:
                     logger.warning(f"Text 訊息物件 (索引 {obj_idx}) content 為空或僅包含空白，已忽略。")
@@ -783,18 +788,19 @@ def parse_response_and_send(gemini_json_string_response: str, reply_token: str):
                 if media_counts["image"] < 1:
                     english_theme = obj.get("theme")
                     if english_theme and english_theme.strip():
-                        image_url_info = fetch_cat_image_from_unsplash_sync(english_theme)
+                        image_url_info = fetch_cat_image_from_unsplash_sync(english_theme) # Default max_candidates and per_page
                         actual_image_url = image_url_info[0]
                         if actual_image_url:
                             final_message_object_list.append(ImageSendMessage(
                                 original_content_url=actual_image_url,
-                                preview_image_url=actual_image_url
+                                preview_image_url=actual_image_url # Using same for preview
                             ))
                             media_counts["image"] += 1
                             logger.info(f"成功獲取並驗證圖片，主題: '{english_theme}', URL: {actual_image_url}")
                         else:
                             logger.warning(f"未能為英文主題 '{english_theme}' 找到合適圖片。")
-                            display_name_for_fallback = obj.get("description_zh", image_url_info[1])
+                            # Fallback message if image cannot be found
+                            display_name_for_fallback = obj.get("description_zh", image_url_info[1]) # Use Gemini's zh desc or the theme
                             final_message_object_list.append(TextSendMessage(
                                 text=_clean_trailing_symbols(f"（小雲努力想了想關於「{display_name_for_fallback}」的樣子，但好像看得不是很清楚耶...）")
                             ))
@@ -803,7 +809,7 @@ def parse_response_and_send(gemini_json_string_response: str, reply_token: str):
                         final_message_object_list.append(TextSendMessage(text=_clean_trailing_symbols("（小雲想給你看圖片，但不知道要看什麼耶...）")))
                 else:
                     logger.warning(f"已達到圖片數量上限 (1)，忽略此圖片請求 (索引 {obj_idx})。")
-            elif msg_type == "image_key":
+            elif msg_type == "image_key": # For predefined images
                 if media_counts["image"] < 1:
                     key = obj.get("key")
                     if key:
@@ -823,15 +829,15 @@ def parse_response_and_send(gemini_json_string_response: str, reply_token: str):
                     sound_keyword = obj.get("sound")
                     if sound_keyword:
                         sound_info = MEOW_SOUNDS_MAP.get(sound_keyword)
-                        if sound_info and BASE_URL and BASE_URL.strip():
+                        if sound_info and BASE_URL and BASE_URL.strip(): # Ensure BASE_URL is valid
                             audio_url = f"{BASE_URL.rstrip('/')}/static/audio/meows/{sound_info['file']}"
-                            duration_ms = sound_info.get("duration", 1000)
+                            duration_ms = sound_info.get("duration", 1000) # Default duration if not specified
                             final_message_object_list.append(AudioSendMessage(original_content_url=audio_url, duration=duration_ms))
                             media_counts["sound"] += 1
                         elif not sound_info:
                             logger.warning(f"未找到貓叫聲關鍵字 '{sound_keyword}'。")
                         elif not BASE_URL or not BASE_URL.strip():
-                            logger.warning(f"BASE_URL 未設定或為空，無法發送貓叫聲 '{sound_keyword}'。")
+                             logger.warning(f"BASE_URL 未設定或為空，無法發送貓叫聲 '{sound_keyword}'。")
                     else:
                         logger.warning(f"meow_sound 物件 (索引 {obj_idx}) 缺少 'sound'，已忽略。")
                 else:
@@ -840,28 +846,30 @@ def parse_response_and_send(gemini_json_string_response: str, reply_token: str):
                 logger.warning(f"未知的訊息物件類型: {msg_type} (索引 {obj_idx})，已忽略。")
 
         messages_to_send = final_message_object_list
-        if not messages_to_send:
+        if not messages_to_send: # If all objects were invalid or filtered out
              logger.warning("經JSON解析後無有效訊息可發送。發送預設訊息。")
              messages_to_send = [TextSendMessage(text=_clean_trailing_symbols("咪...小雲好像不知道該說什麼了..."))]
 
     except json.JSONDecodeError as json_err:
         logger.error(f"解析 Gemini 的 JSON 回應失敗: {json_err}. 回應原文: {gemini_json_string_response[:500]}...")
         messages_to_send = [TextSendMessage(text=_clean_trailing_symbols("咪...小雲說話打結了，聽不懂它在喵什麼..."))]
-    except ValueError as val_err:
+    except ValueError as val_err: # Catch specific errors from our logic
         logger.error(f"處理 Gemini 回應時發生 Value 錯誤: {val_err}")
         messages_to_send = [TextSendMessage(text=_clean_trailing_symbols("咪...小雲好像有點 confused...不知道怎麼表達了。"))]
-    except Exception as e:
+    except Exception as e: # Generic fallback for unexpected errors
         logger.error(f"解析或處理 Gemini JSON 時發生未知錯誤: {e}", exc_info=True)
         messages_to_send = [TextSendMessage(text=_clean_trailing_symbols("喵嗚！小雲的腦袋當機了！需要拍拍！"))]
 
+    # Final attempt to send messages to LINE
     try:
         if messages_to_send:
             line_bot_api.reply_message(reply_token, messages_to_send)
-        else:
+        else: # Should not be reached if above fallback works, but as a safeguard
             logger.error("最終無訊息可發送 (可能解析完全失敗或列表為空)。發送預設訊息。")
             line_bot_api.reply_message(reply_token, [TextSendMessage(text=_clean_trailing_symbols("咪...（小雲好像有點詞窮了）"))])
-    except Exception as e:
+    except Exception as e: # Error during LINE reply
         logger.error(f"最終發送訊息到 LINE失敗: {e}", exc_info=True)
+        # Attempt to send a very basic error message if the main reply fails
         try:
             line_bot_api.reply_message(reply_token, [TextSendMessage(text=_clean_trailing_symbols("喵！小雲出錯了，請再試一次！"))])
         except Exception as e2:
@@ -888,8 +896,8 @@ def handle_cat_secret_discovery_request(event):
     elif not available_indices_from_list:
         logger.info(f"所有預定義秘密已對用戶 {user_id} 分享完畢 (JSON list type)，將重置並由 Gemini 生成。")
         use_gemini_to_generate = True
-        user_shared_secrets_indices[user_id] = set() # Reset for this user
-    elif random.random() < GEMINI_GENERATES_SECRET_PROBABILITY: # Probability to use Gemini even if list is not exhausted
+        user_shared_secrets_indices[user_id] = set() 
+    elif random.random() < GEMINI_GENERATES_SECRET_PROBABILITY: 
         use_gemini_to_generate = True
     else:
         chosen_index = random.choice(available_indices_from_list)
@@ -914,10 +922,9 @@ def handle_cat_secret_discovery_request(event):
         )
         headers = {"Content-Type": "application/json"}
         gemini_url_with_key = f"{GEMINI_API_URL}?key={GEMINI_API_KEY}"
-        # For this type of secret, we might not need extensive history beyond the role prompt
         payload_contents_for_secret = [
             {"role": "user", "parts": [{"text": XIAOYUN_ROLE_PROMPT}]},
-            {"role": "model", "parts": [{"text": '[{"type": "text", "content": "咪...讓我想想看喔..."}]'}]}, # Priming
+            {"role": "model", "parts": [{"text": '[{"type": "text", "content": "咪...讓我想想看喔..."}]'}]}, 
             {"role": "user", "parts": [{"text": prompt_for_gemini_secret}]}
         ]
         payload = {
@@ -930,7 +937,6 @@ def handle_cat_secret_discovery_request(event):
             result = response.json()
             if "candidates" in result and result["candidates"] and "content" in result["candidates"][0] and "parts" in result["candidates"][0]["content"] and result["candidates"][0]["content"]["parts"]:
                 gemini_response_json_str = result["candidates"][0]["content"]["parts"][0]["text"]
-                # Basic validation and fixing for image_theme in JSON list
                 try:
                     cleaned_json_str_for_check = gemini_response_json_str.strip()
                     if cleaned_json_str_for_check.startswith("```json"): cleaned_json_str_for_check = cleaned_json_str_for_check[7:]
@@ -941,30 +947,27 @@ def handle_cat_secret_discovery_request(event):
                         has_image_theme = any(isinstance(item, dict) and item.get("type") == "image_theme" for item in parsed_secret_list)
                         if not has_image_theme:
                             logger.warning(f"Gemini 生成的秘密JSON缺少 image_theme，將嘗試追加。原始: {gemini_response_json_str}")
-                            new_image_obj = {"type": "image_theme", "theme": "cat secret discovery"} # Default theme
-                            if len(parsed_secret_list) < 5: # Max 5 messages
+                            new_image_obj = {"type": "image_theme", "theme": "cat secret discovery"} 
+                            if len(parsed_secret_list) < 5: 
                                 insert_pos = 1 if parsed_secret_list and parsed_secret_list[0].get("type") == "text" else 0
                                 parsed_secret_list.insert(insert_pos, new_image_obj)
                                 gemini_response_json_str = json.dumps(parsed_secret_list, ensure_ascii=False)
                             else:
                                 logger.warning("無法追加 image_theme 到已滿的 Gemini 秘密 JSON 列表中。")
-                        else: # Ensure existing image_theme has a theme
+                        else: 
                             for item_idx, item in enumerate(parsed_secret_list):
                                 if isinstance(item, dict) and item.get("type") == "image_theme" and \
                                    (not item.get("theme") or not str(item.get("theme")).strip()):
                                     logger.warning(f"Gemini 生成的 image_theme (索引 {item_idx}) 缺少有效 theme，修正。原始: {item}")
-                                    item["theme"] = "mysterious cat find" # Default theme
+                                    item["theme"] = "mysterious cat find" 
                             gemini_response_json_str = json.dumps(parsed_secret_list, ensure_ascii=False)
-
-                    else: # Not a list
+                    else: 
                          logger.error(f"Gemini 生成的秘密JSON不是列表格式: {parsed_secret_list}")
                          raise ValueError("Generated secret (JSON list type) is not a list")
-
                 except (json.JSONDecodeError, ValueError) as parse_err:
                     logger.error(f"無法解析 Gemini 生成的秘密JSON (JSON list type) 以檢查/修正 image_theme: {parse_err}. JSON: {gemini_response_json_str}")
                     gemini_response_json_str = '[{"type": "text", "content": "喵...我好像發現了什麼..."}, {"type": "sticker", "keyword": "思考"}, {"type": "image_theme", "theme": "something interesting and mysterious from cat perspective"}]'
-
-            else: # No candidates or malformed response
+            else: 
                 logger.error(f"Gemini API 秘密生成回應格式異常 (JSON list type): {result}")
                 gemini_response_json_str = '[{"type": "text", "content": "喵...我剛剛好像想到一個，但是又忘記了..."}, {"type": "sticker", "keyword": "思考"}, {"type": "image_theme", "theme": "blurry memory concept"}]'
         except requests.exceptions.Timeout:
@@ -973,23 +976,20 @@ def handle_cat_secret_discovery_request(event):
         except requests.exceptions.RequestException as req_err:
             logger.error(f"Gemini API 秘密生成請求錯誤 (JSON list type, user_id: {user_id}): {req_err}")
             gemini_response_json_str = '[{"type": "text", "content": "咪...小雲的秘密頻道斷線了..."}, {"type": "sticker", "keyword": "哭哭"}]'
-        except Exception as e: # Catch-all for other errors
+        except Exception as e: 
             logger.error(f"Gemini API 秘密生成時發生未知錯誤 (JSON list type, user_id: {user_id}): {e}", exc_info=True)
             gemini_response_json_str = '[{"type": "text", "content": "咪...小雲的腦袋突然一片空白..."}, {"type": "sticker", "keyword": "無奈"}, {"type": "image_theme", "theme": "empty room white background concept"}]'
-
 
     if not gemini_response_json_str and chosen_secret_json_str:
         gemini_response_json_str = chosen_secret_json_str
 
-    if not gemini_response_json_str: # Final fallback if all fails
+    if not gemini_response_json_str: 
         logger.warning(f"所有秘密生成方式均失敗 (JSON list type) for user {user_id}，使用最終回退秘密。")
         gemini_response_json_str = '[{"type": "text", "content": "喵...我今天好像沒有什麼特別的發現耶..."}, {"type": "sticker", "keyword": "思考"}, {"type": "image_theme", "theme": "a quiet corner in a peaceful house"}]'
     
     add_to_conversation(user_id, f"[秘密/發現請求觸發 (JSON list type)，用戶訊息: {user_input_message}]", gemini_response_json_str, "secret_discovery_response")
     parse_response_and_send(gemini_response_json_str, event.reply_token)
 
-
-# --- 新的秘密模板處理函式 ---
 def handle_secret_discovery_template_request(event): 
     user_id = event.source.user_id
     reply_token = event.reply_token
@@ -1064,7 +1064,7 @@ JSON 範例:
                 logger.error(f"處理 Gemini 秘密模板 JSON 時發生 Value 錯誤: {val_err}")
                 line_bot_api.reply_message(reply_token, TextSendMessage(text="咪...小雲的秘密內容好像有點問題，拍謝喵～"))
                 return
-        else: # Fallback for secret template API error
+        else: 
             logger.error(f"Gemini 秘密模板請求回應格式異常或無內容: {result}")
             error_text_secret = "咪...小雲今天腦袋空空，想不出秘密了喵..."
             if result.get("promptFeedback", {}).get("blockReason"):
@@ -1133,7 +1133,7 @@ JSON 範例:
             bot_response_summary_for_log = f"訊息1: {msg1_content[:50]}...\n圖片: {image_url if image_url else '無'}\n訊息3: {msg3_content}\n訊息4: ..."
             add_to_conversation(user_id, log_summary_for_secret, bot_response_summary_for_log, "secret_template_response")
             line_bot_api.reply_message(reply_token, messages_to_send)
-        except Exception as final_send_err: # Fallback for final send
+        except Exception as final_send_err: 
             logger.error(f"最終發送秘密模板訊息到 LINE 失敗 ({user_id}): {final_send_err}", exc_info=True)
             try: line_bot_api.reply_message(reply_token, TextSendMessage(text="咪...小雲的秘密紙條好像飛走了..."))
             except Exception as fallback_err: logger.error(f"秘密模板備用錯誤訊息也發送失敗 ({user_id}): {fallback_err}")
@@ -1146,6 +1146,7 @@ JSON 範例:
 def handle_interactive_scenario_request(event):
     user_id = event.source.user_id
     reply_token = event.reply_token
+    global user_scenario_context # Declare usage of global variable
     
     logger.info(f"開始為 User ID ({user_id}) 生成互動情境模板。")
 
@@ -1178,7 +1179,7 @@ def handle_interactive_scenario_request(event):
     (咚咚咚……) 小雲的耳朵突然豎了起來！好像有誰在輕輕敲著窗戶……
     外面黑漆漆的，什麼都看不見。小雲有點害怕，但又好好奇喔！
     ฅ(๑*д*๑)ฅ!! 你覺得小雲應該：
-    👻 1️⃣ 鼓起勇氣，慢慢湊到窗邊偷看一下？
+    👻 1️⃣ 鼓起勇气，慢慢湊到窗邊偷看一下？
     🛌 2️⃣ 裝作沒聽見，把自己縮進被被裡發抖？
     🗣️ 3️⃣ 大聲「喵嗚！」一聲，想嚇跑對方？
     👉 你的選擇是？
@@ -1215,7 +1216,7 @@ def handle_interactive_scenario_request(event):
 
     messages_to_send = []
     generated_scenario_text = None
-    sticker_keyword_from_gemini = "思考" # Default sticker
+    sticker_keyword_from_gemini = "思考" 
 
     try:
         response = requests.post(gemini_url_with_key, headers=headers, json=payload, timeout=45)
@@ -1272,8 +1273,16 @@ def handle_interactive_scenario_request(event):
 
     if generated_scenario_text:
         messages_to_send.append(TextSendMessage(text=generated_scenario_text.strip()))
+        # Store context for follow-up
+        user_scenario_context[user_id] = {
+            "last_scenario_text": generated_scenario_text.strip(),
+            "last_scenario_sticker": sticker_keyword_from_gemini 
+        }
     else: 
         messages_to_send.append(TextSendMessage(text="咪？你想跟小雲說什麼呀？"))
+        if user_id in user_scenario_context: # Clear context if we can't even send a scenario
+            del user_scenario_context[user_id]
+
 
     selected_sticker = select_sticker_by_keyword(sticker_keyword_from_gemini)
     messages_to_send.append(StickerSendMessage(
@@ -1289,6 +1298,8 @@ def handle_interactive_scenario_request(event):
         logger.info(f"成功發送小雲互動情境模板給 User ID ({user_id})")
     except Exception as final_send_err:
         logger.error(f"最終發送互動情境訊息到 LINE 失敗 ({user_id}): {final_send_err}", exc_info=True)
+        if user_id in user_scenario_context: # Clear context if send fails
+            del user_scenario_context[user_id]
         try:
             line_bot_api.reply_message(reply_token, TextSendMessage(text="咪...小雲好像說話打結了..."))
         except Exception as fallback_err:
@@ -1319,6 +1330,7 @@ def callback():
 def handle_text_message(event):
     user_message = event.message.text
     user_id = event.source.user_id
+    global user_scenario_context # Ensure we can modify it
 
     TRIGGER_TEXT_GET_STATUS = "小雲狀態喵？ฅ^•ﻌ•^ฅ"
     TRIGGER_TEXT_FEED_XIAOYUN_TEMPLATE = "餵小雲點心🐟 🍖"
@@ -1545,8 +1557,53 @@ def handle_text_message(event):
         except Exception as e: 
             logger.error(f"處理簡易餵食命令時發生錯誤: {e}", exc_info=True)
             parse_response_and_send('[{"type": "text", "content": "咪...網路慢吞吞，點心都涼了..."}]', event.reply_token)
-        return 
+        return
+    
+    # --- Handle follow-up for interactive scenario ---
+    # Check if the user message is a number and if there's an active scenario for this user
+    if user_message.strip().isdigit() and user_id in user_scenario_context:
+        logger.info(f"User ID ({user_id}) 回應了互動情境的選項: {user_message}")
+        
+        scenario_info = user_scenario_context.pop(user_id) # Get and remove context
+        original_scenario_text = scenario_info.get("last_scenario_text", "先前的一個情境")
+        
+        follow_up_prompt = f"""
+你現在是小雲。先前你給用戶呈現了以下情境：
+---
+{original_scenario_text}
+---
+用戶剛剛選擇了選項：「{user_message.strip()}」。
 
+請你扮演小雲，根據用戶的這個選擇，創作出一個自然、有趣、且符合小雲個性的後續回應。
+這個回應應該像是故事的延續，或者是小雲對用戶選擇的反應。
+你的回應必須是【JSON格式的字串列表】，可以包含1到3則文字訊息，和最多一個符合當下情境的貼圖。
+"""
+        conversation_history_for_follow_up = get_conversation_history(user_id).copy()
+        conversation_history_for_follow_up.append({"role": "user", "parts": [{"text": follow_up_prompt}]})
+        
+        payload = {
+            "contents": conversation_history_for_follow_up,
+            "generationConfig": {"temperature": TEMPERATURE, "maxOutputTokens": 600}
+        }
+        try:
+            response = requests.post(gemini_url_with_key, headers=headers, json=payload, timeout=40)
+            response.raise_for_status()
+            result = response.json()
+            if "candidates" in result and result["candidates"] and \
+               result["candidates"][0].get("content", {}).get("parts", [{}])[0].get("text"):
+                ai_response_json_str = result["candidates"][0]["content"]["parts"][0]["text"]
+                add_to_conversation(user_id, f"[情境選項回應: {user_message} for scenario: {original_scenario_text[:50]}...]", ai_response_json_str, "interactive_scenario_followup")
+                parse_response_and_send(ai_response_json_str, event.reply_token)
+            else:
+                logger.error(f"Gemini 互動情境後續回應格式異常或無內容: {result}")
+                fallback_text = f"咪...小雲好像沒聽懂你選「{user_message.strip()}」是什麼意思耶...（歪頭）"
+                parse_response_and_send(f'[{{"type": "text", "content": "{fallback_text}"}}, {{"type": "sticker", "keyword": "疑惑"}}]', event.reply_token)
+        except Exception as e:
+            logger.error(f"處理互動情境後續時發生錯誤: {e}", exc_info=True)
+            parse_response_and_send('[{"type": "text", "content": "喵嗚～小雲的腦袋好像短路了..."}, {"type": "sticker", "keyword": "無奈"}]', event.reply_token)
+        return # Important: Return after handling this specific type of follow-up
+
+    # --- If no specific command matched, proceed with normal text message handling ---
     logger.info(f"收到來自 User ID ({user_id}) 的一般文字訊息：{user_message}")
 
     trigger_keywords = ["秘密", "發現"]
@@ -1882,8 +1939,10 @@ def clear_memory_route(user_id):
         del conversation_memory[user_id]
         if user_id in user_shared_secrets_indices:
             del user_shared_secrets_indices[user_id]
-        logger.info(f"已清除用戶 {user_id} 的對話記憶和秘密索引。")
-        return f"已清除用戶 {user_id} 的對話記憶和秘密索引。"
+        if user_id in user_scenario_context: # Clear scenario context too
+            del user_scenario_context[user_id]
+        logger.info(f"已清除用戶 {user_id} 的對話記憶、秘密索引和互動情境。")
+        return f"已清除用戶 {user_id} 的對話記憶、秘密索引和互動情境。"
     return f"用戶 {user_id} 沒有對話記憶可清除。"
 
 @app.route("/memory_status", methods=["GET"])
@@ -1894,10 +1953,12 @@ def memory_status_route():
         if hist and isinstance(hist[-1].get("parts"), list) and hist[-1]["parts"] and isinstance(hist[-1]["parts"][0].get("text"), str):
             last_interaction_summary = hist[-1]["parts"][0]["text"][:100] + "..."
         secrets_shared_count = len(user_shared_secrets_indices.get(uid, set()))
+        active_scenario_info = user_scenario_context.get(uid, {}).get("last_scenario_text", "無進行中情境")[:50] + "..."
         status["users_details"][uid] = {
             "conversation_entries": len(hist),
             "last_interaction_summary": last_interaction_summary,
-            "secrets_shared_count": secrets_shared_count
+            "secrets_shared_count": secrets_shared_count,
+            "active_scenario_summary": active_scenario_info
         }
     return json.dumps(status, ensure_ascii=False, indent=2)
 
