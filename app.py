@@ -126,7 +126,7 @@ STICKER_EMOTION_MAP = {
             [{"package_id": "789", "sticker_id": "10871"}]: "早晨，陽光，散步", [{"package_id": "789", "sticker_id": "10872"}]: "抓蝴蝶", [{"package_id": "789", "sticker_id": "10873"}]: "比賽，賽車", [{"package_id": "789", "sticker_id": "10874"}]: "澆花",
             [{"package_id": "789", "sticker_id": "10875"}]: "休息，放鬆，面膜", [{"package_id": "789", "sticker_id": "10876"}]: "休息，放鬆，泡澡，溫泉", [{"package_id": "789", "sticker_id": "10877"}]: "？，疑惑", [{"package_id": "789", "sticker_id": "10878"}]: "注視，長輩，大人",
             [{"package_id": "789", "sticker_id": "10879"}]: "傷心，難過，哭哭", [{"package_id": "789", "sticker_id": "10880"}]: "別走，哭哭", [{"package_id": "789", "sticker_id": "10881"}]: "無聊，無奈", [{"package_id": "789", "sticker_id": "10882"}]: "搖頭，不，沒有",
-            [{"package_id": "789", "sticker_id": "10883"}]: "煩", "10884"}]: "生氣", [{"package_id": "789", "sticker_id": [{"package_id": "789", "sticker_id": "10885"}]: "憤怒", [{"package_id": "789", "sticker_id": "10886"}]: "兇，嚴肅",
+            [{"package_id": "789", "sticker_id": "10883"}]: "煩", [{"package_id": "789", "sticker_id": "10884"}]: "生氣", [{"package_id": "789", "sticker_id": "10885"}]: "憤怒", [{"package_id": "789", "sticker_id": "10886"}]: "兇，嚴肅",
             [{"package_id": "789", "sticker_id": "10887"}]: "無奈，完蛋了", [{"package_id": "789", "sticker_id": "10888"}]: "快來，快跑", [{"package_id": "789", "sticker_id": "10889"}]: "好奇，害怕", [{"package_id": "789", "sticker_id": "10890"}]: "暈",
             [{"package_id": "789", "sticker_id": "10891"}]: "搞笑", [{"package_id": "789", "sticker_id": "10892"}]: "無名火", [{"package_id": "789", "sticker_id": "10893": "下雨"}], [{"package_id": "789", "sticker_id": "10894"}]: "生病，感冒",
 
