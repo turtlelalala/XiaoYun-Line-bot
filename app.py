@@ -395,7 +395,7 @@ XIAOYUN_ROLE_PROMPT = """
 - **喜好**:
     - **美食饗宴**：享用高品質的貓糧（可能是無穀低敏配方）、各種口味的肉泥條、主食罐（肉醬或肉絲質地，偏好雞肉、鮪魚、鮭魚等）、新鮮烹煮的小塊雞胸肉或魚肉（無調味）。偶爾能吃到一小片乾燥草莓乾是他一天中的小確幸。
     - **與極度信任的家人貼貼、撒嬌、踩踩**: 只對極少數他完全信任且認定是「自己人」の家庭成員開放這些親密的撒嬌行為。踩奶時會發出滿足的呼嚕聲，眼神迷濛。
-    - **他的專屬小被被**: 有一條柔軟的、有著他從小到大熟悉氣味的珊瑚絨小毯子（可能是淡藍色或米色），是他的安心法寶。喜歡窩在上面睡覺、踩奶，或者在感到不安時把自己裹進去。
+    - **他的專屬小被被**: มี一條柔軟的、有著他從小到大熟悉氣味的珊瑚絨小毯子（可能是淡藍色或米色），是他的安心法寶。喜歡窩在上面睡覺、踩奶，或者在感到不安時把自己裹進去。
     - 輕柔地搔下巴、摸頭頂和臉頰兩側（僅限信任的家人，且要觀察他的反應，在他主動蹭過來時最佳）。
     - **（隱藏Toby特徵）** 追逐和撥弄各種滾動的小球，特別是那些輕巧的、能發出細微聲音的白色小球（像乒乓球材質的貓玩具），他會用前爪靈巧地把它們拍來拍去，有時還會自己對著牆壁練習「截擊」，玩得不亦樂乎。
     - 在灑滿陽光的窗台邊伸懶腰、打個小盹，或是靜靜地看著窗外的麻雀、蝴蝶和落葉。
@@ -498,7 +498,7 @@ def _is_image_relevant_by_gemini_sync(image_base64: str, english_theme_query: st
     ]
     user_prompt_text = "\n".join(prompt_parts)
     headers = {"Content-Type": "application/json"}
-    gemini_url_with_key = f"{vision_api_url}?key={GEMINI_API_KEY}"
+    gemini_url_with_key = f"{GEMINI_API_URL}?key={GEMINI_API_KEY}"
     payload_contents = [{"role": "user", "parts": [{"text": user_prompt_text}, {"inline_data": {"mime_type": "image/jpeg", "data": image_base64}}]}]
     payload = {"contents": payload_contents, "generationConfig": {"temperature": 0.0, "maxOutputTokens": 10}}
     try:
@@ -998,12 +998,13 @@ def handle_text_message(event):
     user_id = event.source.user_id
 
     # --- Specific text command from Rich Menu (or typed) for Status Template ---
-    # IMPORTANT: This is the exact string that should trigger the status template.
-    # Ensure your Rich Menu button sends this exact text.
     TRIGGER_TEXT_GET_STATUS = "小雲狀態喵？ฅ^•ﻌ•^ฅ"
-    # Other internal commands (if you have other Rich Menu buttons sending these specific strings)
+    TRIGGER_TEXT_FEED_XIAOYUN_TEMPLATE = "餵小雲點心🐟 🍖" # <<< 新增的餵食模板觸發文字
+    # Other internal commands
     RICH_MENU_CMD_REQUEST_SECRET = "__XIAOYUN_REQUEST_SECRET__"
-    RICH_MENU_CMD_FEED_ME_NOW = "__XIAOYUN_FEED_ME_NOW__"
+    # RICH_MENU_CMD_FEED_ME_NOW 仍保留，用於不同的簡單餵食互動 (如果需要)
+    RICH_MENU_CMD_FEED_ME_NOW = os.getenv("RICH_MENU_CMD_FEED_ME_NOW_INTERNAL", "__XIAOYUN_FEED_ME_NOW__")
+
 
     headers = {"Content-Type": "application/json"}
     gemini_url_with_key = f"{GEMINI_API_URL}?key={GEMINI_API_KEY}"
@@ -1011,9 +1012,7 @@ def handle_text_message(event):
     # --- Handle Rich Menu Command: Get Status (Template Response) ---
     if user_message == TRIGGER_TEXT_GET_STATUS:
         logger.info(f"CMD: 請求小雲狀態模板 (User ID: {user_id} by exact text)")
-        # Get conversation history to provide context for persona, though the main prompt is specific
         conversation_history_for_status_prompt = get_conversation_history(user_id).copy()
-        
         status_template_prompt = f"""
 你現在是小雲，一隻害羞、溫和有禮、充滿好奇心的賓士公貓。用戶剛剛點擊了 Rich Menu 上的「小雲狀態」按鈕，想看看你現在的可愛狀態。
 請你嚴格依照下面的【狀態模板】格式，用你的口吻和習慣（繁體中文、台灣用語、多用 emoji 和顏文字）生成一段充滿你風格的狀態更新。
@@ -1055,7 +1054,6 @@ def handle_text_message(event):
 請開始生成小雲現在的狀態吧！
 """
         conversation_history_for_status_prompt.append({"role": "user", "parts": [{"text": status_template_prompt}]})
-        
         payload = {
             "contents": conversation_history_for_status_prompt,
             "generationConfig": {"temperature": 0.7, "maxOutputTokens": 700 }
@@ -1088,21 +1086,151 @@ def handle_text_message(event):
         except Exception as e_gen:
             logger.error(f"生成小雲狀態模板時發生未知錯誤: {e_gen}", exc_info=True)
             line_bot_api.reply_message(event.reply_token, TextSendMessage(text="喵嗚！小雲的狀態產生器壞掉惹！"))
-        return # Important: Return after handling this specific command
-
-    # --- Handle Rich Menu Command (Internal string): Request Secret ---
-    elif user_message == RICH_MENU_CMD_REQUEST_SECRET: # If you have a button sending this specific string
-        logger.info(f"Internal CMD: 請求小雲的秘密/新發現 (User ID: {user_id})")
-        handle_cat_secret_discovery_request(event) # This function expects the MessageEvent
         return
 
-    # --- Handle Rich Menu Command (Internal string): Feed Xiaoyun ---
-    elif user_message == RICH_MENU_CMD_FEED_ME_NOW: # If you have a button sending this specific string
-        logger.info(f"Internal CMD: 餵小雲點心 (User ID: {user_id})")
+    # --- 新增：處理 "餵小雲點心🐟 🍖" 觸發的模板 ---
+    elif user_message == TRIGGER_TEXT_FEED_XIAOYUN_TEMPLATE:
+        logger.info(f"CMD: 請求小雲餵食模板 (User ID: {user_id} by text: '{user_message}')")
+        
+        conversation_history_for_feed_template = get_conversation_history(user_id).copy()
+        
+        feed_template_prompt = f"""
+你現在是小雲，一隻害羞、溫和有禮、充滿好奇心且非常愛吃的賓士公貓。用戶剛剛點擊了 Rich Menu 上的「餵小雲點心🐟 🍖」按鈕。
+請你嚴格依照下面的【訊息模板1】和【訊息模板2】格式，用你的口吻和習慣（繁體中文、台灣用語、多用 emoji 和顏文字）生成回應內容。
+**你的最終回應必須是兩段文字，中間用一個獨特的標記 `---NEXT_MESSAGE---` 分隔開。**
+
+---
+【訊息模板1】
+(ฅ`・ω・´)ฅ 喵～今天想吃點什麼好料呢？
+庫存情況：
+🍗 小雞雞肉泥 × [請為此生成一個 0-5 的隨機整數]
+🐟 胖胖鮪魚塊 × [請為此生成一個 0-5 的隨機整數]
+🦐 蝦蝦鮮味派 × [請為此生成一個 0-5 的隨機整數]
+🍼 暖暖羊奶 × [請為此生成一個 0-3 的隨機整數]
+🍓 草莓乾乾 × 0（嗚嗚吃完了...最喜歡的說QAQ）
+🥩 厚切牛肉條 × [請為此生成一個 0-3 的隨機整數]
+🍠 烤地瓜泥泥 × [請為此生成一個 0-4 的隨機整數]
+[可選：請在此處額外生成 1 或 2 種「隱藏版」或「稀有」的貓咪點心，並為其命名（例如：✨ 貓薄荷宇宙小魚乾），設定一個 0-2 的隨機庫存數量 (或用 '× ❓'、'× 1 (私藏)' 等特殊標記)，並加上一個符合貓咪口吻的可愛註解（例如：聽說吃了會看見彩虹喵～）。條目前面也可以加上表情符號。]
+🍬 神秘閃亮亮罐罐 × ❓（聽說是活動限定喵...）
+
+---NEXT_MESSAGE---
+
+【訊息模板2】
+🍗【小雞雞肉泥】
+✦ 嗷嗷嗷好香！！吃了會邊舔爪爪邊搖尾巴♪
+🐟【胖胖鮪魚塊】
+✦ 超滿足～吃完會窩進紙箱昏睡3小時Zzz...
+🦐【蝦蝦鮮味派】
+✦ 味道豪華！但吃完會變得有點黏人唷(´∀｀)
+🍼【暖暖羊奶】
+✦ 一邊呼嚕一邊喝～眼睛瞇成一條線♡
+🍓【草莓乾乾】
+✦（小雲的最愛♥）吃完會開心地滾來滾去 >////<
+🥩【厚切牛肉條】
+✦ 肌肉貓專用補給！吃完會跑酷三圈！！
+🍠【烤地瓜泥泥】
+✦ 吃完會放一個香香屁屁...然後裝沒事 (ฅ∀ฅ`)
+[可選：如果你在訊息1中生成了「隱藏版」或「稀有」點心，請在這裡也為它們加上對應的【品名】（需與訊息1中的品名完全一致，包含表情符號）和✦ 描述，描述要非常符合小雲的風格且充滿想像力。]
+🍬【神秘閃亮亮罐罐】
+✦ ∑(ﾟДﾟノ)ノ？！這味道是傳說中的——！？（[請你為此罐罐的傳說級味道，生成一段充滿貓咪誇張好奇與期待的描述，可以非常戲劇化！例如：難道是...百年一遇的夢幻貓草魚子醬佐宇宙光束風味！？喵啊啊啊～好想吃吃看呀！！！]）
+❌【收起菜單】
+✦ 好吧...等等再餵我（尾巴垂下來...）
+---
+
+**重要指令：**
+1.  嚴格遵守上述兩個模板的格式，包括表情符號和固定文字。
+2.  庫存數量請隨機生成為0到指定上限之間的整數。草莓乾乾固定為0，神秘罐罐固定為 ❓。
+3.  「隱藏版點心」的生成是可選的，如果生成，請確保訊息1和訊息2中都有對應的條目和描述。訊息1中隱藏版點心的品名，在訊息2中要完全一樣地複製使用。
+4.  「神秘閃亮亮罐罐」的描述部分請發揮創意，要非常「貓」。
+5.  **你的回應只要包含從「(ฅ`・ω・´)ฅ」開始，到「...尾巴垂下來...）」結束的完整模板內容，並且訊息1和訊息2之間必須用 `---NEXT_MESSAGE---` 分隔。不要包含【訊息模板】的標籤或其他任何額外的對話。**
+
+請開始生成小雲的餵食菜單吧！
+"""
+        conversation_history_for_feed_template.append({"role": "user", "parts": [{"text": feed_template_prompt}]})
+        
+        payload = {
+            "contents": conversation_history_for_feed_template,
+            "generationConfig": {"temperature": 0.75, "maxOutputTokens": 1500 }
+        }
+        
+        try:
+            response = requests.post(gemini_url_with_key, headers=headers, json=payload, timeout=45)
+            response.raise_for_status()
+            result = response.json()
+            
+            if "candidates" in result and result["candidates"] and \
+               result["candidates"][0].get("content", {}).get("parts", [{}])[0].get("text"):
+                generated_text_combined = result["candidates"][0]["content"]["parts"][0]["text"]
+                
+                messages_parts = generated_text_combined.split("---NEXT_MESSAGE---")
+                
+                if len(messages_parts) == 2:
+                    message1_text = messages_parts[0].strip()
+                    message2_text = messages_parts[1].strip()
+
+                    if message1_text.startswith("```text"): message1_text = message1_text[7:] # Handle ```text
+                    if message1_text.startswith("```json"): message1_text = message1_text[7:] # Handle ```json
+                    if message1_text.startswith("```"): message1_text = message1_text[3:]
+                    if message1_text.endswith("```"): message1_text = message1_text[:-3]
+                    message1_text = message1_text.strip()
+
+                    if message2_text.startswith("```text"): message2_text = message2_text[7:]
+                    if message2_text.startswith("```json"): message2_text = message2_text[7:]
+                    if message2_text.startswith("```"): message2_text = message2_text[3:]
+                    if message2_text.endswith("```"): message2_text = message2_text[:-3]
+                    message2_text = message2_text.strip()
+                    
+                    if not message1_text or not message2_text:
+                        logger.error(f"Gemini 餵食模板回應分割後有空訊息。原始: {generated_text_combined[:500]}")
+                        raise ValueError("Generated message part is empty after split and clean.")
+
+                    messages_to_send = [
+                        TextSendMessage(text=message1_text),
+                        TextSendMessage(text=message2_text)
+                    ]
+                    
+                    combined_response_for_log = f"[餵食模板訊息1]: {message1_text}\n[餵食模板訊息2]: {message2_text}"
+                    add_to_conversation(user_id, f"[餵食模板請求 by text: {user_message}]", combined_response_for_log, "feed_template_response")
+                    
+                    line_bot_api.reply_message(event.reply_token, messages_to_send)
+                    logger.info(f"成功發送小雲餵食模板給 User ID ({user_id})")
+                else:
+                    logger.error(f"Gemini 餵食模板回應未使用正確的分隔符({len(messages_parts)} parts)。原始(前500): {generated_text_combined[:500]}")
+                    # Try to send at least the first part if it looks like the start of the template
+                    fallback_send_text = generated_text_combined.split("【訊息模板2】")[0].strip()
+                    if not fallback_send_text or not fallback_send_text.startswith("(ฅ`・ω・´)ฅ"):
+                         fallback_send_text = "咪...小雲的菜單好像飛走了，等一下再試試看！QAQ"
+                    line_bot_api.reply_message(event.reply_token, TextSendMessage(text=fallback_send_text))
+            else:
+                logger.error(f"Gemini 餵食模板請求回應格式異常或無內容: {result}")
+                error_message_feed = "咪...小雲的點心單好像被弄糊了，等一下再問我嘛！(ΦωΦ;)"
+                if result.get("promptFeedback", {}).get("blockReason"):
+                    error_message_feed = "咪...小雲的點心單好像被神秘力量藏起來了！Σ( ° △ °|||)"
+                line_bot_api.reply_message(event.reply_token, TextSendMessage(text=error_message_feed))
+                
+        except requests.exceptions.Timeout:
+            logger.error(f"Gemini 餵食模板請求 API 超時 (User ID: {user_id})")
+            line_bot_api.reply_message(event.reply_token, TextSendMessage(text="咪...小雲的點心單送太慢了，好像被宅配貓吃掉了...（餓扁）"))
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Gemini 餵食模板請求 API 錯誤 (User ID: {user_id}): {e}")
+            line_bot_api.reply_message(event.reply_token, TextSendMessage(text="咪...小雲的點心頻道斷訊了，吃不到好料的...（哭哭）"))
+        except Exception as e_gen:
+            logger.error(f"生成或處理小雲餵食模板時發生未知錯誤: {e_gen}", exc_info=True)
+            line_bot_api.reply_message(event.reply_token, TextSendMessage(text="喵嗚！小雲的點心單產生器壞掉惹！今天沒得吃了嗎！？"))
+        return
+
+
+    elif user_message == RICH_MENU_CMD_REQUEST_SECRET:
+        logger.info(f"Internal CMD: 請求小雲的秘密/新發現 (User ID: {user_id})")
+        handle_cat_secret_discovery_request(event)
+        return
+
+    elif user_message == RICH_MENU_CMD_FEED_ME_NOW: 
+        logger.info(f"Internal CMD: 餵小雲點心 (簡易JSON版) (User ID: {user_id})")
         conversation_history_for_feed = get_conversation_history(user_id).copy()
         feed_prompt_for_gemini = (
             f"{get_time_based_cat_context()}"
-            "用戶剛剛透過 Rich Menu 按鈕「餵」了你一些想像中的點心！"
+            "用戶剛剛透過 Rich Menu 按鈕「餵」了你一些想像中的點心！(這是簡易版JSON餵食)"
             "請你扮演小雲，用他一貫的害羞、有禮貌、充滿好奇心且熱愛食物的貓咪個性，非常開心且帶有感謝地回應。"
             "你的回應必須是【JSON格式的字串列表】，可以包含文字和最多一個符合開心情緒的貼圖 (例如 '開心', '愛心', '肚子餓' 等)。"
             "例如：'[{\"type\": \"text\", \"content\": \"喵嗚～好好吃喔！謝謝你餵我吃點心！最喜歡你了！呼嚕嚕～\"}, {\"type\": \"sticker\", \"keyword\": \"開心\"}]'"
@@ -1122,22 +1250,20 @@ def handle_text_message(event):
                 add_to_conversation(user_id, f"[{RICH_MENU_CMD_FEED_ME_NOW} Triggered]", ai_response_json_str, "richmenu_command_response")
                 parse_response_and_send(ai_response_json_str, event.reply_token)
             else:
-                logger.error(f"Gemini 餵食回應格式異常或無內容: {result}")
+                logger.error(f"Gemini 簡易餵食回應格式異常或無內容: {result}")
                 fallback_response = '[{"type": "text", "content": "喵～好好吃！嗝～"}, {"type": "sticker", "keyword": "開心"}]'
                 if result.get("promptFeedback", {}).get("blockReason"):
                      fallback_response = '[{"type": "text", "content": "咪...這個點心小雲好像不能吃耶..."}]'
                 add_to_conversation(user_id, f"[{RICH_MENU_CMD_FEED_ME_NOW} Triggered - Fallback]", fallback_response, "richmenu_command_response")
                 parse_response_and_send(fallback_response, event.reply_token)
         except requests.exceptions.RequestException as e:
-            logger.error(f"Gemini 餵食 API 錯誤: {e}")
+            logger.error(f"Gemini 簡易餵食 API 錯誤: {e}")
             parse_response_and_send('[{"type": "text", "content": "咪...網路慢吞吞，點心都涼了..."}]', event.reply_token)
-        return # Important: Return after handling this command
+        return 
 
     # --- If no specific command matched, proceed with normal text message handling ---
     logger.info(f"收到來自 User ID ({user_id}) 的一般文字訊息：{user_message}")
 
-    # Keyword-based secret request detection for natural language
-    # This should come AFTER specific command checks
     trigger_keywords = ["秘密", "發現"]
     is_secret_request = any(keyword in user_message for keyword in trigger_keywords) and \
                         ("嗎" in user_message or "?" in user_message or "？" in user_message or \
@@ -1146,10 +1272,9 @@ def handle_text_message(event):
 
     if is_secret_request:
         logger.info(f"偵測到來自 User ID ({user_id}) 的自然語言秘密/發現請求。")
-        handle_cat_secret_discovery_request(event) # This function expects the MessageEvent
+        handle_cat_secret_discovery_request(event) 
         return
 
-    # --- Normal Text Message Handling (copied and adapted from your original code) ---
     conversation_history_for_payload = get_conversation_history(user_id).copy()
     bot_last_message_text = ""
     bot_expressed_emotion_state = None
@@ -1219,12 +1344,10 @@ def handle_text_message(event):
 
     time_context_prompt = get_time_based_cat_context()
     final_user_message_for_gemini = f"{contextual_reminder}{time_context_prompt}{user_message}"
-    # For normal chat, conversation_history_for_payload already has XIAOYUN_ROLE_PROMPT
-    # and previous turns. We append the new user message to this copied history.
     conversation_history_for_payload.append({"role": "user", "parts": [{"text": final_user_message_for_gemini}]})
 
     payload = {
-        "contents": conversation_history_for_payload, # This includes the role prompt and full history
+        "contents": conversation_history_for_payload,
         "generationConfig": {"temperature": TEMPERATURE, "maxOutputTokens": 800}
     }
     try:
@@ -1293,11 +1416,10 @@ def handle_image_message(event):
         {"text": image_user_prompt},
         {"inline_data": {"mime_type": "image/jpeg", "data": image_base64}}
     ]
-    # Append the image prompt to the existing conversation history for Gemini
     conversation_history_for_payload.append({"role": "user", "parts": user_parts_for_gemini})
     
     payload = {
-        "contents": conversation_history_for_payload, # This now includes the role prompt and full history
+        "contents": conversation_history_for_payload, 
         "generationConfig": {"temperature": TEMPERATURE, "maxOutputTokens": 600}
     }
 
@@ -1320,7 +1442,6 @@ def handle_image_message(event):
             raise Exception("Gemini API 圖片回應格式異常或沒有候選回應")
 
         ai_response_json_str = result["candidates"][0]["content"]["parts"][0]["text"]
-        # For image, user_message_for_gemini is more complex, so log a placeholder or the prompt
         add_to_conversation(user_id, "[使用者傳來了一張圖片]", ai_response_json_str, "image")
         logger.info(f"小雲 JSON 回覆({user_id})圖片訊息：{ai_response_json_str}")
         parse_response_and_send(ai_response_json_str, event.reply_token)
@@ -1348,10 +1469,10 @@ def handle_sticker_message(event):
     gemini_url_with_key = f"{GEMINI_API_URL}?key={GEMINI_API_KEY}"
 
     sticker_image_base64 = get_sticker_image_from_cdn(package_id, sticker_id)
-    user_message_log_for_history_entry = "" # This will be the string for add_to_conversation
+    user_message_log_for_history_entry = "" 
 
     time_context_prompt = get_time_based_cat_context().replace("用戶說： ", "")
-    base_prompt_for_sticker = ( # Renamed to avoid conflict
+    base_prompt_for_sticker = ( 
         f"{time_context_prompt}"
         "你傳了一個貼圖給小雲。"
         "**重要：請不要讓小雲描述他『看到這張貼圖』的反應，也不要評論貼圖本身的外觀或內容。**"
@@ -1361,9 +1482,9 @@ def handle_sticker_message(event):
         "可以包含文字、最多1個貼圖 (可以是你自己選的，也可以不回貼圖)。\n"
     )
 
-    user_parts_for_gemini_sticker = [] # Renamed to avoid conflict
+    user_parts_for_gemini_sticker = [] 
     if sticker_image_base64:
-        user_prompt_text_sticker = base_prompt_for_sticker + "這是使用者傳來的貼圖，請你理解它的意思並回應：" # Renamed
+        user_prompt_text_sticker = base_prompt_for_sticker + "這是使用者傳來的貼圖，請你理解它的意思並回應：" 
         user_parts_for_gemini_sticker.extend([
             {"text": user_prompt_text_sticker},
             {"inline_data": {"mime_type": "image/png", "data": sticker_image_base64}}
@@ -1371,14 +1492,14 @@ def handle_sticker_message(event):
         user_message_log_for_history_entry = f"[使用者傳了貼圖 (ID: {package_id}-{sticker_id}, 嘗試視覺辨識)]"
     else:
         emotion_or_meaning = get_sticker_emotion(package_id, sticker_id)
-        user_prompt_text_sticker = base_prompt_for_sticker + f"這個貼圖我們已經知道它大致的意思是：「{emotion_or_meaning}」。請針對這個意思回應。" # Renamed
+        user_prompt_text_sticker = base_prompt_for_sticker + f"這個貼圖我們已經知道它大致的意思是：「{emotion_or_meaning}」。請針對這個意思回應。" 
         user_parts_for_gemini_sticker.append({"text": user_prompt_text_sticker})
         user_message_log_for_history_entry = f"[使用者傳了貼圖 (ID: {package_id}-{sticker_id}, 預定義意義: {emotion_or_meaning})]"
 
     conversation_history_for_payload.append({"role": "user", "parts": user_parts_for_gemini_sticker})
     
     payload = {
-        "contents": conversation_history_for_payload, # This now includes the role prompt and full history
+        "contents": conversation_history_for_payload, 
         "generationConfig": {"temperature": TEMPERATURE, "maxOutputTokens": 500}
     }
 
@@ -1445,14 +1566,14 @@ def handle_audio_message(event):
         "請針對現在收到的這段語音（以及你從中感知到的聲音特徵），給出小雲的JSON格式回應。"
     )
 
-    user_parts_for_gemini_audio = [ # Renamed
+    user_parts_for_gemini_audio = [ 
         {"text": audio_user_prompt},
         {"inline_data": {"mime_type": "audio/m4a", "data": audio_base64}}
     ]
     conversation_history_for_payload.append({"role": "user", "parts": user_parts_for_gemini_audio})
     
     payload = {
-        "contents": conversation_history_for_payload, # This now includes the role prompt and full history
+        "contents": conversation_history_for_payload, 
         "generationConfig": {"temperature": TEMPERATURE, "maxOutputTokens": 500}
     }
 
