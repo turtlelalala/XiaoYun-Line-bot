@@ -1149,7 +1149,7 @@ def handle_secret_discovery_template_request(event):
                 if not all(key in parsed_secret_data for key in ["type", "location", "discovery_item", "reasoning", "mood", "unsplash_keyword", "message3_if_image"]):
                     logger.error(f"Gemini 回應的 JSON 缺少必要鍵值: {parsed_secret_data}")
                     raise ValueError("Missing keys in parsed secret data from Gemini.")
-                if parsed_secret_data.get("type") not in ["秘密型", "新發現型"]:
+                if parsed_secret_data.get("type") not in ["秘密", "新發現"]:
                     logger.error(f"Gemini 回應的 JSON type 不正確: {parsed_secret_data.get('type')}")
                     raise ValueError("Invalid 'type' in parsed secret data from Gemini.")
 
