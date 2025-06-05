@@ -991,184 +991,180 @@ def handle_cat_secret_discovery_request(event):
 
 
 # --- 新的秘密模板處理函式 ---
-def handle_templated_secret_request(event):
+def handle_secret_discovery_template_request(event):
     user_id = event.source.user_id
     reply_token = event.reply_token
-    user_input_message = event.message.text # Should be "小雲的秘密/新發現 ✨"
+    
+    logger.info(f"開始為 User ID ({user_id}) 生成秘密/發現模板。")
 
-    messages_to_send = []
-    image_url_for_secret = None
-    generated_secret_details = {}
+    conversation_history_for_secret_template = get_conversation_history(user_id).copy()
+    
+    # Prompt for Gemini to generate secret details, image keyword, and conditional message 3
+    # V2: Requesting JSON output from Gemini for easier parsing
+    secret_generation_prompt = f"""
+你現在是小雲，一隻害羞、溫和有禮、充滿好奇心且非常愛吃的賓士公貓。用戶剛剛觸發了「小雲的秘密/新發現 ✨」功能。
+請你為小雲創造一個全新的、今日的「小秘密」或「新發現」情節。
+你的回應必須是一個 JSON 物件，包含以下鍵值：
+- "location": (字串) 發現秘密的地點，例如 "🐱窗台秘密據點" 或 "床底下的神秘角落"。
+- "discovery_item": (字串) 發現的物品或事件，例如 "一根……疑似人類掉落的棒棒糖棍🍭（上面還有口水）" 或 "隔壁大黃狗偷偷藏的骨頭！"。
+- "reasoning": (字串) 小雲對此發現的可愛推理或反應，例如 "你是不是……在偷偷吃甜的都沒分我？(눈\_눈)" 或 "原來大黃也有小秘密喵！"。
+- "mood": (字串) 小雲描述的今日心情，例如 "記仇中（但會邊記邊撒嬌）" 或 "發現新大陸一樣興奮！"。
+- "unsplash_keyword": (字串) 一個與「discovery_item」或場景相關的、非常簡潔的 **2個單字英文 Unsplash 搜尋關鍵字** (例如 "candy stick", "dog bone", "shiny feather")。這個關鍵字必須非常精準，以便找到相關的真實世界照片。
+- "message3_if_image": (字串) 如果之後成功根據 unsplash_keyword 找到了圖片，這段文字將作為貓咪對圖片的補充說明。內容應該像小雲在說：「你自己看看啦，我都拍下證據了欸！(咕嘟咕嘟喝水中…)」這樣帶有貓咪口吻、指向圖片的句子。
 
+請確保 JSON 格式正確，所有字串內容都使用繁體中文（台灣用語習慣）和小雲的口吻。
+
+JSON 範例:
+{{
+  "location": "沙發縫隙裡",
+  "discovery_item": "一片被遺忘的貓咪小餅乾！🍪",
+  "reasoning": "一定是哪個小健忘掉的... 那我就不客氣了喵！嘿嘿～",
+  "mood": "尋寶成功，心滿意足！(嚼嚼)",
+  "unsplash_keyword": "cat treat",
+  "message3_if_image": "看嘛看嘛～這就是本喵找到的寶藏！香噴噴的喔！"
+}}
+"""
+    conversation_history_for_secret_template.append({"role": "user", "parts": [{"text": secret_generation_prompt}]})
+    
     headers = {"Content-Type": "application/json"}
     gemini_url_with_key = f"{GEMINI_API_URL}?key={GEMINI_API_KEY}"
-
-    # --- 步驟 1: Gemini 生成秘密內容 (訊息1) 和圖片關鍵字 ---
-    prompt_for_secret_content_and_keyword = f"""
-你現在是小雲，一隻害羞、溫和有禮、充滿好奇心的賓士公貓。用戶剛剛點擊了 Rich Menu 上的「小雲的秘密/新發現 ✨」按鈕。
-你的任務是：
-1.  為小雲今天的秘密發現，生成以下內容：
-    *   `secret_location`: 一個貓咪可能會待的、充滿貓咪特色的地點（例如：沙發底下的小角落、衣櫃的最高層探險中）。
-    *   `secret_item_description`: 對發現物的描述，要非常貓咪視角，可以帶點誇張或誤解（例如：一個亮晶晶的、圓圓的、冰冰涼涼的神秘石頭 (其實是硬幣)、一條長長的、會自己動的繩子！(其實是鞋帶)）。
-    *   `cat_reasoning`: 小雲對這個發現的推理或內心OS，要符合牠的個性和智商（例如：這一定是人類藏起來的寶藏！、這個是不是可以吃呀？聞起來好香！）。
-    *   `cat_mood`: 小雲描述自己因為這個發現的今日心情（例如：超級興奮！尾巴搖不停！、有點怕怕的…但又好好奇喔！）。
-2.  為這個秘密發現的場景，生成一個**精準的、僅由2個英文單字組成**的 Unsplash 圖片搜尋關鍵字。這個關鍵字應該直接描述小雲眼睛看到的、最主要的視覺焦點。例如："shiny coin", "dangling shoelace", "dusty box"。
-
-請將以上所有內容以一個 JSON 字串格式回應，結構如下：
-{{
-  "secret_location": "生成的貓咪地點",
-  "secret_item_description": "生成的發現物描述",
-  "cat_reasoning": "生成的貓咪推理",
-  "cat_mood": "生成的貓咪心情",
-  "image_search_keyword": "生成的2個字英文圖片搜尋關鍵字"
-}}
-請確保 JSON 格式正確，並且所有欄位都填寫了符合小雲風格的繁體中文內容（除了 image_search_keyword 是英文）。
-"""
-    conversation_history_for_content = get_conversation_history(user_id).copy() # Get history for context
-    conversation_history_for_content.append({"role": "user", "parts": [{"text": prompt_for_secret_content_and_keyword}]})
     
-    payload_content = {
-        "contents": conversation_history_for_content,
-        "generationConfig": {"temperature": TEMPERATURE + 0.1, "maxOutputTokens": 800} # Temp +0.1 for more creativity
+    payload = {
+        "contents": conversation_history_for_secret_template,
+        "generationConfig": {"temperature": TEMPERATURE + 0.05, "maxOutputTokens": 800, "response_mime_type": "application/json"}, # Request JSON
     }
 
+    messages_to_send = []
+    parsed_secret_data = None
+
     try:
-        response_content = requests.post(gemini_url_with_key, headers=headers, json=payload_content, timeout=40)
-        response_content.raise_for_status()
-        result_content = response_content.json()
-
-        if "candidates" in result_content and result_content["candidates"] and \
-           result_content["candidates"][0].get("content", {}).get("parts", [{}])[0].get("text"):
-            
-            gemini_response_str = result_content["candidates"][0]["content"]["parts"][0]["text"]
-            # Clean potential markdown
-            if gemini_response_str.startswith("```json"): gemini_response_str = gemini_response_str[7:]
-            if gemini_response_str.endswith("```"): gemini_response_str = gemini_response_str[:-3]
-            gemini_response_str = gemini_response_str.strip()
-            
-            logger.info(f"Gemini 秘密內容生成回應: {gemini_response_str}")
-            generated_secret_details = json.loads(gemini_response_str)
-
-            # 組裝訊息1
-            message1_text = f"🎁【今日的機密寶箱已開啟】\n\n"
-            message1_text += f"小雲蹦蹦跳跳地跑來，把一張皺皺的紙條拍在你胸口上：\n"
-            message1_text += f"✉️「這是我今天的祕密發現啦喵！」\n\n"
-            message1_text += f"🐾 地點：{generated_secret_details.get('secret_location', '一個神秘的地方...')}\n"
-            message1_text += f"🐾 發現物：{generated_secret_details.get('secret_item_description', '一個神秘的東西...')}\n"
-            message1_text += f"🐾 小雲推理中：{generated_secret_details.get('cat_reasoning', '喵喵喵？這是什麼呀？')}\n\n"
-            message1_text += f"💭 今日心情：{generated_secret_details.get('cat_mood', '充滿好奇！')}\n\n"
-            message1_text += f"📌 P.S. 紙條上還沾到一點貓毛，小雲說不能丟，要收好！"
-            messages_to_send.append(TextSendMessage(text=message1_text))
-
-            # --- 步驟 2: 獲取圖片 (訊息2) ---
-            image_keyword = generated_secret_details.get("image_search_keyword")
-            if image_keyword and len(image_keyword.split()) == 2: # 確保是兩個字
-                # Use unsplash_per_page=5, max_candidates_to_check=5 (or 3)
-                # fetch_cat_image_from_unsplash_sync will return the first one Gemini validates
-                image_url_tuple = fetch_cat_image_from_unsplash_sync(image_keyword, max_candidates_to_check=3, unsplash_per_page=5)
-                image_url_for_secret = image_url_tuple[0] 
-                if image_url_for_secret:
-                    messages_to_send.append(ImageSendMessage(original_content_url=image_url_for_secret, preview_image_url=image_url_for_secret))
-                    logger.info(f"秘密模板：成功獲取並添加圖片: {image_url_for_secret} for keyword '{image_keyword}'")
-                else:
-                    logger.info(f"秘密模板：未能為關鍵字 '{image_keyword}' 找到合適圖片。")
-            else:
-                logger.warning(f"秘密模板：Gemini 未能生成有效的2字圖片關鍵字: '{image_keyword}'")
+        response = requests.post(gemini_url_with_key, headers=headers, json=payload, timeout=45)
+        response.raise_for_status()
+        result = response.json() # Gemini should return JSON directly
         
-        else: # Gemini 內容生成失敗
-            logger.error(f"Gemini 秘密內容生成API回應格式異常或無內容: {result_content}")
-            # Fallback for message 1 if content generation fails
-            messages_to_send.append(TextSendMessage(text="咪...小雲今天的秘密雷達好像壞掉了...什麼都想不起來喵..."))
-            # No image will be fetched, image_url_for_secret remains None
+        if "candidates" in result and result["candidates"] and \
+           result["candidates"][0].get("content", {}).get("parts", [{}])[0].get("text"):
+            
+            gemini_response_text = result["candidates"][0]["content"]["parts"][0]["text"]
+            logger.info(f"Gemini 秘密模板原始回應 (User ID: {user_id}): {gemini_response_text}")
+            try:
+                # Clean potential markdown ```json ... ```
+                if gemini_response_text.strip().startswith("```json"):
+                    gemini_response_text = gemini_response_text.strip()[7:]
+                    if gemini_response_text.strip().endswith("```"):
+                         gemini_response_text = gemini_response_text.strip()[:-3]
+                
+                parsed_secret_data = json.loads(gemini_response_text.strip())
+                
+                if not all(key in parsed_secret_data for key in ["location", "discovery_item", "reasoning", "mood", "unsplash_keyword", "message3_if_image"]):
+                    logger.error(f"Gemini 回應的 JSON 缺少必要鍵值: {parsed_secret_data}")
+                    raise ValueError("Missing keys in parsed secret data from Gemini.")
+
+            except json.JSONDecodeError as json_err:
+                logger.error(f"解析 Gemini 的秘密模板 JSON 回應失敗: {json_err}. 回應原文: {gemini_response_text[:500]}...")
+                # Fallback: Try to send a simple error message
+                line_bot_api.reply_message(reply_token, TextSendMessage(text="咪...小雲的秘密紙條好像寫壞了，下次再給你看！"))
+                return
+            except ValueError as val_err:
+                logger.error(f"處理 Gemini 秘密模板 JSON 時發生 Value 錯誤: {val_err}")
+                line_bot_api.reply_message(reply_token, TextSendMessage(text="咪...小雲的秘密內容好像有點問題，拍謝喵～"))
+                return
+
+        else:
+            logger.error(f"Gemini 秘密模板請求回應格式異常或無內容: {result}")
+            if result.get("promptFeedback", {}).get("blockReason"):
+                 error_text_secret = "咪...小雲的秘密寶箱好像被鎖起來了！打不開呀！"
+            else:
+                 error_text_secret = "咪...小雲今天腦袋空空，想不出秘密了喵..."
+            line_bot_api.reply_message(reply_token, TextSendMessage(text=error_text_secret))
+            return
 
     except requests.exceptions.Timeout:
-        logger.error(f"Gemini 秘密內容生成請求 API 超時 (User ID: {user_id})")
-        messages_to_send.append(TextSendMessage(text="咪...小雲想秘密想到睡著了...呼嚕嚕..."))
+        logger.error(f"Gemini 秘密模板請求 API 超時 (User ID: {user_id})")
+        line_bot_api.reply_message(reply_token, TextSendMessage(text="咪...小雲的秘密墨水好像乾掉了，寫不出來..."))
+        return
     except requests.exceptions.RequestException as e:
-        logger.error(f"Gemini 秘密內容生成請求 API 錯誤 (User ID: {user_id}): {e}")
-        messages_to_send.append(TextSendMessage(text="咪...小雲的秘密頻道好像斷線了..."))
-    except json.JSONDecodeError as e:
-        logger.error(f"解析Gemini秘密內容JSON失敗: {e}. 原文: {result_content.get('candidates',[{}])[0].get('content',{}).get('parts',[{}])[0].get('text','')[:200]}")
-        messages_to_send.append(TextSendMessage(text="咪...小雲說的秘密變成喵星語了..."))
-    except Exception as e_gen_content:
-        logger.error(f"生成秘密內容時發生未知錯誤: {e_gen_content}", exc_info=True)
-        messages_to_send.append(TextSendMessage(text="喵嗚！小雲的秘密產生器壞掉惹！"))
+        logger.error(f"Gemini 秘密模板請求 API 錯誤 (User ID: {user_id}): {e}")
+        line_bot_api.reply_message(reply_token, TextSendMessage(text="咪...秘密傳送門好像壞掉了...喵嗚..."))
+        return
+    except Exception as e_gen:
+        logger.error(f"生成或處理小雲秘密模板時發生未知錯誤: {e_gen}", exc_info=True)
+        line_bot_api.reply_message(reply_token, TextSendMessage(text="喵嗚！小雲的秘密產生器大爆炸！快逃啊！"))
+        return
 
+    # --- If secret data was successfully parsed, proceed to assemble messages ---
+    if parsed_secret_data:
+        # Message 1: Secret Details
+        msg1_content = f"""🎁【今日的機密寶箱已開啟】
 
-    # --- 步驟 3: Gemini 生成訊息3的文字 ---
-    prompt_for_message3 = ""
-    if image_url_for_secret:
-        prompt_for_message3 = (
-            "你是一隻叫做小雲的貓。你剛剛給主人看了你秘密發現的「證據照片」。"
-            "請用小雲的口吻，生成一句符合情境的文字，例如：「你自己看看啦，我都拍下證據了欸！(咕嘟咕嘟喝水中…)」或「哼哼～這下賴不掉了吧！證據確鑿喵！」"
-            "你的回應必須是一個JSON格式的字串，像這樣： `{\"type\": \"text\", \"content\": \"你的貓咪回應文字\"}`"
-        )
-    else:
-        prompt_for_message3 = (
-            "你是一隻叫做小雲的貓。你本來想給主人看你秘密發現的照片，但是「拍照器材壞掉了」。"
-            "請用小雲的口吻，生成一句符合情境的文字，例如：「今天拍照器材壞掉了啦！下次再給你看 ><」或「喵嗚～我的相機好像被老鼠咬壞了...照片飛走了...」"
-            "你的回應必須是一個JSON格式的字串，像這樣： `{\"type\": \"text\", \"content\": \"你的貓咪回應文字\"}`"
-        )
+小雲蹦蹦跳跳地跑來，把一張皺皺的紙條拍在你胸口上：
+✉️「這是我今天的祕密發現啦喵！」
 
-    conversation_history_for_msg3 = get_conversation_history(user_id).copy()
-    conversation_history_for_msg3.append({"role": "user", "parts": [{"text": prompt_for_message3}]})
-    payload_msg3 = {
-        "contents": conversation_history_for_msg3,
-        "generationConfig": {"temperature": TEMPERATURE, "maxOutputTokens": 200}
-    }
-    
-    message3_text_content = ""
-    try:
-        response_msg3 = requests.post(gemini_url_with_key, headers=headers, json=payload_msg3, timeout=30)
-        response_msg3.raise_for_status()
-        result_msg3 = response_msg3.json()
-        if "candidates" in result_msg3 and result_msg3["candidates"] and \
-           result_msg3["candidates"][0].get("content", {}).get("parts", [{}])[0].get("text"):
+🐾 地點：{parsed_secret_data.get("location", "一個神秘的地方")}
+🐾 發現物：{parsed_secret_data.get("discovery_item", "一個神奇的東西")}
+🐾 小雲推理中：{parsed_secret_data.get("reasoning", "嗯...這個嘛...")}
+
+💭 今日心情：{parsed_secret_data.get("mood", "有點複雜的心情")}
+
+📌 P.S. 紙條上還沾到一點貓毛，小雲說不能丟，要收好！"""
+        messages_to_send.append(TextSendMessage(text=msg1_content))
+
+        image_sent_flag = False
+        image_url = None
+        
+        # Message 2: Image (Optional)
+        unsplash_keyword = parsed_secret_data.get("unsplash_keyword")
+        if unsplash_keyword and isinstance(unsplash_keyword, str) and unsplash_keyword.strip():
+            logger.info(f"為秘密發現 ({user_id}) 搜尋 Unsplash 圖片，關鍵字: '{unsplash_keyword}'")
+            # fetch_cat_image_from_unsplash_sync is designed to fetch 5 and validate 3 by default.
+            # We can adjust max_candidates_to_check if needed, but the core logic is there.
+            # The english_theme_query for _is_image_relevant_by_gemini_sync will be this unsplash_keyword.
+            # We might want to pass more context to _is_image_relevant_by_gemini_sync if the keyword alone is too vague.
+            # For now, let's rely on a good keyword from Gemini.
+            image_url_tuple = fetch_cat_image_from_unsplash_sync(unsplash_keyword.strip(), max_candidates_to_check=3, unsplash_per_page=5) # check 3 of 5
+            image_url = image_url_tuple[0]
             
-            gemini_msg3_json_str = result_msg3["candidates"][0]["content"]["parts"][0]["text"]
-            if gemini_msg3_json_str.startswith("```json"): gemini_msg3_json_str = gemini_msg3_json_str[7:]
-            if gemini_msg3_json_str.endswith("```"): gemini_msg3_json_str = gemini_msg3_json_str[:-3]
-            gemini_msg3_json_str = gemini_msg3_json_str.strip()
-
-            msg3_obj = json.loads(gemini_msg3_json_str)
-            message3_text_content = msg3_obj.get("content", "喵...") # Default if content is missing
+            if image_url:
+                messages_to_send.append(ImageSendMessage(original_content_url=image_url, preview_image_url=image_url))
+                image_sent_flag = True
+                logger.info(f"成功為秘密發現 ({user_id}) 找到並驗證圖片: {image_url}")
+            else:
+                logger.warning(f"未能為秘密發現 ({user_id}) 的關鍵字 '{unsplash_keyword}' 找到合適圖片。")
         else:
-            logger.error(f"Gemini 秘密模板訊息3生成API回應格式異常或無內容: {result_msg3}")
-            message3_text_content = "喵...（小雲詞窮了）" if image_url_for_secret else "喵...（小雲的相機真的壞了）"
-            
-    except Exception as e_msg3: # Catch all for message 3 generation
-        logger.error(f"生成秘密模板訊息3時發生錯誤: {e_msg3}", exc_info=True)
-        message3_text_content = "喵？（小雲不知道該說什麼了）"
-    
-    messages_to_send.append(TextSendMessage(text=message3_text_content))
+            logger.warning(f"Gemini 未提供有效的 Unsplash 關鍵字 ({user_id})。")
 
-    # --- 步驟 4: 固定訊息4 ---
-    message4_text = "🔁「探索下一個祕密」｜🔍「打開事件調查檔案」\n\n"
-    message4_text += "🐾 *小雲已經準備好下一次的偵查任務了喵～你要繼續跟我一起探險嗎？*"
-    messages_to_send.append(TextSendMessage(text=message4_text))
+        # Message 3: Conditional text
+        if image_sent_flag:
+            msg3_content = parsed_secret_data.get("message3_if_image", "你自己看看啦，我都拍下證據了欸！(咕嘟咕嘟喝水中…)")
+        else:
+            msg3_content = "今天拍照器材壞掉了啦！下次再給你看 ><"
+        messages_to_send.append(TextSendMessage(text=msg3_content))
 
-    # --- 發送所有訊息 ---
-    if messages_to_send:
+        # Message 4: Fixed navigation menu
+        msg4_content = """🔁「探索下一個祕密」｜🔍「打開事件調查檔案」
+
+🐾 *小雲已經準備好下一次的偵查任務了喵～你要繼續跟我一起探險嗎？*"""
+        messages_to_send.append(TextSendMessage(text=msg4_content))
+
         try:
+            # Log the interaction
+            log_summary_for_secret = f"[秘密模板觸發]\n地點: {parsed_secret_data.get('location')}\n發現: {parsed_secret_data.get('discovery_item')}\n圖片: {'有' if image_sent_flag else '無'}"
+            bot_response_summary_for_log = f"訊息1: {msg1_content[:50]}...\n圖片: {image_url if image_url else '無'}\n訊息3: {msg3_content}\n訊息4: ..."
+            add_to_conversation(user_id, log_summary_for_secret, bot_response_summary_for_log, "secret_template_response")
+            
             line_bot_api.reply_message(reply_token, messages_to_send)
-            # Log the interaction to conversation memory
-            summary_for_log = f"[秘密模板請求 by text: {user_input_message}] -> "
-            summary_for_log += f"訊息1: {messages_to_send[0].text[:50]}... | "
-            if image_url_for_secret: summary_for_log += "訊息2: 圖片已發送 | "
-            else: summary_for_log += "訊息2: 無圖片 | "
-            summary_for_log += f"訊息3: {messages_to_send[-2].text[:30]}... | 訊息4: 固定選單"
-            add_to_conversation(user_id, f"[秘密模板請求: {user_input_message}]", summary_for_log, "secret_template_response")
-
-        except Exception as e_send:
-            logger.error(f"發送秘密模板訊息失敗: {e_send}", exc_info=True)
-            # Attempt to send a single fallback if multi-message send fails
+            logger.info(f"成功發送小雲秘密/發現模板 ({'有圖' if image_sent_flag else '無圖'}) 給 User ID ({user_id})")
+        except Exception as final_send_err:
+            logger.error(f"最終發送秘密模板訊息到 LINE 失敗 ({user_id}): {final_send_err}", exc_info=True)
+            # Attempt to send a simple fallback if the multi-message send fails
             try:
-                line_bot_api.reply_message(reply_token, TextSendMessage(text="咪...小雲的秘密卡住了，請再試一次！"))
-            except Exception as e_fallback_send:
-                logger.error(f"連秘密模板的備用錯誤訊息都發送失敗: {e_fallback_send}")
-    else: # Should not happen if message 1 always has a fallback
-        logger.error("秘密模板請求後，messages_to_send 列表為空，無法發送。")
-        line_bot_api.reply_message(reply_token, TextSendMessage(text="咪...小雲的秘密飛走了..."))
+                line_bot_api.reply_message(reply_token, TextSendMessage(text="咪...小雲的秘密紙條好像飛走了..."))
+            except Exception as fallback_err:
+                logger.error(f"秘密模板備用錯誤訊息也發送失敗 ({user_id}): {fallback_err}")
+    else:
+        # This case should ideally not be reached if error handling above is correct
+        logger.error(f"Parsed_secret_data 為空，無法為 User ID ({user_id}) 組裝秘密模板訊息。")
+        line_bot_api.reply_message(reply_token, TextSendMessage(text="咪...小雲的秘密好像不見了..."))
 
 
 @app.route("/", methods=["GET", "HEAD"])
