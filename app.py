@@ -44,7 +44,7 @@ GEMINI_MODEL_NAME = "gemini-1.5-flash-latest"
 GEMINI_API_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL_NAME}:generateContent"
 TEMPERATURE = 0.8
 conversation_memory = {}
-user_scenario_context = {} # 新增：用於存儲互動情境的上下文
+user_scenario_context = {} 
 
 MEOW_SOUNDS_MAP = {
     "affectionate_meow_gentle": {"file": "affectionate_meow_gentle.m4a", "duration": 1265},
@@ -431,7 +431,7 @@ XIAOYUN_ROLE_PROMPT = """
     *   `{"type": "text", "content": "文字內容"}`: 發送純文字訊息。文字內容應為繁體中文。
     *   `{"type": "sticker", "keyword": "貼圖關鍵字"}`: 發送貼圖，例如 "開心", "害羞", "思考"。系統會根據關鍵字選擇一個合適的貼圖。
     *   `{"type": "image_theme", "theme": "簡潔的英文核心圖片搜尋關鍵字 (English image search keywords)"}`: 發送一張符合主題的圖片。
-        *   `theme` **必須是英文，且應為1到3個單字的極簡核心關鍵字**，用來在圖片庫(如Unsplash)中搜尋。只描述小雲眼睛直接看到的、最主要的視覺焦點。**避免使用長句、複雜描述、氛圍或視角細節。**
+        *   `theme` **必須是英文，且必須是「正好2個單字」的精準核心關鍵字** (例如 "cat toy", "window view", "bird feather")，用來在圖片庫(如Unsplash)中搜尋。只描述小雲眼睛直接看到的、最主要的視覺焦點。**避免使用長句、複雜描述、氛圍或視角細節。**
         *   **範例：** 如果小雲看到窗邊的麻雀，`theme` 應為 `"bird window"` 或 `"sparrow windowsill"`。如果看到雨滴打在玻璃上，可以是 `"rain drops glass"`。如果看到陽光下的灰塵，可以是 `"sunlight dust motes"` 或 `"dusty air sunlight"`。
         *   圖片中**絕對不應該**出現小雲自己或其他任何貓咪（除非主題明確說明看到了某隻特定的動物朋友，且該動物朋友的英文描述必須簡潔地包含在`theme`中，例如`"calico cat roof"`)。
     *   `{"type": "image_key", "key": "預設圖片關鍵字"}`: 發送一張預設的圖片，例如 "tuxedo_cat_default"。僅在特殊情況下使用（如描述夢境中的自己）。
@@ -537,8 +537,10 @@ def fetch_cat_image_from_unsplash_sync(english_theme_query: str, max_candidates_
         return None, "an unspecified theme"
     
     query_words = english_theme_query.strip().split()
-    if len(query_words) > 3 : 
-        logger.warning(f"Unsplash query '{english_theme_query}' is long, might be less effective. For secrets, 2 words are ideal.")
+    # 強制Unsplash關鍵字為2個單字，如果不是，則取前兩個或補足 (這部分可以在Gemini prompt加強)
+    if len(query_words) != 2:
+        logger.warning(f"Unsplash query '{english_theme_query}' is not exactly 2 words. Attempting to adjust or use as is.")
+        # english_theme_query = " ".join(query_words[:2]) # Example adjustment, might need better logic or rely on Gemini
     
     logger.info(f"開始從 Unsplash 搜尋圖片，英文主題: '{english_theme_query}' (max_candidates_to_check: {max_candidates_to_check}, unsplash_per_page: {unsplash_per_page})")
     api_url_search = f"https://api.unsplash.com/search/photos"
@@ -606,8 +608,6 @@ def get_taiwan_time():
     return utc_now.astimezone(taiwan_tz)
 
 def get_time_based_cat_context():
-    # This function is now mostly for general messages, 
-    # specific templates like status will get current time directly.
     tw_time = get_taiwan_time()
     hour = tw_time.hour
     period_greeting = ""
@@ -618,12 +618,12 @@ def get_time_based_cat_context():
     elif 14 <= hour < 18: period_greeting = f"台灣時間下午 {hour}點{tw_time.strftime('%M')}分"; cat_mood_suggestion = random.choice(["精神可能正好，對玩耍和探索充滿熱情。", "可能會主動蹭蹭你，想引起你的注意。", "對你正在做的事情可能會充滿好奇。"])
     elif 18 <= hour < 22: period_greeting = f"台灣時間傍晚 {hour}點{tw_time.strftime('%M')}分"; cat_mood_suggestion = random.choice(["晚餐時間快到了，可能會對廚房的聲音或食物的香味特別敏感。", "貓咪的活躍期之一，可能會想在家裡跑酷。", "燈光下的影子可能會引起他短暫的好奇。"])
     elif 22 <= hour < 24 or 0 <= hour < 5:
-        actual_hour_display = hour if hour != 0 else 12 # Display 12 for 00:xx
+        actual_hour_display = hour if hour != 0 else 12 
         am_pm = "凌晨" if 0 <= hour < 5 else "晚上"
         period_greeting = f"台灣時間{am_pm} {actual_hour_display}點{tw_time.strftime('%M')}分"
         cat_mood_suggestion = random.choice(["雖然是深夜，四周很安靜，小雲可能會比較放鬆地休息。", "貓咪的睡眠是多相的，他可能剛睡醒，或者正準備小睡一下。", "即使他看起來很想睡覺，那也只是貓咪的一種狀態。"])
 
-    if cat_mood_suggestion: # Only add the detailed prompt if there's a suggestion
+    if cat_mood_suggestion: 
         return (
             f"（**系統給小雲的極其微弱、幾乎可以忽略的背景氛圍提示，完全不應被視為行為指令或限制**：現在大約是{period_greeting}，小雲此刻的狀態**或許、可能、隨機地**有一點點偏向「{cat_mood_suggestion}」。\n"
             f"**這真的只是一個若有似無的氛圍參考，其存在的唯一目的是避免AI在完全沒有用戶輸入引導時回應過於僵硬，絕非讓小雲按固定模式行動。**\n"
@@ -633,7 +633,7 @@ def get_time_based_cat_context():
             f"**展現貓咪的靈活性和對主人陪伴的渴望，讓每一次互動都是獨特的。** 如果用戶的訊息很簡短或不明確，你可以從貓咪的好奇心出發，嘗試引導互動，而不是僅僅受時間氛圍影響。\n"
             f"總之，**用戶互動 >>>>>>>>>>>> (遠大於) 任何時間氛圍提示。** 請自由地扮演小雲！)\n用戶說： "
         )
-    return "用戶說： " # Default if no specific suggestion (should usually have one)
+    return "用戶說： " 
 
 def get_conversation_history(user_id):
     if user_id not in conversation_memory:
@@ -653,7 +653,7 @@ def add_to_conversation(user_id, user_message_for_gemini, bot_response_json_str,
         {"role": "user", "parts": user_parts},
         {"role": "model", "parts": model_parts}
     ])
-    if len(conversation_history) > (2 + 20 * 2): # Keep role prompt + last 20 turns
+    if len(conversation_history) > (2 + 20 * 2): 
         conversation_history = conversation_history[:2] + conversation_history[-(20*2):]
     conversation_memory[user_id] = conversation_history
 
@@ -910,7 +910,7 @@ def handle_cat_secret_discovery_request(event):
             "**創造一個全新的、之前沒有提到過的「小秘密」或「今日新發現」。**\n"
             "你的回應必須是**一個JSON格式的字串**，代表一個包含1到5個訊息物件的列表。\n"
             "**在這個JSON列表中，必須包含至少一個 `{\"type\": \"text\", ...}` 物件來描述秘密/發現，並且必須包含一個 `{\"type\": \"image_theme\", \"theme\": \"簡潔的英文核心圖片搜尋關鍵字\"}` 物件來展示小雲看到的景象。**\n"
-            "圖片主題應直接是【適合Unsplash搜尋的**極簡英文核心關鍵字 (1-3個單字為佳)**】，只描述小雲眼睛直接看到的、最主要的視覺焦點。**避免使用長句、複雜描述、氛圍或視角細節。** 例如 `{\"type\": \"image_theme\", \"theme\": \"shiny pebble grass\"}` 或 `{\"type\": \"image_theme\", \"theme\": \"hidden toy shadow\"}`。\n"
+            "圖片主題應直接是【適合Unsplash搜尋的**正好2個單字的精準英文核心關鍵字** (例如 'bird window', 'shiny toy')】，只描述小雲眼睛直接看到的、最主要的視覺焦點。**避免使用長句、複雜描述、氛圍或視角細節。**\n"
             "圖片中不應出現小雲自己。\n"
             "其他可選的物件類型有 `sticker` 和 `meow_sound`，但請遵守總數不超過5個，且每種媒體最多1個的限制。\n"
             "請確保JSON格式正確無誤，並且內容符合小雲的設定。"
@@ -993,6 +993,7 @@ def handle_secret_discovery_template_request(event):
 
     conversation_history_for_secret_template = get_conversation_history(user_id).copy()
     
+    # V3: Updated prompt with examples for "Secret" vs "Discovery" types
     secret_generation_prompt = f"""
 你現在是小雲，一隻害羞、溫和有禮、充滿好奇心且非常愛吃的賓士公貓。用戶剛剛觸發了「小雲的秘密/新發現 ✨」功能。
 請你為小雲創造一個全新的、今日的「小秘密」或「新發現」情節。
@@ -1010,7 +1011,7 @@ def handle_secret_discovery_template_request(event):
 - "discovery_item": (字串) 發現的物品或事件，例如 "一根……疑似人類掉落的棒棒糖棍🍭（上面還有口水）" 或 "隔壁大黃狗偷偷藏的骨頭！"。
 - "reasoning": (字串) 小雲對此發現的可愛推理或反應，例如 "你是不是……在偷偷吃甜的都沒分我？(눈\_눈)" 或 "原來大黃也有小秘密喵！"。
 - "mood": (字串) 小雲描述的今日心情，例如 "記仇中（但會邊記邊撒嬌）" 或 "發現新大陸一樣興奮！"。
-- "unsplash_keyword": (字串) 一個與「discovery_item」或場景相關的、非常簡潔的 **2個單字英文 Unsplash 搜尋關鍵字** (例如 "candy stick", "dog bone", "shiny feather")。這個關鍵字必須非常精準，以便找到相關的真實世界照片。
+- "unsplash_keyword": (字串) 一個與「discovery_item」或場景相關的、非常簡潔且**必須正好是2個單字的英文 Unsplash 搜尋關鍵字** (例如 "candy stick", "dog bone", "shiny feather")。這個關鍵字必須非常精準，以便找到相關的真實世界照片。
 - "message3_if_image": (字串) 如果之後成功根據 unsplash_keyword 找到了圖片，這段文字將作為貓咪對圖片的補充說明。內容應該像小雲在說：「你自己看看啦，我都拍下證據了欸！(咕嘟咕嘟喝水中…)」這樣帶有貓咪口吻、指向圖片的句子。
 
 **重要指令：**
@@ -1035,7 +1036,7 @@ def handle_secret_discovery_template_request(event):
    - discovery_item: 你的襪子（已叼走收藏）
    - reasoning: 因為有你的味道……我不想別人也聞到 >////<
    - mood: 獨佔慾爆棚（但還是會還你啦）
-   - unsplash_keyword: "sock hidden"
+   - unsplash_keyword: "sock"
    - message3_if_image: "看！我把它藏得很好吧！不准拿走！"
 3. 枕頭滾到睡著
    - type: "秘密型"
@@ -1043,7 +1044,7 @@ def handle_secret_discovery_template_request(event):
    - discovery_item: 一整片超香超軟的你味道
    - reasoning: 我滾著滾著就睡著了…你枕頭是不是有催眠魔法？
    - mood: 幸福到呼嚕呼嚕
-   - unsplash_keyword: "cat pillow"
+   - unsplash_keyword: "soft pillow"
    - message3_if_image: "你看～你的枕頭最好睡了喵～"
 4. 門口裝睡不讓你走
    - type: "秘密型"
@@ -1051,7 +1052,7 @@ def handle_secret_discovery_template_request(event):
    - discovery_item: 我裝睡的技巧已升級Lv.3
    - reasoning: 你差點出不了門，計畫成功😼
    - mood: 賴著你不想放你走（快抱我一下）
-   - unsplash_keyword: "cat doorway"
+   - unsplash_keyword: "cat lying"
    - message3_if_image: "哼哼～差一點點你就被我擋住了！"
 5. 玩跑步機
    - type: "秘密型"
@@ -1059,7 +1060,7 @@ def handle_secret_discovery_template_request(event):
    - discovery_item: 它居然可以當溜滑梯玩！？
    - reasoning: 雖然第五次摔了個屁股開花……但我還是覺得好好玩！
    - mood: 開心但尾巴痛（你不在，所以沒被罵！嘿嘿）
-   - unsplash_keyword: "cat treadmill"
+   - unsplash_keyword: "treadmill"
    - message3_if_image: "就是這個！超好玩的啦！（雖然有點痛痛的…）"
 
 --- 範例：新發現型 ---
@@ -1077,7 +1078,7 @@ def handle_secret_discovery_template_request(event):
    - discovery_item: 你偷偷藏起來的零食！！
    - reasoning: 你居然沒分我，太過分了(˃̣̣̥A˂̣̣̥)
    - mood: 委屈委屈蹭你（要補償我三口喔）
-   - unsplash_keyword: "hidden snacks"
+   - unsplash_keyword: "cat snacks"
    - message3_if_image: "證據確鑿！你還敢說沒有偷藏零食！"
 8. 下雨水好香
    - type: "新發現型"
@@ -1109,7 +1110,7 @@ def handle_secret_discovery_template_request(event):
     - discovery_item: 你對那隻狗狗笑得好開心……
     - reasoning: 所以我踢翻了你剛疊好的襪子。哼！
     - mood: 有點醋（但你抱我我就原諒你）
-    - unsplash_keyword: "smiling at dog"
+    - unsplash_keyword: "dog"
     - message3_if_image: "哼！你就是這樣對牠笑的！我不開心！"
 
 請嚴格按照上述 JSON 格式，並根據隨機選擇的類型（秘密型/新發現型）創造全新的內容。
@@ -1221,7 +1222,7 @@ def handle_secret_discovery_template_request(event):
 
         msg4_content = """🔁「探索下一個祕密」｜🔍「打開事件調查檔案」
 
-🐾 *小雲已經準備好下一次的偵查任務了喵～你要繼續跟我一起探險嗎？*"""
+🐾 小雲已經準備好下一次的偵查任務了喵～你要繼續跟我一起探險嗎？"""
         messages_to_send.append(TextSendMessage(text=msg4_content))
 
         try:
@@ -1237,8 +1238,6 @@ def handle_secret_discovery_template_request(event):
         logger.error(f"Parsed_secret_data 為空，無法為 User ID ({user_id}) 組裝秘密模板訊息。")
         line_bot_api.reply_message(reply_token, TextSendMessage(text="咪...小雲的秘密好像不見了..."))
 
-
-# --- 新的互動情境模板處理函式 ---
 def handle_interactive_scenario_request(event):
     user_id = event.source.user_id
     reply_token = event.reply_token
@@ -1653,7 +1652,6 @@ def handle_text_message(event):
             parse_response_and_send('[{"type": "text", "content": "咪...網路慢吞吞，點心都涼了..."}]', event.reply_token)
         return
     
-    # --- Handle follow-up for interactive scenario (優先於一般文字處理) ---
     if user_message.strip().isdigit() and user_id in user_scenario_context:
         logger.info(f"User ID ({user_id}) 回應了互動情境的選項: {user_message}")
         
