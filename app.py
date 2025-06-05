@@ -128,7 +128,7 @@ STICKER_EMOTION_MAP = {
             [{"package_id": "789", "sticker_id": "10879"}]: "傷心，難過，哭哭", [{"package_id": "789", "sticker_id": "10880"}]: "別走，哭哭", [{"package_id": "789", "sticker_id": "10881"}]: "無聊，無奈", [{"package_id": "789", "sticker_id": "10882"}]: "搖頭，不，沒有",
             [{"package_id": "789", "sticker_id": "10883"}]: "煩", [{"package_id": "789", "sticker_id": "10884"}]: "生氣", [{"package_id": "789", "sticker_id": "10885"}]: "憤怒", [{"package_id": "789", "sticker_id": "10886"}]: "兇，嚴肅",
             [{"package_id": "789", "sticker_id": "10887"}]: "無奈，完蛋了", [{"package_id": "789", "sticker_id": "10888"}]: "快來，快跑", [{"package_id": "789", "sticker_id": "10889"}]: "好奇，害怕", [{"package_id": "789", "sticker_id": "10890"}]: "暈",
-            [{"package_id": "789", "sticker_id": "10891"}]: "搞笑", [{"package_id": "789", "sticker_id": "10892"}]: "無名火", [{"package_id": "789", "sticker_id": "10893": "下雨"}], [{"package_id": "789", "sticker_id": "10894"}]: "生病，感冒",
+            [{"package_id": "789", "sticker_id": "10891"}]: "搞笑", [{"package_id": "789", "sticker_id": "10892"}]: "無名火", [{"package_id": "789", "sticker_id": "10893"}]: "下雨", [{"package_id": "789", "sticker_id": "10894"}]: "生病，感冒",
 
             # LINE卡通明星（專業道歉篇） ("package_id":6136)
             [{"package_id": "6136", "sticker_id": "10551376"}]: "磕頭道歉", [{"package_id": "6136", "sticker_id": "10551377"}]: "集體道歉", [{"package_id": "6136", "sticker_id": "10551378"}]: "撒嬌", [{"package_id": "6136", "sticker_id": "10551379"}]: "重重磕頭道歉",
