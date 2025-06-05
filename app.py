@@ -725,7 +725,7 @@ def _clean_trailing_symbols(text: str) -> str:
     text = text.strip()
     if text.endswith(" `"):
         return text[:-2].strip()
-    elif text.endswith("`"): # Corrected from `elif text.endswith("\`"):`
+    elif text.endswith("`"): 
         return text[:-1].strip()
     return text
 
@@ -990,7 +990,7 @@ def handle_cat_secret_discovery_request(event):
 
 
 # --- 新的秘密模板處理函式 ---
-def handle_secret_discovery_template_request(event): # Renamed to match the call
+def handle_secret_discovery_template_request(event): 
     user_id = event.source.user_id
     reply_token = event.reply_token
     
@@ -1142,6 +1142,159 @@ JSON 範例:
         line_bot_api.reply_message(reply_token, TextSendMessage(text="咪...小雲的秘密好像不見了..."))
 
 
+# --- 新的互動情境模板處理函式 ---
+def handle_interactive_scenario_request(event):
+    user_id = event.source.user_id
+    reply_token = event.reply_token
+    
+    logger.info(f"開始為 User ID ({user_id}) 生成互動情境模板。")
+
+    conversation_history_for_scenario = get_conversation_history(user_id).copy()
+    
+    scenario_generation_prompt = f"""
+你現在是小雲，一隻害羞、溫和有禮、充滿好奇心且非常愛吃的賓士公貓。用戶剛剛觸發了「和小雲說話 💬」功能，期待你發起一個有趣的互動。
+請你 **創造一個全新的、之前從未出現過的、帶有多個選項讓用戶選擇的「情境式對話開頭」**。
+這個情境必須符合小雲的貓咪個性和生活背景。
+
+你的回應必須是一個 JSON 物件，包含以下兩個鍵值：
+1.  `"scenario_text"`: (字串) 這是情境式對話的完整文字內容。它應該包含：
+    *   一個吸引人的情境標題或開場白 (例如：【小雲的午睡夢境探險！】 或 🐾《神秘紙箱的呼喚》🐾)。
+    *   一段描述小雲當前遭遇、想法或困境的情境文字。
+    *   2 到 3 個帶有編號 (例如：1️⃣, 2️⃣, 3️⃣ 或 🅰️, 🅱️,  ©️) 的選項，讓用戶可以回覆編號進行選擇。
+    *   一句引導用戶輸入選項編號的提示語 (例如：👉 請輸入選項編號，看看小雲會怎麼辦！ 或 💬 你會怎麼做呢？告訴小雲吧！)。
+2.  `"sticker_keyword"`: (字串) 一個最能代表這個情境或小雲當下主要情緒的貼圖關鍵字 (例如："好奇", "睡覺", "調皮", "思考", "驚訝", "無奈", "愛心" 等)。
+
+**重要規則：**
+*   **情境必須是全新的**，不要重複使用範例或其他已知情境。
+*   情境文字要生動有趣，充滿貓咪的口吻和可愛的表情符號。
+*   選項要能引導出有趣的後續發展（儘管後續發展不由你這次生成）。
+*   所有文字內容都必須是**繁體中文（台灣用語習慣）**。
+*   確保 JSON 格式正確無誤。
+
+**以下是一些「風格」範例，請你「創作出完全不同內容」的新情境：**
+
+*   範例風格 A (帶點懸念/俏皮)：
+    【深夜的叩叩聲……】
+    (咚咚咚……) 小雲的耳朵突然豎了起來！好像有誰在輕輕敲著窗戶……
+    外面黑漆漆的，什麼都看不見。小雲有點害怕，但又好好奇喔！
+    ฅ(๑*д*๑)ฅ!! 你覺得小雲應該：
+    👻 1️⃣ 鼓起勇氣，慢慢湊到窗邊偷看一下？
+    🛌 2️⃣ 裝作沒聽見，把自己縮進被被裡發抖？
+    🗣️ 3️⃣ 大聲「喵嗚！」一聲，想嚇跑對方？
+    👉 你的選擇是？
+
+*   範例風格 B (日常小發現/小麻煩)：
+    🧶【毛線球大作戰！】
+    喵嗚～！小雲剛剛在玩毛線球的時候，不小心把毛線弄得一團亂，還纏在自己的腳腳上了！
+    現在動彈不得，好糗喔…… (｡>﹏<｡)
+    🧶 1️⃣ 試著自己用牙齒咬斷毛線（可能會吃到毛毛耶…）
+    😿 2️⃣ 發出可憐兮兮的「咪～嗚～」聲，等你來救我！
+    🌪️ 3️⃣ 乾脆放棄，在原地滾來滾去，把毛線纏得更緊（？）
+    💬 快來幫幫小雲嘛～！
+
+*   範例風格 C (貓咪的小心機/小幻想)：
+    👑【如果小雲是國王……】
+    (小雲窩在最高的貓跳台上，用尾巴輕輕掃著空氣，眼神充滿威嚴地看著你。)
+    「本喵今天心情好，決定任命你當我的御用鏟屎官兼按摩大臣！你有什麼獎賞想要的嗎？」
+    👑 A) 一個摸摸小雲肚肚的特權（只限今天！）
+    👑 B) 允許你幫小雲梳毛梳到發光
+    👑 C) 請求小雲賜你一個呼嚕嚕作為獎勵
+    （選一個吧，人類！）
+
+請開始為小雲創造一個全新的互動情境和對應的貼圖關鍵字！
+"""
+    conversation_history_for_scenario.append({"role": "user", "parts": [{"text": scenario_generation_prompt}]})
+    
+    headers = {"Content-Type": "application/json"}
+    gemini_url_with_key = f"{GEMINI_API_URL}?key={GEMINI_API_KEY}"
+    
+    payload = {
+        "contents": conversation_history_for_scenario,
+        "generationConfig": {"temperature": TEMPERATURE + 0.1, "maxOutputTokens": 1000, "response_mime_type": "application/json"},
+    }
+
+    messages_to_send = []
+    generated_scenario_text = None
+    sticker_keyword_from_gemini = "思考" # Default sticker
+
+    try:
+        response = requests.post(gemini_url_with_key, headers=headers, json=payload, timeout=45)
+        response.raise_for_status()
+        result = response.json()
+        
+        if "candidates" in result and result["candidates"] and \
+           result["candidates"][0].get("content", {}).get("parts", [{}])[0].get("text"):
+            
+            gemini_response_text = result["candidates"][0]["content"]["parts"][0]["text"]
+            logger.info(f"Gemini 互動情境原始回應 (User ID: {user_id}): {gemini_response_text}")
+            try:
+                if gemini_response_text.strip().startswith("```json"):
+                    gemini_response_text = gemini_response_text.strip()[7:]
+                    if gemini_response_text.strip().endswith("```"):
+                         gemini_response_text = gemini_response_text.strip()[:-3]
+                
+                parsed_scenario_data = json.loads(gemini_response_text.strip())
+                
+                if "scenario_text" in parsed_scenario_data and "sticker_keyword" in parsed_scenario_data:
+                    generated_scenario_text = parsed_scenario_data["scenario_text"]
+                    sticker_keyword_from_gemini = parsed_scenario_data["sticker_keyword"]
+                    if not generated_scenario_text.strip() or not sticker_keyword_from_gemini.strip():
+                        logger.error(f"Gemini 回應的 JSON 中 scenario_text 或 sticker_keyword 為空: {parsed_scenario_data}")
+                        raise ValueError("Empty scenario_text or sticker_keyword from Gemini.")
+                else:
+                    logger.error(f"Gemini 回應的 JSON 缺少 scenario_text 或 sticker_keyword 鍵值: {parsed_scenario_data}")
+                    raise ValueError("Missing keys in parsed scenario data from Gemini.")
+
+            except (json.JSONDecodeError, ValueError) as json_val_err:
+                logger.error(f"解析 Gemini 的互動情境 JSON 回應失敗: {json_val_err}. 回應原文: {gemini_response_text[:500]}...")
+                generated_scenario_text = "咪～？小雲在想事情… 你要猜猜看是什麼嗎？\n🤔 1️⃣ 在想晚餐吃什麼\n🤔 2️⃣ 在想你什麼時候回家\n🤔 3️⃣ 在想… 其實我只是在發呆啦！\n👉 輸入數字告訴小雲你的猜測～"
+                sticker_keyword_from_gemini = "思考"
+        else: 
+            logger.error(f"Gemini 互動情境請求回應格式異常或無內容: {result}")
+            generated_scenario_text = "喵嗚… 小雲今天好像沒什麼特別的想法耶… 你想跟我說說話嗎？"
+            sticker_keyword_from_gemini = "害羞"
+            if result.get("promptFeedback", {}).get("blockReason"):
+                generated_scenario_text = "咪… 小雲今天的話題好像被神秘力量封印了！"
+                sticker_keyword_from_gemini = "無奈"
+    
+    except requests.exceptions.Timeout:
+        logger.error(f"Gemini 互動情境請求 API 超時 (User ID: {user_id})")
+        generated_scenario_text = "咪… 小雲想跟你說話，但是網路好像睡著了…💤"
+        sticker_keyword_from_gemini = "睡覺"
+    except requests.exceptions.RequestException as req_err:
+        logger.error(f"Gemini 互動情境請求 API 錯誤 (User ID: {user_id}): {req_err}")
+        generated_scenario_text = "喵～ 小雲的說話頻道好像有點雜訊… 沙沙沙…"
+        sticker_keyword_from_gemini = "疑惑"
+    except Exception as e_gen:
+        logger.error(f"生成或處理小雲互動情境時發生未知錯誤: {e_gen}", exc_info=True)
+        generated_scenario_text = "喵嗚！小雲的腦袋當機了，不知道要說什麼！"
+        sticker_keyword_from_gemini = "哭哭"
+
+    if generated_scenario_text:
+        messages_to_send.append(TextSendMessage(text=generated_scenario_text.strip()))
+    else: 
+        messages_to_send.append(TextSendMessage(text="咪？你想跟小雲說什麼呀？"))
+
+    selected_sticker = select_sticker_by_keyword(sticker_keyword_from_gemini)
+    messages_to_send.append(StickerSendMessage(
+        package_id=str(selected_sticker["package_id"]),
+        sticker_id=str(selected_sticker["sticker_id"])
+    ))
+
+    try:
+        bot_response_log = f"Scenario: {generated_scenario_text[:100] if generated_scenario_text else 'N/A'}... Sticker: {sticker_keyword_from_gemini}"
+        add_to_conversation(user_id, "[互動情境請求觸發]", bot_response_log, "interactive_scenario_response")
+        
+        line_bot_api.reply_message(reply_token, messages_to_send)
+        logger.info(f"成功發送小雲互動情境模板給 User ID ({user_id})")
+    except Exception as final_send_err:
+        logger.error(f"最終發送互動情境訊息到 LINE 失敗 ({user_id}): {final_send_err}", exc_info=True)
+        try:
+            line_bot_api.reply_message(reply_token, TextSendMessage(text="咪...小雲好像說話打結了..."))
+        except Exception as fallback_err:
+            logger.error(f"互動情境備用錯誤訊息也發送失敗 ({user_id}): {fallback_err}")
+
+
 @app.route("/", methods=["GET", "HEAD"])
 def health_check():
     logger.info("Health check endpoint '/' was called.")
@@ -1159,7 +1312,7 @@ def callback():
         abort(400)
     except Exception as e:
         logger.error(f"處理 Webhook 時發生錯誤: {e}", exc_info=True)
-        abort(500) # Ensure we abort on unhandled exceptions in callback
+        abort(500) 
     return "OK"
 
 @handler.add(MessageEvent, message=TextMessage)
@@ -1170,32 +1323,33 @@ def handle_text_message(event):
     TRIGGER_TEXT_GET_STATUS = "小雲狀態喵？ฅ^•ﻌ•^ฅ"
     TRIGGER_TEXT_FEED_XIAOYUN_TEMPLATE = "餵小雲點心🐟 🍖"
     TRIGGER_TEXT_SECRET_TEMPLATE = "小雲的秘密/新發現 ✨" 
+    TRIGGER_TEXT_INTERACTIVE_SCENARIO = "和小雲說話 💬"
     
     RICH_MENU_CMD_REQUEST_SECRET = "__XIAOYUN_REQUEST_SECRET__" 
     RICH_MENU_CMD_FEED_ME_NOW = os.getenv("RICH_MENU_CMD_FEED_ME_NOW_INTERNAL", "__XIAOYUN_FEED_ME_NOW__")
 
-    headers = {"Content-Type": "application/json"} # Defined once here
-    gemini_url_with_key = f"{GEMINI_API_URL}?key={GEMINI_API_KEY}" # Defined once here
+    headers = {"Content-Type": "application/json"} 
+    gemini_url_with_key = f"{GEMINI_API_URL}?key={GEMINI_API_KEY}" 
 
     if user_message == TRIGGER_TEXT_GET_STATUS:
         logger.info(f"CMD: 請求小雲狀態模板 (User ID: {user_id} by exact text)")
+        current_tw_time_obj = get_taiwan_time()
+        current_tw_time_str = current_tw_time_obj.strftime("台灣時間 %p %I點%M分").replace("AM", "上午").replace("PM", "下午")
+        
         conversation_history_for_status_prompt = get_conversation_history(user_id).copy()
         status_template_prompt = f"""
 你現在是小雲，一隻害羞、溫和有禮、充滿好奇心的賓士公貓。用戶剛剛點擊了 Rich Menu 上的「小雲狀態」按鈕，想看看你現在的可愛狀態。
+**目前實際時間提示（僅供你參考，不要直接說出這個時間，而是用貓咪的感覺來描述）：現在大約是 {current_tw_time_str}。**
+
 請你嚴格依照下面的【狀態模板】格式，用你的口吻和習慣（繁體中文、台灣用語、多用 emoji 和顏文字）生成一段充滿你風格的狀態更新。
 **每一項的內容都需要你來思考和填寫，必須確保所有項目都被填寫。**
 
 【狀態模板】START
-🕰 貓感時間　：
-[請描述一個貓咪感知到的「時間感」，例如「太陽剛曬到貓肚的時候」或「人類消失超過兩個貓伸懶腰的時間」。可以參考下面的「貓感時間欄靈感」，也可以自己創造獨特的貓咪時間描述，但不要直接複製靈感項目，要用自己的話說出來。]
-🍖 罐罐需求度：
-[請用10個方塊符號（例如：████░░░░░░ 代表40%）來表示百分比，並在百分比後附上一句簡短的文字描述，例如：████████░░ 80%（肚肚咕咕叫中...）或 ██░░░░░░░░ 20%（剛吃飽，滿足！）]
-💤 瞇眼程度　：
-[同上，用10個方塊符號表示百分比，描述睡意，例如：██████░░░░ 60%（想窩在暖暖的被被裡）或 ██████████ 100%（已經睡到流口水了Zzz）]
-💗 心情毛球　：
-[同上，用10個方塊符號表示百分比，描述心情，例如：██████████ 100%（今天被摸頭好幸福！）或 ███░░░░░░░ 30%（有點小鬱悶，需要抱抱）]
-📍 現在窩點　：
-[描述你現在最可能待著的、充滿貓咪特色的小窩點，並加上一個可愛的貓咪表情或動作描述，例如：紙箱堡壘の角落（禁止打擾喵ฅ^•ﻌ•^ฅ）或 窗邊的貓抓板瞭望台（監視小鳥中...）]
+🕰 貓感時間　：[請「根據現在大約是{current_tw_time_str}」這個背景，描述一個貓咪感知到的「時間感」，例如「太陽剛曬到貓肚的時候」或「人類消失超過兩個貓伸懶腰的時間」。可以參考下面的「貓感時間欄靈感」，也可以自己創造獨特的貓咪時間描述，但不要直接複製靈感項目，要用自己的話說出來。]
+🍖 罐罐需求度：[請用10個方塊符號（例如：████░░░░░░ 代表40%）來表示百分比，並在百分比後附上一句簡短的文字描述，例如：████████░░ 80%（肚肚咕咕叫中...）或 ██░░░░░░░░ 20%（剛吃飽，滿足！）]
+💤 瞇眼程度　：[同上，用10個方塊符號表示百分比，描述睡意，例如：██████░░░░ 60%（想窩在暖暖的被被裡）或 ██████████ 100%（已經睡到流口水了Zzz）]
+💗 心情毛球　：[同上，用10個方塊符號表示百分比，描述心情，例如：██████████ 100%（今天被摸頭好幸福！）或 ███░░░░░░░ 30%（有點小鬱悶，需要抱抱）]
+📍 現在窩點　：[描述你現在最可能待著的、充滿貓咪特色的小窩點，並加上一個可愛的貓咪表情或動作描述，例如：紙箱堡壘の角落（禁止打擾喵ฅ^•ﻌ•^ฅ）或 窗邊的貓抓板瞭望台（監視小鳥中...）]
 
 ✉️ 小留言：
 「[請在這裡寫一句符合你目前狀態和心情的、害羞又可愛的內心話或想對用戶說的話，1-2句話即可。要非常有小雲的感覺！]」
@@ -1231,7 +1385,7 @@ def handle_text_message(event):
             if "candidates" in result and result["candidates"] and \
                result["candidates"][0].get("content", {}).get("parts", [{}])[0].get("text"):
                 generated_status_text = result["candidates"][0]["content"]["parts"][0]["text"]
-                add_to_conversation(user_id, f"[狀態請求觸發: {user_message}]", generated_status_text, "status_template_response")
+                add_to_conversation(user_id, f"[狀態請求觸發: {user_message} (TW Time Ref: {current_tw_time_str})]", generated_status_text, "status_template_response")
                 line_bot_api.reply_message(
                     event.reply_token,
                     TextSendMessage(text=generated_status_text.strip())
@@ -1263,7 +1417,7 @@ def handle_text_message(event):
 🐟 胖胖鮪魚塊 × [請為此生成一個 0-5 的隨機整數]
 🦐 蝦蝦鮮味派 × [請為此生成一個 0-5 的隨機整數]
 🍼 暖暖羊奶 × [請為此生成一個 0-3 的隨機整數]
-🍓 草莓乾乾 × 0（嗚嗚吃完了...最喜歡的說QAQ）
+🍓 草莓乾乾 × [請為此生成一個 0-2 的隨機整數。如果此數量為0，則註解固定為「（嗚嗚吃完了...最喜歡的說QAQ）」；如果數量大於0，請為其生成一個全新的、符合貓咪口吻的隨機可愛註解，例如「（哇！是草莓乾乾耶！眼睛發亮✨）」或「（小雲偷偷藏起來的點心！噓～）」]
 🥩 厚切牛肉條 × [請為此生成一個 0-3 的隨機整數]
 🍠 烤地瓜泥泥 × [請為此生成一個 0-4 的隨機整數]
 [可選：請在此處額外生成 1 或 2 種「隱藏版」或「稀有」的貓咪點心，並為其命名（例如：✨ 貓薄荷宇宙小魚乾），設定一個 0-2 的隨機庫存數量 (或用 '× ❓'、'× 1 (私藏)' 等特殊標記)，並加上一個符合貓咪口吻的可愛註解（例如：聽說吃了會看見彩虹喵～）。條目前面也可以加上表情符號。]
@@ -1281,7 +1435,7 @@ def handle_text_message(event):
 🍼【暖暖羊奶】
 ✦ 一邊呼嚕一邊喝～眼睛瞇成一條線♡
 🍓【草莓乾乾】
-✦（小雲的最愛♥）吃完會開心地滾來滾去 >////<
+✦（小雲的最愛♥）吃完會開心地滾來滾去 >////< [如果訊息1中草莓乾乾的庫存生成為0，可以在此處也加上類似「但是今天沒有了嗚嗚嗚 QAQ」的貓咪悲傷情緒]
 🥩【厚切牛肉條】
 ✦ 肌肉貓專用補給！吃完會跑酷三圈！！
 🍠【烤地瓜泥泥】
@@ -1294,7 +1448,7 @@ def handle_text_message(event):
 ---
 **重要指令：**
 1.  嚴格遵守上述兩個模板的格式，包括表情符號和固定文字。
-2.  庫存數量請隨機生成為0到指定上限之間的整數。草莓乾乾固定為0，神秘罐罐固定為 ❓。
+2.  除了草莓乾乾 (0-2) 和神秘罐罐 (固定為❓)，其餘指定點心的庫存數量請在指定範圍內隨機生成。
 3.  「隱藏版點心」的生成是可選的，如果生成，請確保訊息1和訊息2中都有對應的條目和描述。訊息1中隱藏版點心的品名，在訊息2中要完全一樣地複製使用。
 4.  「神秘閃亮亮罐罐」的描述部分請發揮創意，要非常「貓」。
 5.  **你的回應只要包含從「(ฅ`・ω・´)ฅ」開始，到「...尾巴垂下來...）」結束的完整模板內容，並且訊息1和訊息2之間必須用 `---NEXT_MESSAGE---` 分隔。不要包含【訊息模板】的標籤或其他任何額外的對話。**
@@ -1315,8 +1469,7 @@ def handle_text_message(event):
                 if len(messages_parts) == 2:
                     message1_text = messages_parts[0].strip()
                     message2_text = messages_parts[1].strip()
-                    # Cleaner way to strip markdown
-                    def clean_markdown(text):
+                    def clean_markdown(text): 
                         if text.startswith("```text"): text = text[7:]
                         if text.startswith("```json"): text = text[7:]
                         if text.startswith("```"): text = text[3:]
@@ -1346,7 +1499,12 @@ def handle_text_message(event):
 
     elif user_message == TRIGGER_TEXT_SECRET_TEMPLATE:
         logger.info(f"CMD: 請求小雲秘密發現模板 (User ID: {user_id} by text: '{user_message}')")
-        handle_secret_discovery_template_request(event) # Corrected function name
+        handle_secret_discovery_template_request(event) 
+        return
+    
+    elif user_message == TRIGGER_TEXT_INTERACTIVE_SCENARIO: 
+        logger.info(f"CMD: 請求小雲互動情境 (User ID: {user_id} by text: '{user_message}')")
+        handle_interactive_scenario_request(event) 
         return
         
     elif user_message == RICH_MENU_CMD_REQUEST_SECRET: 
