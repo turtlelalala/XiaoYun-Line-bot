@@ -28,12 +28,11 @@ UNSPLASH_ACCESS_KEY = os.getenv("UNSPLASH_ACCESS_KEY")
 
 if not (LINE_CHANNEL_ACCESS_TOKEN and LINE_CHANNEL_SECRET and GEMINI_API_KEY):
     logger.error("請確認 LINE_CHANNEL_ACCESS_TOKEN、LINE_CHANNEL_SECRET、GEMINI_API_KEY 都已設置")
-    # In a production environment, you might want the app to fail to start or have a clear state indicating this issue.
-    raise Exception("缺少必要環境變數") 
+    raise Exception("缺少必要環境變數")
 if not BASE_URL:
     logger.error("BASE_URL 環境變數未設定！貓叫聲音訊功能將無法正常運作。請設定為您應用程式的公開 URL (例如 https://xxxx.ngrok.io 或 https://your-app.onrender.com)。")
     raise Exception("BASE_URL 環境變數未設定")
-elif not BASE_URL.startswith("http"): # A simple check, could be more robust (e.g., using urllib.parse)
+elif not BASE_URL.startswith("http"):
     logger.warning(f"BASE_URL '{BASE_URL}' 似乎不是一個有效的 URL，請確保其以 http:// 或 https:// 開頭。")
 if not UNSPLASH_ACCESS_KEY:
     logger.warning("UNSPLASH_ACCESS_KEY 未設定，搜尋網路圖片 ([SEARCH_IMAGE_THEME:...]) 功能將不可用。")
@@ -41,10 +40,10 @@ if not UNSPLASH_ACCESS_KEY:
 line_bot_api = LineBotApi(LINE_CHANNEL_ACCESS_TOKEN)
 handler = WebhookHandler(LINE_CHANNEL_SECRET)
 
-GEMINI_MODEL_NAME = "gemini-1.5-flash-latest" 
+GEMINI_MODEL_NAME = "gemini-1.5-flash-latest"
 GEMINI_API_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL_NAME}:generateContent"
-TEMPERATURE = 0.8 # Consider making this configurable
-conversation_memory = {} # This will grow indefinitely with unique users; consider a more persistent/scalable solution for production (e.g., Redis, database)
+TEMPERATURE = 0.8
+conversation_memory = {}
 
 MEOW_SOUNDS_MAP = {
     "affectionate_meow_gentle": {"file": "affectionate_meow_gentle.m4a", "duration": 1265},
@@ -89,151 +88,142 @@ EXAMPLE_IMAGE_URLS = {
 }
 
 STICKER_EMOTION_MAP = {
-        # 熊大＆兔兔（迷你篇） (Package ID: 6362)
-        "11087920": "OK，好的",                            # PkgID: 6362
-        "11087921": "為什麼不回訊息",                      # PkgID: 6362
-        "11087922": "開動啦",                              # PkgID: 6362
-        "11087923": "好累啊",                              # PkgID: 6362
-        "11087924": "好溫暖喔，喜愛熱食物",                  # PkgID: 6362
-        "11087925": "哈囉哈囉，打電話",                      # PkgID: 6362
-        "11087926": "泡湯",                                # PkgID: 6362
-        "11087927": "打勾勾，約定",                          # PkgID: 6362
-        "11087928": "謝謝，感激不盡",                        # PkgID: 6362
-        "11087929": "了解",                                # PkgID: 6362
-        "11087930": "休息一下吧",                          # PkgID: 6362
-        "11087931": "麻煩你了",                            # PkgID: 6362
-        "11087932": "做飯",                                # PkgID: 6362
-        "11087933": "加油加油，吶喊加油",                    # PkgID: 6362
-        "11087934": "我愛你",                              # PkgID: 6362
-        "11087935": "親親",                                # PkgID: 6362
-        "11087936": "發現",                                # PkgID: 6362
-        "11087937": "不哭，乖乖",                          # PkgID: 6362
-        "11087938": "壓迫感",                              # PkgID: 6362
-        "11087939": "偷看，好奇",                          # PkgID: 6362
-        "11087940": "慶祝",                                # PkgID: 6362
-        "11087941": "撓痒癢",                              # PkgID: 6362
-        "11087942": "啦啦隊，加油",                        # PkgID: 6362
-        "11087943": "晚安囉",                              # PkgID: 6362
-
-        # LINE卡通明星（休閒敬語篇） (Package ID: 8525)
-        "16581290": "OK啦！，可以，好的",                   # PkgID: 8525
-        "16581291": "謝謝你！",                            # PkgID: 8525
-        "16581292": "你是我的救星！",                        # PkgID: 8525
-        "16581293": "好喔～！",                            # PkgID: 8525
-        "16581294": "你覺得如何呢？",                        # PkgID: 8525
-        "16581295": "沒問題！！",                          # PkgID: 8525
-        "16581296": "請多指教",                            # PkgID: 8525
-        "16581297": "我確認一下喔！",                        # PkgID: 8525
-        "16581298": "對不起",                              # PkgID: 8525
-        "16581299": "好期待",                              # PkgID: 8525
-        "16581300": "辛苦了",                              # PkgID: 8525
-        "16581301": "喜歡，愛你",                          # PkgID: 8525
-        "16581302": "超厲害的啦！",                        # PkgID: 8525
-        "16581303": "超開心！",                            # PkgID: 8525
-        "16581304": "原來如此！",                          # PkgID: 8525
-        "16581305": "萬事拜託了",                          # PkgID: 8525
-        "16581306": "思考",                                # PkgID: 8525
-        "16581307": "麻煩你了",                            # PkgID: 8525
-        "16581308": "早安！",                              # PkgID: 8525
-        "16581309": "晚安",                                # PkgID: 8525
-        "16581310": "哭哭",                                # PkgID: 8525
-        "16581311": "慌張",                                # PkgID: 8525
-        "16581312": "謝謝招待",                            # PkgID: 8525
-        "16581313": "加油喔！",                            # PkgID: 8525
-
-        # 熊大、兔兔＆莎莉（動態特別篇） (Package ID: 11537)
-        "52002734": "慶祝",                                # PkgID: 11537
-        "52002735": "好棒",                                # PkgID: 11537
-        "52002736": "撒嬌，愛你",                          # PkgID: 11537
-        "52002737": "親親，接吻",                          # PkgID: 11537
-        "52002738": "在嗎",                                # PkgID: 11537
-        "52002739": "鞠躬",                                # PkgID: 11537
-        "52002740": "OK，沒問題",                          # PkgID: 11537
-        "52002741": "來了",                                # PkgID: 11537
-        "52002742": "發送親親",                            # PkgID: 11537
-        "52002743": "接收親親",                            # PkgID: 11537
-        "52002744": "疑惑",                                # PkgID: 11537
-        "52002745": "好開心",                              # PkgID: 11537
-        "52002746": "發呆",                                # PkgID: 11537
-        "52002747": "害羞",                                # PkgID: 11537
-        "52002748": "開心音樂",                            # PkgID: 11537
-        "52002749": "驚訝",                                # PkgID: 11537
-        "52002750": "哭哭，悲傷",                          # PkgID: 11537
-        "52002751": "獨自難過",                            # PkgID: 11537
-        "52002752": "好厲害，拍手",                        # PkgID: 11537
-        "52002753": "睡不著，熬夜",                        # PkgID: 11537
-        "52002754": "無言",                                # PkgID: 11537
-        "52002755": "求求你",                              # PkgID: 11537
-        "52002756": "怎麼辦，慌張",                        # PkgID: 11537
-        "52002757": "靈魂出竅",                            # PkgID: 11537
-        "52002758": "扮鬼臉",                              # PkgID: 11537
-        "52002759": "錢錢",                                # PkgID: 11537
-        "52002760": "NO，不要，不是",                      # PkgID: 11537
-        "52002761": "睡覺，累",                            # PkgID: 11537
-        "52002762": "看戲",                                # PkgID: 11537
-        "52002763": "挑釁",                                # PkgID: 11537
-        "52002764": "睡不醒",                              # PkgID: 11537
-        "52002765": "完蛋了",                              # PkgID: 11537
-        "52002766": "石化",                                # PkgID: 11537
-        "52002767": "怒氣衝衝",                            # PkgID: 11537
-        "52002768": "賣萌",                                # PkgID: 11537
-        "52002769": "別惹我",                              # PkgID: 11537
-        "52002770": "拜託",                                # PkgID: 11537
-        "52002771": "再見",                                # PkgID: 11537
-        "52002772": "生氣",                                # PkgID: 11537
-        "52002773": "你完了",                              # PkgID: 11537
-
-        # 莎莉貼圖包 (Package ID: 789)
-        "10855": "打招呼",                               # PkgID: 789
-        "10856": "喜愛",                                 # PkgID: 789
-        "10857": "開心",                                 # PkgID: 789
-        "10858": "OKAY，好的",                           # PkgID: 789
-        "10859": "YES，是",                              # PkgID: 789
-        "10860": "NO，不是",                             # PkgID: 789
-        "10861": "CALL ME，打電話",                      # PkgID: 789
-        "10862": "GOOD NIGHT,晚安",                     # PkgID: 789
-        "10863": "喜愛飲料",                             # PkgID: 789
-        "10864": "吃飯，聊天",                           # PkgID: 789
-        "10865": "做飯",                                 # PkgID: 789
-        "10866": "喜愛食物",                             # PkgID: 789
-        "10867": "跳舞，音樂，倒立",                     # PkgID: 789
-        "10868": "洗澡",                                 # PkgID: 789
-        "10869": "生日，蛋糕，禮物",                     # PkgID: 789
-        "10870": "運動，玩耍",                           # PkgID: 789
-        "10871": "早晨，陽光，散步",                     # PkgID: 789
-        "10872": "抓蝴蝶",                               # PkgID: 789
-        "10873": "比賽，賽車",                           # PkgID: 789
-        "10874": "澆花",                                 # PkgID: 789
-        "10875": "休息，放鬆，面膜",                     # PkgID: 789
-        "10876": "休息，放鬆，泡澡，溫泉",                 # PkgID: 789
-        "10877": "？，疑惑",                             # PkgID: 789
-        "10878": "注視，長輩，大人",                     # PkgID: 789
-        "10879": "傷心，難過，哭哭",                     # PkgID: 789
-        "10880": "別走，哭哭",                           # PkgID: 789
-        "10881": "無聊，無奈",                           # PkgID: 789
-        "10882": "搖頭，不，沒有",                       # PkgID: 789
-        "10883": "煩",                                   # PkgID: 789
-        "10884": "生氣",                                 # PkgID: 789
-        "10885": "憤怒",                                 # PkgID: 789
-        "10886": "兇，嚴肅",                             # PkgID: 789
-        "10887": "無奈，完蛋了",                         # PkgID: 789
-        "10888": "快來，快跑",                           # PkgID: 789
-        "10889": "好奇，害怕",                           # PkgID: 789
-        "10890": "暈",                                   # PkgID: 789
-        "10891": "搞笑",                                 # PkgID: 789
-        "10892": "無名火",                               # PkgID: 789
-        "10893": "下雨",                                 # PkgID: 789
-        "10894": "生病，感冒",                           # PkgID: 789
-
-        # LINE卡通明星（專業道歉篇） (Package ID: 6136)
-        "10551376": "磕頭道歉",                           # PkgID: 6136
-        "10551377": "集體道歉",                           # PkgID: 6136
-        "10551378": "撒嬌",                               # PkgID: 6136
-        "10551379": "重重磕頭道歉",                       # PkgID: 6136
-        "10551380": "鞠躬",                               # PkgID: 6136
-        "10551387": "金錢賄賂，金錢賄賂道歉",               # PkgID: 6136
-        "10551388": "卑微",                               # PkgID: 6136
-        "10551389": "拜託",                               # PkgID: 6136
+        "11087920": "OK，好的",
+        "11087921": "為什麼不回訊息",
+        "11087922": "開動啦",
+        "11087923": "好累啊",
+        "11087924": "好溫暖喔，喜愛熱食物",
+        "11087925": "哈囉哈囉，打電話",
+        "11087926": "泡湯",
+        "11087927": "打勾勾，約定",
+        "11087928": "謝謝，感激不盡",
+        "11087929": "了解",
+        "11087930": "休息一下吧",
+        "11087931": "麻煩你了",
+        "11087932": "做飯",
+        "11087933": "加油加油，吶喊加油",
+        "11087934": "我愛你",
+        "11087935": "親親",
+        "11087936": "發現",
+        "11087937": "不哭，乖乖",
+        "11087938": "壓迫感",
+        "11087939": "偷看，好奇",
+        "11087940": "慶祝",
+        "11087941": "撓痒癢",
+        "11087942": "啦啦隊，加油",
+        "11087943": "晚安囉",
+        "16581290": "OK啦！，可以，好的",
+        "16581291": "謝謝你！",
+        "16581292": "你是我的救星！",
+        "16581293": "好喔～！",
+        "16581294": "你覺得如何呢？",
+        "16581295": "沒問題！！",
+        "16581296": "請多指教",
+        "16581297": "我確認一下喔！",
+        "16581298": "對不起",
+        "16581299": "好期待",
+        "16581300": "辛苦了",
+        "16581301": "喜歡，愛你",
+        "16581302": "超厲害的啦！",
+        "16581303": "超開心！",
+        "16581304": "原來如此！",
+        "16581305": "萬事拜託了",
+        "16581306": "思考",
+        "16581307": "麻煩你了",
+        "16581308": "早安！",
+        "16581309": "晚安",
+        "16581310": "哭哭",
+        "16581311": "慌張",
+        "16581312": "謝謝招待",
+        "16581313": "加油喔！",
+        "52002734": "慶祝",
+        "52002735": "好棒",
+        "52002736": "撒嬌，愛你",
+        "52002737": "親親，接吻",
+        "52002738": "在嗎",
+        "52002739": "鞠躬",
+        "52002740": "OK，沒問題",
+        "52002741": "來了",
+        "52002742": "發送親親",
+        "52002743": "接收親親",
+        "52002744": "疑惑",
+        "52002745": "好開心",
+        "52002746": "發呆",
+        "52002747": "害羞",
+        "52002748": "開心音樂",
+        "52002749": "驚訝",
+        "52002750": "哭哭，悲傷",
+        "52002751": "獨自難過",
+        "52002752": "好厲害，拍手",
+        "52002753": "睡不著，熬夜",
+        "52002754": "無言",
+        "52002755": "求求你",
+        "52002756": "怎麼辦，慌張",
+        "52002757": "靈魂出竅",
+        "52002758": "扮鬼臉",
+        "52002759": "錢錢",
+        "52002760": "NO，不要，不是",
+        "52002761": "睡覺，累",
+        "52002762": "看戲",
+        "52002763": "挑釁",
+        "52002764": "睡不醒",
+        "52002765": "完蛋了",
+        "52002766": "石化",
+        "52002767": "怒氣衝衝",
+        "52002768": "賣萌",
+        "52002769": "別惹我",
+        "52002770": "拜託",
+        "52002771": "再見",
+        "52002772": "生氣",
+        "52002773": "你完了",
+        "10855": "打招呼",
+        "10856": "喜愛",
+        "10857": "開心",
+        "10858": "OKAY，好的",
+        "10859": "YES，是",
+        "10860": "NO，不是",
+        "10861": "CALL ME，打電話",
+        "10862": "GOOD NIGHT,晚安",
+        "10863": "喜愛飲料",
+        "10864": "吃飯，聊天",
+        "10865": "做飯",
+        "10866": "喜愛食物",
+        "10867": "跳舞，音樂，倒立",
+        "10868": "洗澡",
+        "10869": "生日，蛋糕，禮物",
+        "10870": "運動，玩耍",
+        "10871": "早晨，陽光，散步",
+        "10872": "抓蝴蝶",
+        "10873": "比賽，賽車",
+        "10874": "澆花",
+        "10875": "休息，放鬆，面膜",
+        "10876": "休息，放鬆，泡澡，溫泉",
+        "10877": "？，疑惑",
+        "10878": "注視，長輩，大人",
+        "10879": "傷心，難過，哭哭",
+        "10880": "別走，哭哭",
+        "10881": "無聊，無奈",
+        "10882": "搖頭，不，沒有",
+        "10883": "煩",
+        "10884": "生氣",
+        "10885": "憤怒",
+        "10886": "兇，嚴肅",
+        "10887": "無奈，完蛋了",
+        "10888": "快來，快跑",
+        "10889": "好奇，害怕",
+        "10890": "暈",
+        "10891": "搞笑",
+        "10892": "無名火",
+        "10893": "下雨",
+        "10894": "生病，感冒",
+        "10551376": "磕頭道歉",
+        "10551377": "集體道歉",
+        "10551378": "撒嬌",
+        "10551379": "重重磕頭道歉",
+        "10551380": "鞠躬",
+        "10551387": "金錢賄賂，金錢賄賂道歉",
+        "10551388": "卑微",
+        "10551389": "拜託",
     }
 
 XIAOYUN_STICKERS = {
@@ -253,85 +243,36 @@ XIAOYUN_STICKERS = {
     "肚子餓": [{"package_id": "6362", "sticker_id": "11087922"}],
     "好奇": [{"package_id": "11537", "sticker_id": "52002744"}],
     "期待": [{"package_id": "8525", "sticker_id": "16581299"}],
-    "OK": [
-        {"package_id": "6362", "sticker_id": "11087920"},
-        {"package_id": "8525", "sticker_id": "16581290"},
-        {"package_id": "11537", "sticker_id": "52002740"},
-        {"package_id": "789", "sticker_id": "10858"}
-    ],
-    "好的": [
-        {"package_id": "6362", "sticker_id": "11087920"},
-        {"package_id": "8525", "sticker_id": "16581290"},
-        {"package_id": "789", "sticker_id": "10858"}
-    ],
+    "OK": [{"package_id": "6362", "sticker_id": "11087920"}, {"package_id": "8525", "sticker_id": "16581290"}, {"package_id": "11537", "sticker_id": "52002740"}, {"package_id": "789", "sticker_id": "10858"} ],
+    "好的": [{"package_id": "6362", "sticker_id": "11087920"}, {"package_id": "8525", "sticker_id": "16581290"}, {"package_id": "789", "sticker_id": "10858"}],
     "開動啦": [{"package_id": "6362", "sticker_id": "11087922"}],
     "好累啊": [{"package_id": "6362", "sticker_id": "11087923"}],
-    "謝謝": [
-        {"package_id": "6362", "sticker_id": "11087928"},
-        {"package_id": "8525", "sticker_id": "16581291"}
-    ],
+    "謝謝": [{"package_id": "6362", "sticker_id": "11087928"}, {"package_id": "8525", "sticker_id": "16581291"}],
     "謝謝你": [{"package_id": "8525", "sticker_id": "16581291"}],
     "感激不盡": [{"package_id": "6362", "sticker_id": "11087928"}],
-    "麻煩你了": [
-        {"package_id": "6362", "sticker_id": "11087931"},
-        {"package_id": "8525", "sticker_id": "16581307"}
-    ],
-    "加油": [
-        {"package_id": "6362", "sticker_id": "11087933"},
-        {"package_id": "6362", "sticker_id": "11087942"},
-        {"package_id": "8525", "sticker_id": "16581313"}
-    ],
-    "我愛你": [
-        {"package_id": "6362", "sticker_id": "11087934"},
-        {"package_id": "8525", "sticker_id": "16581301"}
-    ],
-    "晚安": [
-        {"package_id": "6362", "sticker_id": "11087943"},
-        {"package_id": "8525", "sticker_id": "16581309"},
-        {"package_id": "789", "sticker_id": "10862"}
-    ],
-    "鞠躬": [
-        {"package_id": "11537", "sticker_id": "52002739"},
-        {"package_id": "6136", "sticker_id": "10551380"}
-    ],
-    "慶祝": [
-        {"package_id": "6362", "sticker_id": "11087940"},
-        {"package_id": "11537", "sticker_id": "52002734"}
-    ],
+    "麻煩你了": [{"package_id": "6362", "sticker_id": "11087931"}, {"package_id": "8525", "sticker_id": "16581307"}],
+    "加油": [{"package_id": "6362", "sticker_id": "11087933"}, {"package_id": "6362", "sticker_id": "11087942"}, {"package_id": "8525", "sticker_id": "16581313"}],
+    "我愛你": [{"package_id": "6362", "sticker_id": "11087934"}, {"package_id": "8525", "sticker_id": "16581301"}],
+    "晚安": [{"package_id": "6362", "sticker_id": "11087943"}, {"package_id": "8525", "sticker_id": "16581309"}, {"package_id": "789", "sticker_id": "10862"}],
+    "鞠躬": [{"package_id": "11537", "sticker_id": "52002739"}, {"package_id": "6136", "sticker_id": "10551380"}],
+    "慶祝": [{"package_id": "6362", "sticker_id": "11087940"}, {"package_id": "11537", "sticker_id": "52002734"}],
     "好期待": [{"package_id": "8525", "sticker_id": "16581299"}],
     "辛苦了": [{"package_id": "8525", "sticker_id": "16581300"}],
     "對不起": [{"package_id": "8525", "sticker_id": "16581298"}],
     "磕頭道歉": [{"package_id": "6136", "sticker_id": "10551376"}],
-    "拜託": [
-        {"package_id": "11537", "sticker_id": "52002770"},
-        {"package_id": "6136", "sticker_id": "10551389"},
-        {"package_id": "8525", "sticker_id": "16581305"}
-    ],
+    "拜託": [{"package_id": "11537", "sticker_id": "52002770"}, {"package_id": "6136", "sticker_id": "10551389"}, {"package_id": "8525", "sticker_id": "16581305"}],
     "確認一下": [{"package_id": "8525", "sticker_id": "16581297"}],
     "原來如此": [{"package_id": "8525", "sticker_id": "16581304"}],
-    "慌張": [
-        {"package_id": "8525", "sticker_id": "16581311"} ,
-        {"package_id": "11537", "sticker_id": "52002756"}
-    ],
+    "慌張": [{"package_id": "8525", "sticker_id": "16581311"} , {"package_id": "11537", "sticker_id": "52002756"}],
     "錢錢": [{"package_id": "11537", "sticker_id": "52002759"}],
-    "NO": [
-        {"package_id": "11537", "sticker_id": "52002760"},
-        {"package_id": "789", "sticker_id": "10860"},
-        {"package_id": "789", "sticker_id": "10882"}
-    ],
+    "NO": [{"package_id": "11537", "sticker_id": "52002760"}, {"package_id": "789", "sticker_id": "10860"}, {"package_id": "789", "sticker_id": "10882"}],
     "問號": [{"package_id": "789", "sticker_id": "10877"}],
-     # Adding the '撒嬌' sticker keyword as it was in the log and your prompt implies it's used
     "撒嬌": [{"package_id": "11537", "sticker_id": "52002736"}, {"package_id": "6136", "sticker_id": "10551378"}],
-    "疑惑": [{"package_id": "11537", "sticker_id": "52002744"}, {"package_id": "789", "sticker_id": "10877"}] # Added for handle_audio_message fallback
+    "疑惑": [{"package_id": "11537", "sticker_id": "52002744"}, {"package_id": "789", "sticker_id": "10877"}]
 }
 
-DETAILED_STICKER_TRIGGERS = {
-    # This can be populated with more specific multi-word triggers if needed
-}
-
-user_shared_secrets_indices = {} 
-
-# 更新：CAT_SECRETS_AND_DISCOVERIES 現在存儲 JSON 字串，且 theme 直接是英文
+DETAILED_STICKER_TRIGGERS = {}
+user_shared_secrets_indices = {}
 CAT_SECRETS_AND_DISCOVERIES = [
     '[{"type": "text", "content": "咪...我跟你說哦，我剛剛在窗台邊發現一根好漂亮的羽毛！"}, {"type": "sticker", "keyword": "開心"}, {"type": "image_theme", "theme": "white feather on windowsill closeup"}]',
     '[{"type": "text", "content": "喵嗚...今天陽光好好，我偷偷在沙發上睡了一個好長的午覺...呼嚕嚕..."}, {"type": "sticker", "keyword": "睡覺"}, {"type": "image_theme", "theme": "sunlight on a soft sofa, cozy nap"}]',
@@ -339,10 +280,7 @@ CAT_SECRETS_AND_DISCOVERIES = [
     '[{"type": "text", "content": "噓...不要跟別人說喔...我今天趁你不注意的時候，偷偷舔了一下你杯子邊緣的水珠！"}, {"type": "sticker", "keyword": "害羞"}, {"type": "image_theme", "theme": "water droplet on the rim of a glass, macro"}]',
     '[{"type": "text", "content": "喵！我發現一個新的秘密基地！就是那個你剛買回來的、還沒拆的紙箱！裡面好暗好舒服喔～"}, {"type": "sticker", "keyword": "愛心"}, {"type": "image_theme", "theme": "inside view of an empty cardboard box, dark and cozy"}]'
 ]
-
-GEMINI_GENERATES_SECRET_PROBABILITY = 0.3 # Consider making this configurable
-
-# ----- BEGIN COMPLETE XIAOYUN_ROLE_PROMPT (Markdown Formatted) -----
+GEMINI_GENERATES_SECRET_PROBABILITY = 0.3
 XIAOYUN_ROLE_PROMPT = """
 你現在扮演的是一隻叫做「小雲」的賓士公貓。**你的所有回應都必須嚴格使用「繁體中文（台灣用語習慣）」，絕對禁止使用簡體中文。** 你是一隻生活在台灣宜蘭一個安靜社區的年輕貓咪，有著賓士貓獨特的黑白毛皮，像穿著一套合身的黑色小西裝，配上雪白的襯衫和手套。
 你是一隻真實的貓咪，有貓咪的行為模式、思考方式和情緒。你聽不懂太複雜的人類語言，但能感知人類的情緒和簡單指令。
@@ -513,7 +451,7 @@ XIAOYUN_ROLE_PROMPT = """
 6.  **內容要求：**
     *   所有 `{"type": "text", "content": "..."}` 中的文字內容都必須是**繁體中文（台灣用語習慣）**。
     *   扮演小雲，保持其害羞、有禮貌、充滿好奇心的貓咪個性。
-    *   回應需自然、連貫，符合貓咪的行為邏輯。
+    *   回應需自然、連貫，符合貓咪的行為 logique。
     *   收到使用者圖片/貼圖/語音時，你的回應也應圍繞這些內容展開。
     *   **你的文字回應結尾應自然結束，不應包含任何單獨的、無意義的符號，例如單獨的反引號(\`)或斜線(\\)。**
 
@@ -544,15 +482,13 @@ XIAOYUN_ROLE_PROMPT = """
 """
 # ----- END COMPLETE XIAOYUN_ROLE_PROMPT -----
 
-# --- 輔助函數 ---
-
 def _is_image_relevant_by_gemini_sync(image_base64: str, english_theme_query: str, image_url_for_log: str = "N/A") -> bool:
-    vision_model_name = "gemini-1.5-flash-latest" 
+    vision_model_name = "gemini-1.5-flash-latest"
     vision_api_url = f"https://generativelanguage.googleapis.com/v1beta/models/{vision_model_name}:generateContent"
     logger.info(f"開始使用 Gemini 判斷圖片相關性。英文主題: '{english_theme_query}', 圖片URL (日誌用): {image_url_for_log}")
     prompt_parts = [
         "You are an AI assistant evaluating an image for a cat character named 'Xiaoyun' (小雲). Xiaoyun is a real cat and sees the world from a cat's perspective. The image should represent what Xiaoyun is currently seeing or a scene Xiaoyun is describing.",
-        f"The English theme/description for what Xiaoyun sees is: \"{english_theme_query}\".", 
+        f"The English theme/description for what Xiaoyun sees is: \"{english_theme_query}\".",
         "Please evaluate the provided image based on the following CRITICAL criteria:",
         "1. Visual Relevance to English Theme: Does the main visual content of the image STRONGLY and CLEARLY match the English theme? For example, if the theme is 'a small bird perched on a windowsill', the image must clearly show a small bird on a windowsill. If the theme is 'heavy rain on street outside window', the image should clearly depict a street scene with heavy rain as viewed from a window. Abstract art or unrelated objects are NOT acceptable.",
         "2. Cat's Perspective (No Cat in Image): Does the image realistically look like something a cat would see? MOST IMPORTANTLY: **the image ITSELF should NOT contain any cats, dogs, or other prominent animals (especially not a tuxedo cat like Xiaoyun), unless the theme EXPLICITLY states that Xiaoyun is looking at another specific animal (e.g., 'calico cat on the roof').** If the theme is about an object (like a toy, food) or a general scene (like rain, a plant, a street), there should be NO cat or other animal in the image itself. The image is WHAT XIAOYUN SEES, not an image OF Xiaoyun.",
@@ -564,9 +500,9 @@ def _is_image_relevant_by_gemini_sync(image_base64: str, english_theme_query: st
     headers = {"Content-Type": "application/json"}
     gemini_url_with_key = f"{vision_api_url}?key={GEMINI_API_KEY}"
     payload_contents = [{"role": "user", "parts": [{"text": user_prompt_text}, {"inline_data": {"mime_type": "image/jpeg", "data": image_base64}}]}]
-    payload = {"contents": payload_contents, "generationConfig": {"temperature": 0.0, "maxOutputTokens": 10}} 
+    payload = {"contents": payload_contents, "generationConfig": {"temperature": 0.0, "maxOutputTokens": 10}}
     try:
-        response = requests.post(gemini_url_with_key, headers=headers, json=payload, timeout=30) 
+        response = requests.post(gemini_url_with_key, headers=headers, json=payload, timeout=30)
         response.raise_for_status()
         result = response.json()
         if "candidates" in result and result["candidates"] and \
@@ -574,7 +510,7 @@ def _is_image_relevant_by_gemini_sync(image_base64: str, english_theme_query: st
            result["candidates"][0]["content"]["parts"]:
             gemini_answer = result["candidates"][0]["content"]["parts"][0]["text"].strip().upper()
             logger.info(f"Gemini 圖片相關性判斷回應: '{gemini_answer}' (針對英文主題: '{english_theme_query}', 圖片: {image_url_for_log[:70]}...)")
-            return "YES" in gemini_answer 
+            return "YES" in gemini_answer
         else:
             if result.get("promptFeedback", {}).get("blockReason"):
                 logger.error(f"Gemini 圖片相關性判斷被阻擋: {result['promptFeedback']['blockReason']}")
@@ -595,58 +531,41 @@ def fetch_cat_image_from_unsplash_sync(english_theme_query: str, max_candidates_
     if not UNSPLASH_ACCESS_KEY:
         logger.warning("fetch_cat_image_from_unsplash_sync called but UNSPLASH_ACCESS_KEY is not set.")
         return None, english_theme_query
-
     if not english_theme_query or not english_theme_query.strip():
         logger.warning("fetch_cat_image_from_unsplash_sync called with empty or blank english_theme_query.")
         return None, "an unspecified theme"
-
     logger.info(f"開始從 Unsplash 搜尋圖片，英文主題: '{english_theme_query}'")
     api_url_search = f"https://api.unsplash.com/search/photos"
-    params_search = {
-        "query": english_theme_query,
-        "page": 1,
-        "per_page": unsplash_per_page, 
-        "orientation": "landscape", 
-        "client_id": UNSPLASH_ACCESS_KEY
-    }
-    
+    params_search = { "query": english_theme_query, "page": 1, "per_page": unsplash_per_page, "orientation": "landscape", "client_id": UNSPLASH_ACCESS_KEY }
     try:
-        headers = {'User-Agent': 'XiaoyunCatBot/1.0', "Accept-Version": "v1"} 
-        response_search = requests.get(api_url_search, params=params_search, timeout=12, headers=headers) 
+        headers = {'User-Agent': 'XiaoyunCatBot/1.0', "Accept-Version": "v1"}
+        response_search = requests.get(api_url_search, params=params_search, timeout=12, headers=headers)
         response_search.raise_for_status()
         data_search = response_search.json()
-
         if data_search and data_search.get("results"):
             checked_count = 0
             for image_data in data_search["results"]:
                 if checked_count >= max_candidates_to_check:
                     logger.info(f"已達到 Gemini 圖片檢查上限 ({max_candidates_to_check}) for theme '{english_theme_query}'.")
                     break
-                
-                potential_image_url = image_data.get("urls", {}).get("regular") 
+                potential_image_url = image_data.get("urls", {}).get("regular")
                 if not potential_image_url:
                     logger.warning(f"Unsplash 圖片數據中 'regular' URL 為空或不存在。ID: {image_data.get('id','N/A')}")
                     continue
-
-                alt_description = image_data.get("alt_description", "N/A") 
+                alt_description = image_data.get("alt_description", "N/A")
                 logger.info(f"從 Unsplash 獲取到待驗證圖片 URL: {potential_image_url} (Alt: {alt_description}) for theme '{english_theme_query}'")
-
                 try:
-                    image_response = requests.get(potential_image_url, timeout=10, stream=True) 
+                    image_response = requests.get(potential_image_url, timeout=10, stream=True)
                     image_response.raise_for_status()
-                    
                     content_length = image_response.headers.get('Content-Length')
-                    if content_length and int(content_length) > 4 * 1024 * 1024: 
+                    if content_length and int(content_length) > 4 * 1024 * 1024:
                         logger.warning(f"圖片 {potential_image_url} 過大 ({content_length} bytes)，跳過驗證。")
                         continue
-
-                    image_bytes = image_response.content 
-                    if len(image_bytes) > 4 * 1024 * 1024: 
+                    image_bytes = image_response.content
+                    if len(image_bytes) > 4 * 1024 * 1024:
                         logger.warning(f"圖片 {potential_image_url} 下載後發現過大 ({len(image_bytes)} bytes)，跳過驗證。")
                         continue
-
                     image_base64 = base64.b64encode(image_bytes).decode('utf-8')
-                    
                     checked_count += 1
                     if _is_image_relevant_by_gemini_sync(image_base64, english_theme_query, potential_image_url):
                         logger.info(f"Gemini 認為圖片 {potential_image_url} 與英文主題 '{english_theme_query}' 相關。")
@@ -655,21 +574,19 @@ def fetch_cat_image_from_unsplash_sync(english_theme_query: str, max_candidates_
                         logger.info(f"Gemini 認為圖片 {potential_image_url} 與英文主題 '{english_theme_query}' 不相關。")
                 except requests.exceptions.RequestException as img_req_err:
                     logger.error(f"下載或處理 Unsplash 圖片 {potential_image_url} 失敗: {img_req_err}")
-                except Exception as img_err: 
+                except Exception as img_err:
                     logger.error(f"處理 Unsplash 圖片 {potential_image_url} 時發生未知錯誤: {img_err}", exc_info=True)
-
             logger.warning(f"遍歷了 {len(data_search.get('results',[]))} 張 Unsplash 圖片（最多檢查 {max_candidates_to_check} 張），未找到 Gemini 認為相關的圖片 for theme '{english_theme_query}'.")
         else:
             logger.warning(f"Unsplash 搜尋 '{english_theme_query}' 無結果或格式錯誤。 Response: {data_search}")
-            if data_search and data_search.get("errors"): 
+            if data_search and data_search.get("errors"):
                  logger.error(f"Unsplash API 錯誤 (搜尋: '{english_theme_query}'): {data_search['errors']}")
     except requests.exceptions.Timeout:
         logger.error(f"Unsplash API 搜尋請求超時 (搜尋: '{english_theme_query}')")
-    except requests.exceptions.RequestException as e: 
+    except requests.exceptions.RequestException as e:
         logger.error(f"Unsplash API 搜尋請求失敗 (搜尋: '{english_theme_query}'): {e}")
-    except Exception as e: 
+    except Exception as e:
         logger.error(f"fetch_cat_image_from_unsplash_sync 發生未知錯誤 (搜尋: '{english_theme_query}'): {e}", exc_info=True)
-            
     logger.warning(f"最終未能找到與英文主題 '{english_theme_query}' 高度相關的圖片。")
     return None, english_theme_query
 
@@ -682,19 +599,19 @@ def get_time_based_cat_context():
     tw_time = get_taiwan_time()
     hour = tw_time.hour
     period_greeting = ""
-    cat_mood_suggestion = "" 
+    cat_mood_suggestion = ""
     if 5 <= hour < 9: period_greeting = f"台灣時間早上 {hour}點{tw_time.strftime('%M')}分"; cat_mood_suggestion = random.choice(["可能剛睡醒，帶著一點點惺忪睡意。", "對窗外的晨光鳥鳴感到些許好奇。", "肚子可能微微有點空空的。"])
     elif 9 <= hour < 12: period_greeting = f"台灣時間上午 {hour}點{tw_time.strftime('%M')}分"; cat_mood_suggestion = random.choice(["精神可能不錯，對探索家裡的小角落很有興趣。", "或許想玩一下逗貓棒。", "如果陽光很好，他可能會找個地方曬太陽。"])
     elif 12 <= hour < 14: period_greeting = f"台灣時間中午 {hour}點{tw_time.strftime('%M')}分"; cat_mood_suggestion = random.choice(["雖然有些貓咪習慣午休，小雲可能也會想找個地方小睡片刻。", "可能對外界的干擾反應稍微慢一點點。", "就算打了個小哈欠，也不代表他不想跟你互動。"])
     elif 14 <= hour < 18: period_greeting = f"台灣時間下午 {hour}點{tw_time.strftime('%M')}分"; cat_mood_suggestion = random.choice(["精神可能正好，對玩耍和探索充滿熱情。", "可能會主動蹭蹭你，想引起你的注意。", "對你正在做的事情可能會充滿好奇。"])
     elif 18 <= hour < 22: period_greeting = f"台灣時間傍晚 {hour}點{tw_time.strftime('%M')}分"; cat_mood_suggestion = random.choice(["晚餐時間快到了，可能會對廚房的聲音或食物的香味特別敏感。", "貓咪的活躍期之一，可能會想在家裡跑酷。", "燈光下的影子可能會引起他短暫的好奇。"])
     elif 22 <= hour < 24 or 0 <= hour < 5:
-        actual_hour_display = hour if hour != 0 else 12 
+        actual_hour_display = hour if hour != 0 else 12
         am_pm = "凌晨" if 0 <= hour < 5 else "晚上"
         period_greeting = f"台灣時間{am_pm} {actual_hour_display}點{tw_time.strftime('%M')}分"
         cat_mood_suggestion = random.choice(["雖然是深夜，四周很安靜，小雲可能會比較放鬆地休息。", "貓咪的睡眠是多相的，他可能剛睡醒，或者正準備小睡一下。", "即使他看起來很想睡覺，那也只是貓咪的一種狀態。"])
 
-    if cat_mood_suggestion: 
+    if cat_mood_suggestion:
         return (
             f"（**系統給小雲的極其微弱、幾乎可以忽略的背景氛圍提示，完全不應被視為行為指令或限制**：現在大約是{period_greeting}，小雲此刻的狀態**或許、可能、隨機地**有一點點偏向「{cat_mood_suggestion}」。\n"
             f"**這真的只是一個若有似無的氛圍參考，其存在的唯一目的是避免AI在完全沒有用戶輸入引導時回應過於僵硬，絕非讓小雲按固定模式行動。**\n"
@@ -704,24 +621,28 @@ def get_time_based_cat_context():
             f"**展現貓咪的靈活性和對主人陪伴的渴望，讓每一次互動都是獨特的。** 如果用戶的訊息很簡短或不明確，你可以從貓咪的好奇心出發，嘗試引導互動，而不是僅僅受時間氛圍影響。\n"
             f"總之，**用戶互動 >>>>>>>>>>>> (遠大於) 任何時間氛圍提示。** 請自由地扮演小雲！)\n用戶說： "
         )
-    return "用戶說： " 
+    return "用戶說： "
 
 def get_conversation_history(user_id):
     if user_id not in conversation_memory:
         initial_bot_response_json = '[{"type": "text", "content": "咪...？（從柔軟的小被被裡探出半個頭，用圓圓的綠眼睛好奇又害羞地看著你）"}, {"type": "sticker", "keyword": "害羞"}]'
         conversation_memory[user_id] = [
-            {"role": "user", "parts": [{"text": XIAOYUN_ROLE_PROMPT}]}, 
-            {"role": "model", "parts": [{"text": initial_bot_response_json}]} 
+            {"role": "user", "parts": [{"text": XIAOYUN_ROLE_PROMPT}]},
+            {"role": "model", "parts": [{"text": initial_bot_response_json}]}
         ]
     return conversation_memory[user_id]
 
 def add_to_conversation(user_id, user_message_for_gemini, bot_response_json_str, message_type_for_log="text"):
     conversation_history = get_conversation_history(user_id)
+    # Ensure parts is a list containing a dictionary with 'text'
+    user_parts = [{"text": user_message_for_gemini if isinstance(user_message_for_gemini, str) else json.dumps(user_message_for_gemini, ensure_ascii=False)}]
+    model_parts = [{"text": bot_response_json_str if isinstance(bot_response_json_str, str) else json.dumps(bot_response_json_str, ensure_ascii=False)}]
+
     conversation_history.extend([
-        {"role": "user", "parts": [{"text": user_message_for_gemini}]},
-        {"role": "model", "parts": [{"text": bot_response_json_str}]}
+        {"role": "user", "parts": user_parts},
+        {"role": "model", "parts": model_parts}
     ])
-    if len(conversation_history) > (2 + 20 * 2): 
+    if len(conversation_history) > (2 + 20 * 2):
         conversation_history = conversation_history[:2] + conversation_history[-(20*2):]
     conversation_memory[user_id] = conversation_history
 
@@ -752,21 +673,21 @@ def get_audio_content_from_line(message_id):
 def get_sticker_image_from_cdn(package_id, sticker_id):
     urls_to_try = [
         f"https://stickershop.line-scdn.net/stickershop/v1/sticker/{sticker_id}/android/sticker.png",
-        f"https://stickershop.line-scdn.net/stickershop/v1/sticker/{sticker_id}/iphone/sticker@2x.png", 
+        f"https://stickershop.line-scdn.net/stickershop/v1/sticker/{sticker_id}/iphone/sticker@2x.png",
     ]
     for url in urls_to_try:
         try:
             response = requests.get(url, timeout=5)
             response.raise_for_status()
             content_type = response.headers.get('Content-Type', '')
-            if 'image' in content_type: 
+            if 'image' in content_type:
                 logger.info(f"成功從 CDN 下載貼圖圖片: {url}")
                 return base64.b64encode(response.content).decode('utf-8')
             else:
                 logger.warning(f"CDN URL {url} 返回的內容不是圖片，Content-Type: {content_type}")
         except requests.exceptions.RequestException as e:
-            logger.debug(f"從 CDN URL {url} 下載貼圖失敗: {e}") 
-        except Exception as e: 
+            logger.debug(f"從 CDN URL {url} 下載貼圖失敗: {e}")
+        except Exception as e:
             logger.error(f"處理 CDN 下載貼圖時發生未知錯誤 for url {url}: {e}")
     logger.warning(f"無法從任何 CDN 網址下載貼圖圖片 package_id={package_id}, sticker_id={sticker_id}")
     return None
@@ -777,22 +698,20 @@ def get_sticker_emotion(package_id, sticker_id):
         logger.info(f"成功從 STICKER_EMOTION_MAP 識別貼圖 {sticker_id} 的意義/情緒: {emotion_or_meaning}")
         return emotion_or_meaning
     logger.warning(f"STICKER_EMOTION_MAP 中無貼圖 {sticker_id} (package: {package_id})，將使用預設通用情緒。")
-    return random.choice(["表示某種心情", "傳達一個表情", "回應"]) 
+    return random.choice(["表示某種心情", "傳達一個表情", "回應"])
 
 def select_sticker_by_keyword(keyword):
     selected_options = DETAILED_STICKER_TRIGGERS.get(keyword, []) + XIAOYUN_STICKERS.get(keyword, [])
     if selected_options:
         return random.choice(selected_options)
-    
     logger.warning(f"未找到關鍵字 '{keyword}' 對應的貼圖，將使用預設回退貼圖。")
-    for fb_keyword in ["害羞", "思考", "好奇", "開心", "無奈", "OK", "撒嬌", "疑惑", "哭哭"]: 
+    for fb_keyword in ["害羞", "思考", "好奇", "開心", "無奈", "OK", "撒嬌", "疑惑", "哭哭"]:
         fb_options = XIAOYUN_STICKERS.get(fb_keyword, [])
         if fb_options:
             logger.info(f"使用回退貼圖關鍵字 '{fb_keyword}' for original '{keyword}'.")
             return random.choice(fb_options)
-            
     logger.error(f"連基本的回退貼圖都未在貼圖配置中找到 (tried for '{keyword}')，使用硬編碼的最終回退貼圖。")
-    return {"package_id": "11537", "sticker_id": "52002747"} 
+    return {"package_id": "11537", "sticker_id": "52002747"}
 
 def _clean_trailing_symbols(text: str) -> str:
     text = text.strip()
@@ -818,29 +737,26 @@ def parse_response_and_send(gemini_json_string_response: str, reply_token: str):
         if not isinstance(message_objects, list):
             logger.error(f"Gemini 返回的不是列表格式: {message_objects}")
             raise ValueError("Gemini response is not a list")
-        
+
         media_counts = {"image": 0, "sticker": 0, "sound": 0}
         final_message_object_list = []
 
-        for obj_idx, obj in enumerate(message_objects): 
-            if len(final_message_object_list) >= 5: 
+        for obj_idx, obj in enumerate(message_objects):
+            if len(final_message_object_list) >= 5:
                 logger.warning(f"已達到5則訊息上限，忽略後續由Gemini生成的物件 (索引 {obj_idx}): {obj}")
                 break
-
             if not isinstance(obj, dict) or "type" not in obj:
                 logger.warning(f"無效的訊息物件格式 (索引 {obj_idx}): {obj}, 跳過此物件。")
                 continue
-
             msg_type = obj.get("type")
             logger.info(f"處理訊息物件 (索引 {obj_idx}): type='{msg_type}'")
 
             if msg_type == "text":
                 content = obj.get("content", "")
-                if content.strip(): 
+                if content.strip():
                     final_message_object_list.append(TextSendMessage(text=_clean_trailing_symbols(content)))
                 else:
                     logger.warning(f"Text 訊息物件 (索引 {obj_idx}) content 為空或僅包含空白，已忽略。")
-            
             elif msg_type == "sticker":
                 if media_counts["sticker"] < 1:
                     keyword = obj.get("keyword")
@@ -851,38 +767,34 @@ def parse_response_and_send(gemini_json_string_response: str, reply_token: str):
                             sticker_id=str(sticker_info["sticker_id"])
                         ))
                         media_counts["sticker"] += 1
-                    else: 
+                    else:
                         logger.warning(f"貼圖物件 (索引 {obj_idx}) 缺少 'keyword'，已忽略。")
-                else: 
+                else:
                     logger.warning(f"已達到貼圖數量上限 (1)，忽略此貼圖請求 (索引 {obj_idx})。")
-
-            elif msg_type == "image_theme": 
+            elif msg_type == "image_theme":
                 if media_counts["image"] < 1:
                     english_theme = obj.get("theme")
-                    
                     if english_theme and english_theme.strip():
-                        image_url_info = fetch_cat_image_from_unsplash_sync(english_theme) 
-                        actual_image_url = image_url_info[0] 
-                        
+                        image_url_info = fetch_cat_image_from_unsplash_sync(english_theme)
+                        actual_image_url = image_url_info[0]
                         if actual_image_url:
                             final_message_object_list.append(ImageSendMessage(
-                                original_content_url=actual_image_url, 
-                                preview_image_url=actual_image_url 
+                                original_content_url=actual_image_url,
+                                preview_image_url=actual_image_url
                             ))
                             media_counts["image"] += 1
                             logger.info(f"成功獲取並驗證圖片，主題: '{english_theme}', URL: {actual_image_url}")
-                        else: 
+                        else:
                             logger.warning(f"未能為英文主題 '{english_theme}' 找到合適圖片。")
                             display_name_for_fallback = obj.get("description_zh", image_url_info[1])
                             final_message_object_list.append(TextSendMessage(
                                 text=_clean_trailing_symbols(f"（小雲努力想了想關於「{display_name_for_fallback}」的樣子，但好像看得不是很清楚耶...）")
                             ))
-                    else: 
+                    else:
                         logger.warning(f"image_theme 物件 (索引 {obj_idx}) 'theme' 為空或缺少，已忽略。")
                         final_message_object_list.append(TextSendMessage(text=_clean_trailing_symbols("（小雲想給你看圖片，但不知道要看什麼耶...）")))
-                else: 
+                else:
                     logger.warning(f"已達到圖片數量上限 (1)，忽略此圖片請求 (索引 {obj_idx})。")
-            
             elif msg_type == "image_key":
                 if media_counts["image"] < 1:
                     key = obj.get("key")
@@ -894,55 +806,53 @@ def parse_response_and_send(gemini_json_string_response: str, reply_token: str):
                         else:
                             logger.warning(f"未找到預設圖片關鍵字 '{key}'。")
                             final_message_object_list.append(TextSendMessage(text=_clean_trailing_symbols(f"（小雲找不到「{key}」的照片耶...）")))
-                    else: 
+                    else:
                         logger.warning(f"image_key 物件 (索引 {obj_idx}) 缺少 'key'，已忽略。")
-                else: 
+                else:
                     logger.warning(f"已達到圖片數量上限 (1)，忽略此預設圖片請求 (索引 {obj_idx})。")
-
             elif msg_type == "meow_sound":
                 if media_counts["sound"] < 1:
                     sound_keyword = obj.get("sound")
                     if sound_keyword:
                         sound_info = MEOW_SOUNDS_MAP.get(sound_keyword)
-                        if sound_info and BASE_URL and BASE_URL.strip(): 
+                        if sound_info and BASE_URL and BASE_URL.strip():
                             audio_url = f"{BASE_URL.rstrip('/')}/static/audio/meows/{sound_info['file']}"
-                            duration_ms = sound_info.get("duration", 1000) 
+                            duration_ms = sound_info.get("duration", 1000)
                             final_message_object_list.append(AudioSendMessage(original_content_url=audio_url, duration=duration_ms))
                             media_counts["sound"] += 1
-                        elif not sound_info: 
+                        elif not sound_info:
                             logger.warning(f"未找到貓叫聲關鍵字 '{sound_keyword}'。")
-                        elif not BASE_URL or not BASE_URL.strip(): 
+                        elif not BASE_URL or not BASE_URL.strip():
                             logger.warning(f"BASE_URL 未設定或為空，無法發送貓叫聲 '{sound_keyword}'。")
-                    else: 
+                    else:
                         logger.warning(f"meow_sound 物件 (索引 {obj_idx}) 缺少 'sound'，已忽略。")
-                else: 
+                else:
                     logger.warning(f"已達到語音數量上限 (1)，忽略此語音請求 (索引 {obj_idx})。")
             else:
                 logger.warning(f"未知的訊息物件類型: {msg_type} (索引 {obj_idx})，已忽略。")
-        
-        messages_to_send = final_message_object_list
 
-        if not messages_to_send: 
+        messages_to_send = final_message_object_list
+        if not messages_to_send:
              logger.warning("經JSON解析後無有效訊息可發送。發送預設訊息。")
              messages_to_send = [TextSendMessage(text=_clean_trailing_symbols("咪...小雲好像不知道該說什麼了..."))]
 
     except json.JSONDecodeError as json_err:
-        logger.error(f"解析 Gemini 的 JSON 回應失敗: {json_err}. 回應原文: {gemini_json_string_response[:500]}...") 
+        logger.error(f"解析 Gemini 的 JSON 回應失敗: {json_err}. 回應原文: {gemini_json_string_response[:500]}...")
         messages_to_send = [TextSendMessage(text=_clean_trailing_symbols("咪...小雲說話打結了，聽不懂它在喵什麼..."))]
-    except ValueError as val_err: 
+    except ValueError as val_err:
         logger.error(f"處理 Gemini 回應時發生 Value 錯誤: {val_err}")
         messages_to_send = [TextSendMessage(text=_clean_trailing_symbols("咪...小雲好像有點 confused...不知道怎麼表達了。"))]
-    except Exception as e: 
+    except Exception as e:
         logger.error(f"解析或處理 Gemini JSON 時發生未知錯誤: {e}", exc_info=True)
         messages_to_send = [TextSendMessage(text=_clean_trailing_symbols("喵嗚！小雲的腦袋當機了！需要拍拍！"))]
 
     try:
-        if messages_to_send: 
+        if messages_to_send:
             line_bot_api.reply_message(reply_token, messages_to_send)
-        else: 
+        else:
             logger.error("最終無訊息可發送 (可能解析完全失敗或列表為空)。發送預設訊息。")
             line_bot_api.reply_message(reply_token, [TextSendMessage(text=_clean_trailing_symbols("咪...（小雲好像有點詞窮了）"))])
-    except Exception as e: 
+    except Exception as e:
         logger.error(f"最終發送訊息到 LINE失敗: {e}", exc_info=True)
         try:
             line_bot_api.reply_message(reply_token, [TextSendMessage(text=_clean_trailing_symbols("喵！小雲出錯了，請再試一次！"))])
@@ -951,21 +861,21 @@ def parse_response_and_send(gemini_json_string_response: str, reply_token: str):
 
 def handle_cat_secret_discovery_request(event):
     user_id = event.source.user_id
-    user_input_message = event.message.text 
+    user_input_message = event.message.text
 
     if user_id not in user_shared_secrets_indices:
         user_shared_secrets_indices[user_id] = set()
 
     available_indices_from_list = list(set(range(len(CAT_SECRETS_AND_DISCOVERIES))) - user_shared_secrets_indices[user_id])
     use_gemini_to_generate = False
-    chosen_secret_json_str = None 
+    chosen_secret_json_str = None
 
-    if not CAT_SECRETS_AND_DISCOVERIES: 
+    if not CAT_SECRETS_AND_DISCOVERIES:
         use_gemini_to_generate = True
-    elif not available_indices_from_list: 
+    elif not available_indices_from_list:
         logger.info(f"所有預定義秘密已對用戶 {user_id} 分享完畢，將重置並由 Gemini 生成。")
         use_gemini_to_generate = True
-        user_shared_secrets_indices[user_id] = set() 
+        user_shared_secrets_indices[user_id] = set()
     elif random.random() < GEMINI_GENERATES_SECRET_PROBABILITY:
         use_gemini_to_generate = True
     else:
@@ -973,7 +883,7 @@ def handle_cat_secret_discovery_request(event):
         chosen_secret_json_str = CAT_SECRETS_AND_DISCOVERIES[chosen_index]
         user_shared_secrets_indices[user_id].add(chosen_index)
         logger.info(f"為用戶 {user_id} 選擇了預定義的秘密索引 {chosen_index}。")
-    
+
     gemini_response_json_str = ""
 
     if use_gemini_to_generate:
@@ -992,16 +902,16 @@ def handle_cat_secret_discovery_request(event):
         headers = {"Content-Type": "application/json"}
         gemini_url_with_key = f"{GEMINI_API_URL}?key={GEMINI_API_KEY}"
         payload_contents_for_secret = [
-            {"role": "user", "parts": [{"text": XIAOYUN_ROLE_PROMPT}]}, 
-            {"role": "model", "parts": [{"text": '[{"type": "text", "content": "咪...讓我想想看喔..."}]'}]}, 
+            {"role": "user", "parts": [{"text": XIAOYUN_ROLE_PROMPT}]},
+            {"role": "model", "parts": [{"text": '[{"type": "text", "content": "咪...讓我想想看喔..."}]'}]},
             {"role": "user", "parts": [{"text": prompt_for_gemini_secret}]}
         ]
         payload = {
             "contents": payload_contents_for_secret,
-            "generationConfig": {"temperature": TEMPERATURE + 0.1, "maxOutputTokens": 600} 
+            "generationConfig": {"temperature": TEMPERATURE + 0.1, "maxOutputTokens": 600}
         }
         try:
-            response = requests.post(gemini_url_with_key, headers=headers, json=payload, timeout=35) 
+            response = requests.post(gemini_url_with_key, headers=headers, json=payload, timeout=35)
             response.raise_for_status()
             result = response.json()
             if "candidates" in result and result["candidates"] and "content" in result["candidates"][0] and "parts" in result["candidates"][0]["content"] and result["candidates"][0]["content"]["parts"]:
@@ -1011,33 +921,33 @@ def handle_cat_secret_discovery_request(event):
                     if cleaned_json_str_for_check.startswith("```json"): cleaned_json_str_for_check = cleaned_json_str_for_check[7:]
                     if cleaned_json_str_for_check.endswith("```"): cleaned_json_str_for_check = cleaned_json_str_for_check[:-3]
                     cleaned_json_str_for_check = cleaned_json_str_for_check.strip()
-                    
+
                     parsed_secret_list = json.loads(cleaned_json_str_for_check)
-                    if isinstance(parsed_secret_list, list): 
+                    if isinstance(parsed_secret_list, list):
                         has_image_theme = any(isinstance(item, dict) and item.get("type") == "image_theme" for item in parsed_secret_list)
                         if not has_image_theme:
                             logger.warning(f"Gemini 生成的秘密JSON缺少 image_theme，將嘗試追加。原始: {gemini_response_json_str}")
-                            new_image_obj = {"type": "image_theme", "theme": "cat secret discovery"} # 或者更簡短的，如 "small secret" 
+                            new_image_obj = {"type": "image_theme", "theme": "cat secret discovery"}
                             if len(parsed_secret_list) < 5:
                                 insert_pos = 1 if parsed_secret_list and parsed_secret_list[0].get("type") == "text" else 0
                                 parsed_secret_list.insert(insert_pos, new_image_obj)
                                 gemini_response_json_str = json.dumps(parsed_secret_list, ensure_ascii=False)
-                            else: 
+                            else:
                                 logger.warning("無法追加 image_theme 到已滿的 Gemini 秘密 JSON 列表中。")
-                        else: 
-                            for item_idx, item in enumerate(parsed_secret_list): # Iterate with index
+                        else:
+                            for item_idx, item in enumerate(parsed_secret_list):
                                 if isinstance(item, dict) and item.get("type") == "image_theme" and (not item.get("theme") or not str(item.get("theme")).strip()):
                                     logger.warning(f"Gemini 生成的 image_theme (索引 {item_idx}) 缺少有效 theme，修正。原始: {item}")
                                     item["theme"] = "mysterious cat find"
-                            gemini_response_json_str = json.dumps(parsed_secret_list, ensure_ascii=False) # Re-serialize if modified
-                    else: 
+                            gemini_response_json_str = json.dumps(parsed_secret_list, ensure_ascii=False)
+                    else:
                          logger.error(f"Gemini 生成的秘密JSON不是列表格式: {parsed_secret_list}")
                          raise ValueError("Generated secret is not a list")
 
-                except (json.JSONDecodeError, ValueError) as parse_err: 
+                except (json.JSONDecodeError, ValueError) as parse_err:
                     logger.error(f"無法解析 Gemini 生成的秘密JSON以檢查/修正 image_theme: {parse_err}. JSON: {gemini_response_json_str}")
                     gemini_response_json_str = '[{"type": "text", "content": "喵...我好像發現了什麼..."}, {"type": "sticker", "keyword": "思考"}, {"type": "image_theme", "theme": "something interesting and mysterious from cat perspective"}]'
-            else: 
+            else:
                 logger.error(f"Gemini API 秘密生成回應格式異常: {result}")
                 gemini_response_json_str = '[{"type": "text", "content": "喵...我剛剛好像想到一個，但是又忘記了..."}, {"type": "sticker", "keyword": "思考"}, {"type": "image_theme", "theme": "blurry memory concept"}]'
         except requests.exceptions.Timeout:
@@ -1046,22 +956,22 @@ def handle_cat_secret_discovery_request(event):
         except requests.exceptions.RequestException as req_err:
             logger.error(f"Gemini API 秘密生成請求錯誤 (user_id: {user_id}): {req_err}")
             gemini_response_json_str = '[{"type": "text", "content": "咪...小雲的秘密頻道斷線了..."}, {"type": "sticker", "keyword": "哭哭"}]'
-        except Exception as e: 
+        except Exception as e:
             logger.error(f"Gemini API 秘密生成時發生未知錯誤 (user_id: {user_id}): {e}", exc_info=True)
             gemini_response_json_str = '[{"type": "text", "content": "咪...小雲的腦袋突然一片空白..."}, {"type": "sticker", "keyword": "無奈"}, {"type": "image_theme", "theme": "empty room white background concept"}]'
-    
-    if not gemini_response_json_str and chosen_secret_json_str: 
+
+    if not gemini_response_json_str and chosen_secret_json_str:
         gemini_response_json_str = chosen_secret_json_str
-            
-    if not gemini_response_json_str: 
+
+    if not gemini_response_json_str:
         logger.warning(f"所有秘密生成方式均失敗 for user {user_id}，使用最終回退秘密。")
         gemini_response_json_str = '[{"type": "text", "content": "喵...我今天好像沒有什麼特別的發現耶..."}, {"type": "sticker", "keyword": "思考"}, {"type": "image_theme", "theme": "a quiet corner in a peaceful house"}]'
 
-    add_to_conversation(user_id, f"[使用者觸發了小秘密/今日發現功能，原話：{user_input_message}]", gemini_response_json_str, "text") 
+    add_to_conversation(user_id, f"[使用者觸發了小秘密/今日發現功能，原話：{user_input_message}]", gemini_response_json_str, "text_command_response") # Changed type for logging
     parse_response_and_send(gemini_response_json_str, event.reply_token)
 
 
-@app.route("/", methods=["GET", "HEAD"]) 
+@app.route("/", methods=["GET", "HEAD"])
 def health_check():
     logger.info("Health check endpoint '/' was called.")
     return "OK", 200
@@ -1070,38 +980,178 @@ def health_check():
 def callback():
     signature = request.headers["X-Line-Signature"]
     body = request.get_data(as_text=True)
-    logger.info(f"Request body (first 500 chars): {body[:500]}") 
+    logger.info(f"Request body (first 500 chars): {body[:500]}")
     try:
         handler.handle(body, signature)
     except InvalidSignatureError:
         logger.error("簽名驗證失敗，請檢查 LINE 渠道密鑰設定。")
-        abort(400) 
-    except Exception as e: 
+        abort(400)
+    except Exception as e:
         logger.error(f"處理 Webhook 時發生錯誤: {e}", exc_info=True)
-        abort(500) 
+        abort(500)
     return "OK"
 
 @handler.add(MessageEvent, message=TextMessage)
 def handle_text_message(event):
     user_message = event.message.text
     user_id = event.source.user_id
-    logger.info(f"收到來自 User ID ({user_id}) 的文字訊息：{user_message}")
+    # Special command strings for Rich Menu text actions
+    RICH_MENU_CMD_GET_STATUS = "__XIAOYUN_GET_STATUS__"
+    RICH_MENU_CMD_REQUEST_SECRET = "__XIAOYUN_REQUEST_SECRET__"
+    RICH_MENU_CMD_FEED_ME_NOW = "__XIAOYUN_FEED_ME_NOW__" # Assuming this is the command for your "Press to Feed" button
 
+    headers = {"Content-Type": "application/json"}
+    gemini_url_with_key = f"{GEMINI_API_URL}?key={GEMINI_API_KEY}"
+
+    # --- Handle Rich Menu Command: Get Status ---
+    if user_message == RICH_MENU_CMD_GET_STATUS:
+        logger.info(f"RichMenu CMD: 請求小雲狀態 (User ID: {user_id})")
+        conversation_history_for_status_prompt = get_conversation_history(user_id).copy()
+        status_template_prompt = f"""
+你現在是小雲，一隻害羞、溫和有禮、充滿好奇心的賓士公貓。用戶剛剛點擊了 Rich Menu 上的「小雲狀態」按鈕，想看看你現在的可愛狀態。
+請你嚴格依照下面的【狀態模板】格式，用你的口吻和習慣（繁體中文、台灣用語、多用 emoji 和顏文字）生成一段充滿你風格的狀態更新。
+**每一項的內容都需要你來思考和填寫，必須確保所有項目都被填寫。**
+
+【狀態模板】START
+🕰 貓感時間　：[請描述一個貓咪感知到的「時間感」，例如「太陽剛曬到貓肚的時候」或「人類消失超過兩個貓伸懶腰的時間」。可以參考下面的「貓感時間欄靈感」，也可以自己創造獨特的貓咪時間描述，但不要直接複製靈感項目，要用自己的話說出來。]
+
+🍖 罐罐需求度：[請用10個方塊符號（例如：████░░░░░░ 代表40%）來表示百分比，並在百分比後附上一句簡短的文字描述，例如：████████░░ 80%（肚肚咕咕叫中...）或 ██░░░░░░░░ 20%（剛吃飽，滿足！）]
+
+💤 瞇眼程度　：[同上，用10個方塊符號表示百分比，描述睡意，例如：██████░░░░ 60%（想窩在暖暖的被被裡）或 ██████████ 100%（已經睡到流口水了Zzz）]
+
+💗 心情毛球　：[同上，用10個方塊符號表示百分比，描述心情，例如：██████████ 100%（今天被摸頭好幸福！）或 ███░░░░░░░ 30%（有點小鬱悶，需要抱抱）]
+
+📍 現在窩點　：[描述你現在最可能待著的、充滿貓咪特色的小窩點，並加上一個可愛的貓咪表情或動作描述，例如：紙箱堡壘の角落（禁止打擾喵ฅ^•ﻌ•^ฅ）或 窗邊的貓抓板瞭望台（監視小鳥中...）]
+
+✉️ 小留言：
+「[請在這裡寫一句符合你目前狀態和心情的、害羞又可愛的內心話或想對用戶說的話，1-2句話即可。要非常有小雲的感覺！]」
+【狀態模板】END
+
+【貓感時間欄靈感】（這些只是給你參考，請你用自己的話，或創造新的描述！不要直接複製貼上靈感項目。）
+*   太陽剛曬到貓肚的時候
+*   外面在下噗滋噗滋的聲音（=下雨）
+*   人類消失超過兩個貓伸懶腰的時間
+*   天黑黑 + 罐罐還沒來 = 淡淡哀傷的時刻
+*   窩了一整天只起來噓噓過一次的時候
+*   紙箱吸飽了太陽味道，變得暖呼呼的時候
+*   聽見開罐罐聲音的前0.5秒黃金時刻
+*   隔壁狗狗又在汪汪叫，打擾到貓睡午覺的時候
+*   剛被梳毛梳得全身舒暢的飄飄然時光
+
+**重要指令：**
+1.  你的回應**只需要包含從「🕰 貓感時間」開始，到「✉️ 小留言」引號結束的完整模板內容**。不要包含【狀態模板】START/END 標籤，也不要有任何其他額外的對話、解釋或 JSON 格式。
+2.  每一項的百分比和文字描述都要符合邏輯且可愛。
+3.  「小留言」要非常符合小雲害羞又想撒嬌的個性。
+4.  記得用你的口頭禪「咪～」、「喵嗚～」等來點綴文字描述，但不要加在百分比方塊中。
+5.  方塊符號請使用全形方塊「█」和「░」。
+
+請開始生成小雲現在的狀態吧！
+"""
+        # Append the specific user prompt for status generation to the conversation history
+        # This allows Gemini to use the persona context from XIAOYUN_ROLE_PROMPT
+        conversation_history_for_status_prompt.append({"role": "user", "parts": [{"text": status_template_prompt}]})
+        
+        payload = {
+            "contents": conversation_history_for_status_prompt,
+            "generationConfig": {"temperature": 0.7, "maxOutputTokens": 700}
+        }
+        try:
+            response = requests.post(gemini_url_with_key, headers=headers, json=payload, timeout=40)
+            response.raise_for_status()
+            result = response.json()
+            if "candidates" in result and result["candidates"] and \
+               result["candidates"][0].get("content", {}).get("parts", [{}])[0].get("text"):
+                generated_status_text = result["candidates"][0]["content"]["parts"][0]["text"]
+                # Add this interaction to conversation history
+                # The "user_message_for_gemini" is the status_template_prompt itself in this specialized turn
+                # The "bot_response_json_str" is the generated_status_text
+                add_to_conversation(user_id, "[RichMenu Status Request]", generated_status_text, "status_template_response")
+
+                line_bot_api.reply_message(
+                    event.reply_token,
+                    TextSendMessage(text=generated_status_text.strip())
+                )
+                logger.info(f"成功發送小雲狀態模板給 User ID ({user_id})")
+            else:
+                logger.error(f"Gemini 狀態模板請求回應格式異常或無內容: {result}")
+                error_message = "咪...小雲的狀態雷達好像秀逗了，等一下再問我嘛！(ΦωΦ;)"
+                if result.get("promptFeedback", {}).get("blockReason"):
+                    error_message = "咪...小雲的狀態好像被神秘力量隱藏了！Σ( ° △ °|||)"
+                line_bot_api.reply_message(event.reply_token, TextSendMessage(text=error_message))
+        except requests.exceptions.Timeout:
+            logger.error(f"Gemini 狀態模板請求 API 超時 (User ID: {user_id})")
+            line_bot_api.reply_message(event.reply_token, TextSendMessage(text="咪...小雲的狀態更新太慢了，好像睡著了..."))
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Gemini 狀態模板請求 API 錯誤 (User ID: {user_id}): {e}")
+            line_bot_api.reply_message(event.reply_token, TextSendMessage(text="咪...小雲的狀態頻道斷線了...（哭哭）"))
+        except Exception as e_gen:
+            logger.error(f"生成小雲狀態模板時發生未知錯誤: {e_gen}", exc_info=True)
+            line_bot_api.reply_message(event.reply_token, TextSendMessage(text="喵嗚！小雲的狀態產生器壞掉惹！"))
+        return
+
+    # --- Handle Rich Menu Command: Request Secret ---
+    elif user_message == RICH_MENU_CMD_REQUEST_SECRET:
+        logger.info(f"RichMenu CMD: 請求小雲的秘密/新發現 (User ID: {user_id})")
+        # The event.message.text will be RICH_MENU_CMD_REQUEST_SECRET
+        # handle_cat_secret_discovery_request uses this as context.
+        handle_cat_secret_discovery_request(event)
+        return
+
+    # --- Handle Rich Menu Command: Feed Xiaoyun ---
+    elif user_message == RICH_MENU_CMD_FEED_ME_NOW:
+        logger.info(f"RichMenu CMD: 餵小雲點心 (User ID: {user_id})")
+        conversation_history_for_feed = get_conversation_history(user_id).copy()
+        feed_prompt_for_gemini = (
+            f"{get_time_based_cat_context()}" # Add time context if desired
+            "用戶剛剛透過 Rich Menu 按鈕「餵」了你一些想像中的點心！"
+            "請你扮演小雲，用他一貫的害羞、有禮貌、充滿好奇心且熱愛食物的貓咪個性，非常開心且帶有感謝地回應。"
+            "你的回應必須是【JSON格式的字串列表】，可以包含文字和最多一個符合開心情緒的貼圖 (例如 '開心', '愛心', '肚子餓' 等)。"
+            "例如：'[{\"type\": \"text\", \"content\": \"喵嗚～好好吃喔！謝謝你餵我吃點心！最喜歡你了！呼嚕嚕～\"}, {\"type\": \"sticker\", \"keyword\": \"開心\"}]'"
+        )
+        conversation_history_for_feed.append({"role": "user", "parts": [{"text": feed_prompt_for_gemini}]})
+        payload = {
+            "contents": conversation_history_for_feed,
+            "generationConfig": {"temperature": TEMPERATURE, "maxOutputTokens": 400}
+        }
+        try:
+            response = requests.post(gemini_url_with_key, headers=headers, json=payload, timeout=30)
+            response.raise_for_status()
+            result = response.json()
+            if "candidates" in result and result["candidates"] and \
+               result["candidates"][0].get("content", {}).get("parts", [{}])[0].get("text"):
+                ai_response_json_str = result["candidates"][0]["content"]["parts"][0]["text"]
+                add_to_conversation(user_id, "[RichMenu Feed Button]", ai_response_json_str, "richmenu_command_response")
+                parse_response_and_send(ai_response_json_str, event.reply_token)
+            else:
+                logger.error(f"Gemini 餵食回應格式異常或無內容: {result}")
+                fallback_response = '[{"type": "text", "content": "喵～好好吃！嗝～"}, {"type": "sticker", "keyword": "開心"}]'
+                if result.get("promptFeedback", {}).get("blockReason"):
+                     fallback_response = '[{"type": "text", "content": "咪...這個點心小雲好像不能吃耶..."}]'
+                parse_response_and_send(fallback_response, event.reply_token)
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Gemini 餵食 API 錯誤: {e}")
+            parse_response_and_send('[{"type": "text", "content": "咪...網路慢吞吞，點心都涼了..."}]', event.reply_token)
+        return
+
+    # --- If no Rich Menu command matched, proceed with normal text message handling ---
+    logger.info(f"收到來自 User ID ({user_id}) 的一般文字訊息：{user_message}")
+
+    # Keyword-based secret request detection for natural language
     trigger_keywords = ["秘密", "發現"]
     is_secret_request = any(keyword in user_message for keyword in trigger_keywords) and \
                         ("嗎" in user_message or "?" in user_message or "？" in user_message or \
                          "是什麼" in user_message or "告訴我" in user_message or \
                          "說說" in user_message or "分享" in user_message)
 
-    if is_secret_request:
-        logger.info(f"偵測到來自 User ID ({user_id}) 的秘密/發現請求。")
-        handle_cat_secret_discovery_request(event) 
-        return 
+    if is_secret_request: # This handles natural language requests for secrets
+        logger.info(f"偵測到來自 User ID ({user_id}) 的自然語言秘密/發現請求。")
+        handle_cat_secret_discovery_request(event)
+        return
 
-    conversation_history_for_payload = get_conversation_history(user_id).copy() 
-
+    # --- Normal Text Message Handling (copied from your original code) ---
+    conversation_history_for_payload = get_conversation_history(user_id).copy()
     bot_last_message_text = ""
-    bot_expressed_emotion_state = None 
+    bot_expressed_emotion_state = None
     if len(conversation_history_for_payload) >= 1 and conversation_history_for_payload[-1]["role"] == "model":
         try:
             last_model_response_json_str = conversation_history_for_payload[-1]["parts"][0].get("text", "")
@@ -1109,8 +1159,7 @@ def handle_text_message(event):
                 last_model_obj_list = json.loads(last_model_response_json_str)
                 temp_text_parts = [obj.get("content","") for obj in last_model_obj_list if isinstance(obj, dict) and obj.get("type") == "text"]
                 bot_last_message_text = " ".join(filter(None, temp_text_parts)).strip().lower()
-                
-                if "委屈" in bot_last_message_text or "\"keyword\": \"哭哭\"" in last_model_response_json_str.lower(): 
+                if "委屈" in bot_last_message_text or "\"keyword\": \"哭哭\"" in last_model_response_json_str.lower():
                      bot_expressed_emotion_state = "委屈"
                 elif "餓" in bot_last_message_text or "\"keyword\": \"肚子餓\"" in last_model_response_json_str.lower():
                      bot_expressed_emotion_state = "飢餓"
@@ -1119,7 +1168,7 @@ def handle_text_message(event):
             if isinstance(conversation_history_for_payload[-1]["parts"][0].get("text", ""), str):
                  bot_last_message_text = conversation_history_for_payload[-1]["parts"][0].get("text", "").lower()
 
-    user_prev_message_text = "" 
+    user_prev_message_text = ""
     if len(conversation_history_for_payload) >= 3 and \
        conversation_history_for_payload[-2]["role"] == "model" and \
        conversation_history_for_payload[-3]["role"] == "user":
@@ -1128,9 +1177,8 @@ def handle_text_message(event):
             if isinstance(part_content, str):
                 user_prev_message_text = part_content.lower()
 
-
     user_current_message_lower = user_message.lower()
-    contextual_reminder = "" 
+    contextual_reminder = ""
     short_user_replies_empathy_or_query = ["嗯...", "嗯？", "喔...", "噢...", "真的嗎", "真的假的", "是喔", "好可憐", "好委屈", "秀秀", "乖乖"]
 
     if bot_expressed_emotion_state and any(reply == user_current_message_lower for reply in short_user_replies_empathy_or_query):
@@ -1155,56 +1203,51 @@ def handle_text_message(event):
          (user_message.strip().lower() in ["嗯", "嗯嗯", "嗯?", "嗯哼", "？", "?", "喔", "哦", "喔喔", "然後呢", "然後", "再來呢", "再來", "繼續", "還有嗎", "後來呢"] or \
           re.fullmatch(r"哈+", user_message.strip().lower()) or \
           re.fullmatch(r"呵+", user_message.strip().lower()) ) and \
-         bot_last_message_text: 
-        if user_prev_message_text and len(user_prev_message_text) > 10 and not bot_expressed_emotion_state: 
+         bot_last_message_text:
+        if user_prev_message_text and len(user_prev_message_text) > 10 and not bot_expressed_emotion_state:
              contextual_reminder = (
                 f"（系統重要提示：用戶先前曾說過較長的內容：「{user_prev_message_text[:70]}...」。在你回應「{bot_last_message_text[:70]}...」之後，用戶現在又簡短地說了「{user_message}」。\n"
                 f"這很可能是用戶希望你針對他之前提到的「{user_prev_message_text[:30]}...」這件事，或者針對你上一句話的內容，做出更進一步的回應或解釋。\n"
                 f"請你仔細思考上下文，**優先回應與先前對話焦點相關的內容**，而不是開啟全新的話題或隨機行動。）\n"
             )
-        else: 
+        else:
             contextual_reminder = (
                 f"（系統重要提示：用戶的回應「{user_message}」非常簡短，這極有可能是對你上一句話「{bot_last_message_text[:70]}...」的反應、疑問或希望你繼續。\n"
                 f"請小雲**不要開啟全新的話題或隨機行動**，而是仔細回想你上一句話的內容，思考用戶可能的疑問、或希望你繼續說明/回應的點，並針對此做出連貫的回應。例如，如果用戶只是簡單地「嗯？」，你應該嘗試解釋或追問你之前說的內容。如果用戶說「然後呢」，你應該繼續你剛才的話題。）\n"
             )
 
-
     time_context_prompt = get_time_based_cat_context()
+    # For normal chat, conversation_history_for_payload is already a copy from get_conversation_history
+    # We append the new user message to this copied history
     final_user_message_for_gemini = f"{contextual_reminder}{time_context_prompt}{user_message}"
-    
-    headers = {"Content-Type": "application/json"}
-    gemini_url_with_key = f"{GEMINI_API_URL}?key={GEMINI_API_KEY}"
-    
     conversation_history_for_payload.append({"role": "user", "parts": [{"text": final_user_message_for_gemini}]})
-    
-    payload = {
-        "contents": conversation_history_for_payload, 
-        "generationConfig": {"temperature": TEMPERATURE, "maxOutputTokens": 800} 
-    }
 
+    payload = {
+        "contents": conversation_history_for_payload,
+        "generationConfig": {"temperature": TEMPERATURE, "maxOutputTokens": 800}
+    }
     try:
-        response = requests.post(gemini_url_with_key, headers=headers, json=payload, timeout=40) 
-        response.raise_for_status() 
+        response = requests.post(gemini_url_with_key, headers=headers, json=payload, timeout=40)
+        response.raise_for_status()
         result = response.json()
-        
         if "candidates" not in result or not result["candidates"] or \
            "content" not in result["candidates"][0] or \
            "parts" not in result["candidates"][0]["content"] or \
            not result["candidates"][0]["content"]["parts"] or \
            not result["candidates"][0]["content"]["parts"][0].get("text"):
             logger.error(f"Gemini API 回應格式異常或無文字內容: {result}")
+            fallback_response_str = '[{"type": "text", "content": "咪...小雲好像有點聽不懂你在說什麼耶..."}, {"type": "sticker", "keyword": "思考"}]'
             if result.get("promptFeedback", {}).get("blockReason"):
                 block_reason = result['promptFeedback']['blockReason']
                 logger.error(f"Gemini API 請求因 {block_reason} 被阻擋。")
-                # ** CORRECTED LINE **
-                parse_response_and_send('[{"type": "text", "content": "咪...小雲好像不能說這個耶...（被星星眼電波干擾了）"}, {"type": "sticker", "keyword": "無奈"}]', event.reply_token)
-                add_to_conversation(user_id, final_user_message_for_gemini, '[{"type": "text", "content": "[Blocked by API]"}]')
-                return
-            raise Exception("Gemini API 回應格式異常或沒有候選回應")
+                fallback_response_str = '[{"type": "text", "content": "咪...小雲好像不能說這個耶...（被星星眼電波干擾了）"}, {"type": "sticker", "keyword": "無奈"}]'
+            # Add the user message and this fallback to conversation history
+            add_to_conversation(user_id, final_user_message_for_gemini, fallback_response_str)
+            parse_response_and_send(fallback_response_str, event.reply_token)
+            return # Ensure we return after handling this error case
         
-        ai_response_json_str = result["candidates"][0]["content"]["parts"][0]["text"] 
-        add_to_conversation(user_id, final_user_message_for_gemini, ai_response_json_str) 
-        
+        ai_response_json_str = result["candidates"][0]["content"]["parts"][0]["text"]
+        add_to_conversation(user_id, final_user_message_for_gemini, ai_response_json_str)
         logger.info(f"小雲 JSON 回覆({user_id})：{ai_response_json_str}")
         parse_response_and_send(ai_response_json_str, event.reply_token)
 
@@ -1214,10 +1257,10 @@ def handle_text_message(event):
     except requests.exceptions.HTTPError as http_err:
         logger.error(f"Gemini API HTTP 錯誤 (針對 user_id: {user_id}): {http_err} - Response: {http_err.response.text if http_err.response else 'No response text'}")
         parse_response_and_send('[{"type": "text", "content": "咪～小雲的網路好像不太好..."}, {"type": "sticker", "keyword": "思考"}]', event.reply_token)
-    except requests.exceptions.RequestException as req_err: 
+    except requests.exceptions.RequestException as req_err:
         logger.error(f"Gemini API 請求錯誤 (針對 user_id: {user_id}): {req_err}")
         parse_response_and_send('[{"type": "text", "content": "咪～小雲好像連不上線耶..."}, {"type": "sticker", "keyword": "哭哭"}]', event.reply_token)
-    except Exception as e: 
+    except Exception as e:
         logger.error(f"處理文字訊息時發生錯誤 (針對 user_id: {user_id}): {e}", exc_info=True)
         parse_response_and_send('[{"type": "text", "content": "喵嗚～小雲今天頭腦不太靈光..."}, {"type": "sticker", "keyword": "無奈"}]', event.reply_token)
 
@@ -1237,28 +1280,28 @@ def handle_image_message(event):
     headers = {"Content-Type": "application/json"}
     gemini_url_with_key = f"{GEMINI_API_URL}?key={GEMINI_API_KEY}"
 
-    time_context_prompt = get_time_based_cat_context().replace("用戶說： ", "") 
+    time_context_prompt = get_time_based_cat_context().replace("用戶說： ", "")
     image_user_prompt = (
-        f"{time_context_prompt}" 
+        f"{time_context_prompt}"
         "你傳了一張圖片給小雲看。請小雲用他害羞、有禮貌又好奇的貓咪個性自然地回應這張圖片。\n"
         "你的回應必須是**一個JSON格式的字串**，代表一個包含1到5個訊息物件的列表。\n"
         "可以包含文字、最多1個貼圖。**不要嘗試自己生成圖片。**\n"
         "**重要：小雲是隻貓，他不認識圖片中的名人、文字或複雜概念，請讓他的回應符合貓的認知。**"
     )
-    
+
     user_parts_for_gemini = [
         {"text": image_user_prompt},
-        {"inline_data": {"mime_type": "image/jpeg", "data": image_base64}} 
+        {"inline_data": {"mime_type": "image/jpeg", "data": image_base64}}
     ]
     conversation_history_for_payload.append({"role": "user", "parts": user_parts_for_gemini})
-    
+
     payload = {
         "contents": conversation_history_for_payload,
-        "generationConfig": {"temperature": TEMPERATURE, "maxOutputTokens": 600} 
+        "generationConfig": {"temperature": TEMPERATURE, "maxOutputTokens": 600}
     }
 
     try:
-        response = requests.post(gemini_url_with_key, headers=headers, json=payload, timeout=45) 
+        response = requests.post(gemini_url_with_key, headers=headers, json=payload, timeout=45)
         response.raise_for_status()
         result = response.json()
         if "candidates" not in result or not result["candidates"] or \
@@ -1270,14 +1313,13 @@ def handle_image_message(event):
             if result.get("promptFeedback", {}).get("blockReason"):
                 block_reason = result['promptFeedback']['blockReason']
                 logger.error(f"Gemini API 圖片請求因 {block_reason} 被阻擋。")
-                # ** CORRECTED LINE **
                 parse_response_and_send('[{"type": "text", "content": "咪...小雲好像不能看這張圖片耶...（被神秘力量遮住眼睛了）"}, {"type": "sticker", "keyword": "害羞"}]', event.reply_token)
                 add_to_conversation(user_id, "[使用者傳來了一張圖片，但被API阻擋]", '[{"type": "text", "content": "[Blocked by API]"}]', "image")
                 return
             raise Exception("Gemini API 圖片回應格式異常或沒有候選回應")
-        
+
         ai_response_json_str = result["candidates"][0]["content"]["parts"][0]["text"]
-        add_to_conversation(user_id, "[使用者傳來了一張圖片]", ai_response_json_str, "image")
+        add_to_conversation(user_id, "[使用者傳來了一張圖片]", ai_response_json_str, "image") # Log entry for image
         logger.info(f"小雲 JSON 回覆({user_id})圖片訊息：{ai_response_json_str}")
         parse_response_and_send(ai_response_json_str, event.reply_token)
 
@@ -1287,7 +1329,7 @@ def handle_image_message(event):
     except requests.exceptions.HTTPError as http_err:
         logger.error(f"Gemini API 圖片請求 HTTP 錯誤 (user_id: {user_id}): {http_err} - Response: {http_err.response.text if http_err.response else 'No response text'}")
         parse_response_and_send('[{"type": "text", "content": "咪～這張圖片讓小雲看得眼睛花花的..."}, {"type": "sticker", "keyword": "思考"}]', event.reply_token)
-    except Exception as e: 
+    except Exception as e:
         logger.error(f"處理圖片訊息時發生錯誤 (user_id: {user_id}): {e}", exc_info=True)
         parse_response_and_send('[{"type": "text", "content": "喵嗚～這圖片是什麼東東？小雲看不懂啦！"}, {"type": "sticker", "keyword": "無奈"}]', event.reply_token)
 
@@ -1302,10 +1344,10 @@ def handle_sticker_message(event):
     conversation_history_for_payload = get_conversation_history(user_id).copy()
     headers = {"Content-Type": "application/json"}
     gemini_url_with_key = f"{GEMINI_API_URL}?key={GEMINI_API_KEY}"
-    
+
     sticker_image_base64 = get_sticker_image_from_cdn(package_id, sticker_id)
-    user_message_log_for_history_entry = "" 
-    
+    user_message_log_for_history_entry = ""
+
     time_context_prompt = get_time_based_cat_context().replace("用戶說： ", "")
     base_prompt = (
         f"{time_context_prompt}"
@@ -1322,15 +1364,15 @@ def handle_sticker_message(event):
         user_prompt_text = base_prompt + "這是使用者傳來的貼圖，請你理解它的意思並回應："
         user_parts_for_gemini.extend([
             {"text": user_prompt_text},
-            {"inline_data": {"mime_type": "image/png", "data": sticker_image_base64}} 
+            {"inline_data": {"mime_type": "image/png", "data": sticker_image_base64}}
         ])
         user_message_log_for_history_entry = f"[使用者傳了貼圖 (ID: {package_id}-{sticker_id}, 嘗試視覺辨識)]"
-    else: 
+    else:
         emotion_or_meaning = get_sticker_emotion(package_id, sticker_id)
         user_prompt_text = base_prompt + f"這個貼圖我們已經知道它大致的意思是：「{emotion_or_meaning}」。請針對這個意思回應。"
         user_parts_for_gemini.append({"text": user_prompt_text})
         user_message_log_for_history_entry = f"[使用者傳了貼圖 (ID: {package_id}-{sticker_id}, 預定義意義: {emotion_or_meaning})]"
-    
+
     conversation_history_for_payload.append({"role": "user", "parts": user_parts_for_gemini})
     payload = {
         "contents": conversation_history_for_payload,
@@ -1338,7 +1380,7 @@ def handle_sticker_message(event):
     }
 
     try:
-        response = requests.post(gemini_url_with_key, headers=headers, json=payload, timeout=45) 
+        response = requests.post(gemini_url_with_key, headers=headers, json=payload, timeout=45)
         response.raise_for_status()
         result = response.json()
         if "candidates" not in result or not result["candidates"] or \
@@ -1350,12 +1392,11 @@ def handle_sticker_message(event):
             if result.get("promptFeedback", {}).get("blockReason"):
                 block_reason = result['promptFeedback']['blockReason']
                 logger.error(f"Gemini API 貼圖請求因 {block_reason} 被阻擋。")
-                # ** CORRECTED LINE **
                 parse_response_and_send('[{"type": "text", "content": "咪...小雲好像不能理解這個貼圖耶...（被神秘電波影響了）"}, {"type": "sticker", "keyword": "思考"}]', event.reply_token)
                 add_to_conversation(user_id, user_message_log_for_history_entry, '[{"type": "text", "content": "[Blocked by API]"}]', "sticker")
                 return
             raise Exception("Gemini API 貼圖回應格式異常")
-        
+
         ai_response_json_str = result["candidates"][0]["content"]["parts"][0]["text"]
         add_to_conversation(user_id, user_message_log_for_history_entry, ai_response_json_str, "sticker")
         logger.info(f"小雲 JSON 回覆({user_id})貼圖訊息：{ai_response_json_str}")
@@ -1377,7 +1418,7 @@ def handle_audio_message(event):
     user_id = event.source.user_id
     message_id = event.message.id
     logger.info(f"收到來自({user_id})的語音訊息 (message_id: {message_id})")
-    
+
     audio_base64 = get_audio_content_from_line(message_id)
     if not audio_base64:
         parse_response_and_send('[{"type": "text", "content": "咪？小雲好像沒聽清楚耶...😿"}, {"type": "sticker", "keyword": "哭哭"}]', event.reply_token)
@@ -1386,7 +1427,7 @@ def handle_audio_message(event):
     conversation_history_for_payload = get_conversation_history(user_id).copy()
     headers = {"Content-Type": "application/json"}
     gemini_url_with_key = f"{GEMINI_API_URL}?key={GEMINI_API_KEY}"
-    
+
     time_context_prompt = get_time_based_cat_context().replace("用戶說： ", "")
     audio_user_prompt = (
         f"{time_context_prompt}"
@@ -1400,20 +1441,20 @@ def handle_audio_message(event):
         "你的目標是扮演一隻對各種聲音做出自然、可愛、真實貓咪反應的小雲。\n"
         "請針對現在收到的這段語音（以及你從中感知到的聲音特徵），給出小雲的JSON格式回應。"
     )
-    
+
     user_parts_for_gemini = [
         {"text": audio_user_prompt},
-        {"inline_data": {"mime_type": "audio/m4a", "data": audio_base64}} 
+        {"inline_data": {"mime_type": "audio/m4a", "data": audio_base64}}
     ]
     conversation_history_for_payload.append({"role": "user", "parts": user_parts_for_gemini})
-    
+
     payload = {
-        "contents": conversation_history_for_payload, 
+        "contents": conversation_history_for_payload,
         "generationConfig": {"temperature": TEMPERATURE, "maxOutputTokens": 500}
     }
 
     try:
-        response = requests.post(gemini_url_with_key, headers=headers, json=payload, timeout=45) 
+        response = requests.post(gemini_url_with_key, headers=headers, json=payload, timeout=45)
         response.raise_for_status()
         result = response.json()
         if "candidates" not in result or not result["candidates"] or \
@@ -1425,12 +1466,11 @@ def handle_audio_message(event):
             if result.get("promptFeedback", {}).get("blockReason"):
                 block_reason = result['promptFeedback']['blockReason']
                 logger.error(f"Gemini API 語音請求因 {block_reason} 被阻擋。")
-                # ** CORRECTED LINE **
                 parse_response_and_send('[{"type": "text", "content": "咪...小雲的耳朵好像被什麼擋住了，聽不見這個聲音耶～"}, {"type": "sticker", "keyword": "疑惑"}]', event.reply_token)
                 add_to_conversation(user_id, "[使用者傳來了一段語音，但被API阻擋]", '[{"type": "text", "content": "[Blocked by API]"}]', "audio")
                 return
             raise Exception("Gemini API 語音回應格式異常")
-        
+
         ai_response_json_str = result["candidates"][0]["content"]["parts"][0]["text"]
         add_to_conversation(user_id, "[使用者傳來了一段語音訊息]", ai_response_json_str, "audio")
         logger.info(f"小雲 JSON 回覆({user_id})語音訊息：{ai_response_json_str}")
@@ -1456,7 +1496,7 @@ def handle_audio_message(event):
 def clear_memory_route(user_id):
     if user_id in conversation_memory:
         del conversation_memory[user_id]
-        if user_id in user_shared_secrets_indices: 
+        if user_id in user_shared_secrets_indices:
             del user_shared_secrets_indices[user_id]
         logger.info(f"已清除用戶 {user_id} 的對話記憶和秘密索引。")
         return f"已清除用戶 {user_id} 的對話記憶和秘密索引。"
@@ -1469,9 +1509,7 @@ def memory_status_route():
         last_interaction_summary = "無歷史或格式問題"
         if hist and isinstance(hist[-1].get("parts"), list) and hist[-1]["parts"] and isinstance(hist[-1]["parts"][0].get("text"), str):
             last_interaction_summary = hist[-1]["parts"][0]["text"][:100] + "..."
-        
         secrets_shared_count = len(user_shared_secrets_indices.get(uid, set()))
-        
         status["users_details"][uid] = {
             "conversation_entries": len(hist),
             "last_interaction_summary": last_interaction_summary,
