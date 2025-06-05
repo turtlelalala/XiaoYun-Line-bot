@@ -697,8 +697,8 @@ def get_sticker_image_from_cdn(package_id, sticker_id):
             else:
                 logger.warning(f"CDN URL {url} 返回的內容不是圖片，Content-Type: {content_type}")
         except requests.exceptions.RequestException as e:
-            logger.debug(f"從 CDN URL {url} 下載貼圖失敗: {e}") # Debug level for failed attempts on one URL
-        except Exception as e: # Catch any other error during processing
+            logger.debug(f"從 CDN URL {url} 下載貼圖失敗: {e}") 
+        except Exception as e: 
             logger.error(f"處理 CDN 下載貼圖時發生未知錯誤 for url {url}: {e}")
     logger.warning(f"無法從任何 CDN 網址下載貼圖圖片 package_id={package_id}, sticker_id={sticker_id}")
     return None
@@ -716,15 +716,13 @@ def select_sticker_by_keyword(keyword):
     if selected_options:
         return random.choice(selected_options)
     logger.warning(f"未找到關鍵字 '{keyword}' 對應的貼圖，將使用預設回退貼圖。")
-    # Fallback to common positive/neutral stickers
-    for fb_keyword in ["害羞", "思考", "好奇", "開心", "無奈", "OK", "撒嬌", "疑惑", "哭哭"]: # Ensure these exist in XIAOYUN_STICKERS
+    for fb_keyword in ["害羞", "思考", "好奇", "開心", "無奈", "OK", "撒嬌", "疑惑", "哭哭"]: 
         fb_options = XIAOYUN_STICKERS.get(fb_keyword, [])
         if fb_options:
             logger.info(f"使用回退貼圖關鍵字 '{fb_keyword}' for original '{keyword}'.")
             return random.choice(fb_options)
-    # Absolute fallback if even primary fallbacks are missing (should not happen with good config)
     logger.error(f"連基本的回退貼圖都未在貼圖配置中找到 (tried for '{keyword}')，使用硬編碼的最終回退貼圖。")
-    return {"package_id": "11537", "sticker_id": "52002747"} # Default: Shy Tuxedo Cat
+    return {"package_id": "11537", "sticker_id": "52002747"} 
 
 def _clean_trailing_symbols(text: str) -> str:
     text = text.strip()
@@ -766,7 +764,7 @@ def parse_response_and_send(gemini_json_string_response: str, reply_token: str):
 
             if msg_type == "text":
                 content = obj.get("content", "")
-                if content.strip(): # Ensure content is not just whitespace
+                if content.strip(): 
                     final_message_object_list.append(TextSendMessage(text=_clean_trailing_symbols(content)))
                 else:
                     logger.warning(f"Text 訊息物件 (索引 {obj_idx}) content 為空或僅包含空白，已忽略。")
@@ -788,19 +786,18 @@ def parse_response_and_send(gemini_json_string_response: str, reply_token: str):
                 if media_counts["image"] < 1:
                     english_theme = obj.get("theme")
                     if english_theme and english_theme.strip():
-                        image_url_info = fetch_cat_image_from_unsplash_sync(english_theme) # Default max_candidates and per_page
+                        image_url_info = fetch_cat_image_from_unsplash_sync(english_theme) 
                         actual_image_url = image_url_info[0]
                         if actual_image_url:
                             final_message_object_list.append(ImageSendMessage(
                                 original_content_url=actual_image_url,
-                                preview_image_url=actual_image_url # Using same for preview
+                                preview_image_url=actual_image_url 
                             ))
                             media_counts["image"] += 1
                             logger.info(f"成功獲取並驗證圖片，主題: '{english_theme}', URL: {actual_image_url}")
                         else:
                             logger.warning(f"未能為英文主題 '{english_theme}' 找到合適圖片。")
-                            # Fallback message if image cannot be found
-                            display_name_for_fallback = obj.get("description_zh", image_url_info[1]) # Use Gemini's zh desc or the theme
+                            display_name_for_fallback = obj.get("description_zh", image_url_info[1]) 
                             final_message_object_list.append(TextSendMessage(
                                 text=_clean_trailing_symbols(f"（小雲努力想了想關於「{display_name_for_fallback}」的樣子，但好像看得不是很清楚耶...）")
                             ))
@@ -809,7 +806,7 @@ def parse_response_and_send(gemini_json_string_response: str, reply_token: str):
                         final_message_object_list.append(TextSendMessage(text=_clean_trailing_symbols("（小雲想給你看圖片，但不知道要看什麼耶...）")))
                 else:
                     logger.warning(f"已達到圖片數量上限 (1)，忽略此圖片請求 (索引 {obj_idx})。")
-            elif msg_type == "image_key": # For predefined images
+            elif msg_type == "image_key": 
                 if media_counts["image"] < 1:
                     key = obj.get("key")
                     if key:
@@ -829,9 +826,9 @@ def parse_response_and_send(gemini_json_string_response: str, reply_token: str):
                     sound_keyword = obj.get("sound")
                     if sound_keyword:
                         sound_info = MEOW_SOUNDS_MAP.get(sound_keyword)
-                        if sound_info and BASE_URL and BASE_URL.strip(): # Ensure BASE_URL is valid
+                        if sound_info and BASE_URL and BASE_URL.strip(): 
                             audio_url = f"{BASE_URL.rstrip('/')}/static/audio/meows/{sound_info['file']}"
-                            duration_ms = sound_info.get("duration", 1000) # Default duration if not specified
+                            duration_ms = sound_info.get("duration", 1000) 
                             final_message_object_list.append(AudioSendMessage(original_content_url=audio_url, duration=duration_ms))
                             media_counts["sound"] += 1
                         elif not sound_info:
@@ -846,30 +843,28 @@ def parse_response_and_send(gemini_json_string_response: str, reply_token: str):
                 logger.warning(f"未知的訊息物件類型: {msg_type} (索引 {obj_idx})，已忽略。")
 
         messages_to_send = final_message_object_list
-        if not messages_to_send: # If all objects were invalid or filtered out
+        if not messages_to_send: 
              logger.warning("經JSON解析後無有效訊息可發送。發送預設訊息。")
              messages_to_send = [TextSendMessage(text=_clean_trailing_symbols("咪...小雲好像不知道該說什麼了..."))]
 
     except json.JSONDecodeError as json_err:
         logger.error(f"解析 Gemini 的 JSON 回應失敗: {json_err}. 回應原文: {gemini_json_string_response[:500]}...")
         messages_to_send = [TextSendMessage(text=_clean_trailing_symbols("咪...小雲說話打結了，聽不懂它在喵什麼..."))]
-    except ValueError as val_err: # Catch specific errors from our logic
+    except ValueError as val_err: 
         logger.error(f"處理 Gemini 回應時發生 Value 錯誤: {val_err}")
         messages_to_send = [TextSendMessage(text=_clean_trailing_symbols("咪...小雲好像有點 confused...不知道怎麼表達了。"))]
-    except Exception as e: # Generic fallback for unexpected errors
+    except Exception as e: 
         logger.error(f"解析或處理 Gemini JSON 時發生未知錯誤: {e}", exc_info=True)
         messages_to_send = [TextSendMessage(text=_clean_trailing_symbols("喵嗚！小雲的腦袋當機了！需要拍拍！"))]
 
-    # Final attempt to send messages to LINE
     try:
         if messages_to_send:
             line_bot_api.reply_message(reply_token, messages_to_send)
-        else: # Should not be reached if above fallback works, but as a safeguard
+        else: 
             logger.error("最終無訊息可發送 (可能解析完全失敗或列表為空)。發送預設訊息。")
             line_bot_api.reply_message(reply_token, [TextSendMessage(text=_clean_trailing_symbols("咪...（小雲好像有點詞窮了）"))])
-    except Exception as e: # Error during LINE reply
+    except Exception as e: 
         logger.error(f"最終發送訊息到 LINE失敗: {e}", exc_info=True)
-        # Attempt to send a very basic error message if the main reply fails
         try:
             line_bot_api.reply_message(reply_token, [TextSendMessage(text=_clean_trailing_symbols("喵！小雲出錯了，請再試一次！"))])
         except Exception as e2:
@@ -1001,25 +996,123 @@ def handle_secret_discovery_template_request(event):
     secret_generation_prompt = f"""
 你現在是小雲，一隻害羞、溫和有禮、充滿好奇心且非常愛吃的賓士公貓。用戶剛剛觸發了「小雲的秘密/新發現 ✨」功能。
 請你為小雲創造一個全新的、今日的「小秘密」或「新發現」情節。
+**你需要先隨機決定這次要生成「秘密型」還是「新發現型」的內容。**
+
+**「秘密型」的風格參考：** 語氣通常比較調皮、害羞、或帶有撒嬌的感覺。是關於小雲自己偷偷做的小事情或內心的小九九。
+    *   例如：偷喝水、把主人的襪子藏起來、在主人的枕頭上滾來滾去睡著了、在門口裝睡不想讓主人出門、偷偷玩跑步機結果摔倒。
+
+**「新發現型」的風格參考：** 語氣通常比較好奇、帶有冒險精神、或像是在分析觀察某件事。是關於小雲對外界事物的觀察和發現。
+    *   例如：發現窗外的小蜥蜴、發現冰箱裡主人藏的零食、觀察到雨水嚐起來像主人洗完澡的味道、在床底發現可疑的毛球和石頭、被陽台上的大飛蟲嚇到、看到主人對別的動物笑而吃醋。
+
 你的回應必須是一個 JSON 物件，包含以下鍵值：
-- "location": (字串) 發現秘密的地點，例如 "🐱窗台秘密據點" 或 "床底下的神秘角落"。
+- "type": (字串) 必須是 "秘密型" 或 "新發現型" 其中之一，代表你這次選擇生成的風格。
+- "location": (字串) 發現秘密/事件的地點，例如 "🐱窗台秘密據點" 或 "床底下的神秘角落"。
 - "discovery_item": (字串) 發現的物品或事件，例如 "一根……疑似人類掉落的棒棒糖棍🍭（上面還有口水）" 或 "隔壁大黃狗偷偷藏的骨頭！"。
 - "reasoning": (字串) 小雲對此發現的可愛推理或反應，例如 "你是不是……在偷偷吃甜的都沒分我？(눈\_눈)" 或 "原來大黃也有小秘密喵！"。
 - "mood": (字串) 小雲描述的今日心情，例如 "記仇中（但會邊記邊撒嬌）" 或 "發現新大陸一樣興奮！"。
 - "unsplash_keyword": (字串) 一個與「discovery_item」或場景相關的、非常簡潔的 **2個單字英文 Unsplash 搜尋關鍵字** (例如 "candy stick", "dog bone", "shiny feather")。這個關鍵字必須非常精準，以便找到相關的真實世界照片。
 - "message3_if_image": (字串) 如果之後成功根據 unsplash_keyword 找到了圖片，這段文字將作為貓咪對圖片的補充說明。內容應該像小雲在說：「你自己看看啦，我都拍下證據了欸！(咕嘟咕嘟喝水中…)」這樣帶有貓咪口吻、指向圖片的句子。
 
-請確保 JSON 格式正確，所有字串內容都使用繁體中文（台灣用語習慣）和小雲的口吻。
+**重要指令：**
+1.  **請務必先在心中隨機選擇「秘密型」或「新發現型」，然後根據該類型特有的風格和語氣，創造一個「全新的」情節。絕對不要直接使用或微改下方提供的範例。**
+2.  JSON 物件中的所有字串內容都必須使用**繁體中文（台灣用語習慣）**和小雲的口吻。
+3.  確保 JSON 格式正確無誤。
 
-JSON 範例:
-{{
-  "location": "沙發縫隙裡",
-  "discovery_item": "一片被遺忘的貓咪小餅乾！🍪",
-  "reasoning": "一定是哪個小健忘掉的... 那我就不客氣了喵！嘿嘿～",
-  "mood": "尋寶成功，心滿意足！(嚼嚼)",
-  "unsplash_keyword": "cat treat",
-  "message3_if_image": "看嘛看嘛～這就是本喵找到的寶藏！香噴噴的喔！"
-}}
+**以下是更詳細的風格範例，僅供你理解風格，請勿直接使用：**
+
+--- 範例：秘密型 ---
+1. 偷喝水
+   - type: "秘密型"
+   - location: 你的水杯旁邊
+   - discovery_item: 你杯子裡的水比我的甜好多！
+   - reasoning: 是不是你偷偷加了愛？不然怎麼會這麼好喝 >///<
+   - mood: 想再偷喝一口（但你要裝作沒看到喔）
+   - unsplash_keyword: "water glass"
+   - message3_if_image: "就是這個杯杯！裡面的水特別好喝！"
+2. 襪子藏起來
+   - type: "秘密型"
+   - location: 沙發底下
+   - discovery_item: 你的襪子（已叼走收藏）
+   - reasoning: 因為有你的味道……我不想別人也聞到 >////<
+   - mood: 獨佔慾爆棚（但還是會還你啦）
+   - unsplash_keyword: "sock hidden"
+   - message3_if_image: "看！我把它藏得很好吧！不准拿走！"
+3. 枕頭滾到睡著
+   - type: "秘密型"
+   - location: 你的枕頭上
+   - discovery_item: 一整片超香超軟的你味道
+   - reasoning: 我滾著滾著就睡著了…你枕頭是不是有催眠魔法？
+   - mood: 幸福到呼嚕呼嚕
+   - unsplash_keyword: "cat pillow"
+   - message3_if_image: "你看～你的枕頭最好睡了喵～"
+4. 門口裝睡不讓你走
+   - type: "秘密型"
+   - location: 大門口
+   - discovery_item: 我裝睡的技巧已升級Lv.3
+   - reasoning: 你差點出不了門，計畫成功😼
+   - mood: 賴著你不想放你走（快抱我一下）
+   - unsplash_keyword: "cat doorway"
+   - message3_if_image: "哼哼～差一點點你就被我擋住了！"
+5. 玩跑步機
+   - type: "秘密型"
+   - location: 跑步機
+   - discovery_item: 它居然可以當溜滑梯玩！？
+   - reasoning: 雖然第五次摔了個屁股開花……但我還是覺得好好玩！
+   - mood: 開心但尾巴痛（你不在，所以沒被罵！嘿嘿）
+   - unsplash_keyword: "cat treadmill"
+   - message3_if_image: "就是這個！超好玩的啦！（雖然有點痛痛的…）"
+
+--- 範例：新發現型 ---
+6. 灰蜥蜴
+   - type: "新發現型"
+   - location: 窗台外面的小陽台角落
+   - discovery_item: 一隻超級靈活的小灰蜥蜴
+   - reasoning: 雖然牠跑超快，但我已鎖定牠下次會來的時間…等我喔！
+   - mood: 獵人模式啟動（請為我加油！）
+   - unsplash_keyword: "small lizard"
+   - message3_if_image: "你看！牠是不是很快！下次我一定抓到！"
+7. 冰箱發現零食
+   - type: "新發現型"
+   - location: 冰箱最上層！
+   - discovery_item: 你偷偷藏起來的零食！！
+   - reasoning: 你居然沒分我，太過分了(˃̣̣̥A˂̣̣̥)
+   - mood: 委屈委屈蹭你（要補償我三口喔）
+   - unsplash_keyword: "hidden snacks"
+   - message3_if_image: "證據確鑿！你還敢說沒有偷藏零食！"
+8. 下雨水好香
+   - type: "新發現型"
+   - location: 陽台
+   - discovery_item: 幾滴新鮮雨水
+   - reasoning: 舔起來香香的，跟你洗完澡的味道好像喵……你是不是雨做的？
+   - mood: 戀愛腦開啟（好想蹭你一臉）
+   - unsplash_keyword: "rain puddle"
+   - message3_if_image: "就是這個水！聞起來跟你好像喔！"
+9. 床底毛球石頭
+   - type: "新發現型"
+   - location: 床底
+   - discovery_item: 一顆毛球＋兩顆神秘小石頭
+   - reasoning: 你是不是…偷養別人家的貓？！(งΦ皿Φ)ง
+   - mood: 吃醋小貓咪（快來解釋清楚）
+   - unsplash_keyword: "dust bunny"
+   - message3_if_image: "你看看這個！床底下怎麼會有這些東西！說！"
+10. 超大飛蟲
+    - type: "新發現型"
+    - location: 陽台角落
+    - discovery_item: 一隻超大會飛的怪蟲！
+    - reasoning: 牠飛過來我就啊啊啊跳下來惹！！你去幫我看牠走了沒啦QAQ
+    - mood: 驚嚇＋黏人（現在我需要一點安慰）
+    - unsplash_keyword: "large moth"
+    - message3_if_image: "嗚嗚嗚…就是那個大蟲蟲嚇到我了啦！"
+11. 對狗狗笑、生氣踢襪子
+    - type: "新發現型"
+    - location: 窗邊
+    - discovery_item: 你對那隻狗狗笑得好開心……
+    - reasoning: 所以我踢翻了你剛疊好的襪子。哼！
+    - mood: 有點醋（但你抱我我就原諒你）
+    - unsplash_keyword: "smiling at dog"
+    - message3_if_image: "哼！你就是這樣對牠笑的！我不開心！"
+
+請嚴格按照上述 JSON 格式，並根據隨機選擇的類型（秘密型/新發現型）創造全新的內容。
 """
     conversation_history_for_secret_template.append({"role": "user", "parts": [{"text": secret_generation_prompt}]})
     
@@ -1028,7 +1121,7 @@ JSON 範例:
     
     payload = {
         "contents": conversation_history_for_secret_template,
-        "generationConfig": {"temperature": TEMPERATURE + 0.05, "maxOutputTokens": 800, "response_mime_type": "application/json"}, 
+        "generationConfig": {"temperature": TEMPERATURE + 0.1, "maxOutputTokens": 1200, "response_mime_type": "application/json"}, 
     }
 
     messages_to_send = []
@@ -1052,9 +1145,12 @@ JSON 範例:
                 
                 parsed_secret_data = json.loads(gemini_response_text.strip())
                 
-                if not all(key in parsed_secret_data for key in ["location", "discovery_item", "reasoning", "mood", "unsplash_keyword", "message3_if_image"]):
+                if not all(key in parsed_secret_data for key in ["type", "location", "discovery_item", "reasoning", "mood", "unsplash_keyword", "message3_if_image"]):
                     logger.error(f"Gemini 回應的 JSON 缺少必要鍵值: {parsed_secret_data}")
                     raise ValueError("Missing keys in parsed secret data from Gemini.")
+                if parsed_secret_data.get("type") not in ["秘密型", "新發現型"]:
+                    logger.error(f"Gemini 回應的 JSON type 不正確: {parsed_secret_data.get('type')}")
+                    raise ValueError("Invalid 'type' in parsed secret data from Gemini.")
 
             except json.JSONDecodeError as json_err:
                 logger.error(f"解析 Gemini 的秘密模板 JSON 回應失敗: {json_err}. 回應原文: {gemini_response_text[:500]}...")
@@ -1089,7 +1185,7 @@ JSON 範例:
         msg1_content = f"""🎁【今日的機密寶箱已開啟】
 
 小雲蹦蹦跳跳地跑來，把一張皺皺的紙條拍在你胸口上：
-✉️「這是我今天的祕密發現啦喵！」
+✉️「這是我今天的{parsed_secret_data.get("type","祕密發現")}啦喵！」
 
 🐾 地點：{parsed_secret_data.get("location", "一個神秘的地方")}
 🐾 發現物：{parsed_secret_data.get("discovery_item", "一個神奇的東西")}
@@ -1129,7 +1225,7 @@ JSON 範例:
         messages_to_send.append(TextSendMessage(text=msg4_content))
 
         try:
-            log_summary_for_secret = f"[秘密模板觸發]\n地點: {parsed_secret_data.get('location')}\n發現: {parsed_secret_data.get('discovery_item')}\n圖片: {'有' if image_sent_flag else '無'}"
+            log_summary_for_secret = f"[秘密模板觸發 - {parsed_secret_data.get('type')}]\n地點: {parsed_secret_data.get('location')}\n發現: {parsed_secret_data.get('discovery_item')}\n圖片: {'有' if image_sent_flag else '無'}"
             bot_response_summary_for_log = f"訊息1: {msg1_content[:50]}...\n圖片: {image_url if image_url else '無'}\n訊息3: {msg3_content}\n訊息4: ..."
             add_to_conversation(user_id, log_summary_for_secret, bot_response_summary_for_log, "secret_template_response")
             line_bot_api.reply_message(reply_token, messages_to_send)
@@ -1146,7 +1242,7 @@ JSON 範例:
 def handle_interactive_scenario_request(event):
     user_id = event.source.user_id
     reply_token = event.reply_token
-    global user_scenario_context # Declare usage of global variable
+    global user_scenario_context 
     
     logger.info(f"開始為 User ID ({user_id}) 生成互動情境模板。")
 
@@ -1273,16 +1369,14 @@ def handle_interactive_scenario_request(event):
 
     if generated_scenario_text:
         messages_to_send.append(TextSendMessage(text=generated_scenario_text.strip()))
-        # Store context for follow-up
         user_scenario_context[user_id] = {
             "last_scenario_text": generated_scenario_text.strip(),
             "last_scenario_sticker": sticker_keyword_from_gemini 
         }
     else: 
         messages_to_send.append(TextSendMessage(text="咪？你想跟小雲說什麼呀？"))
-        if user_id in user_scenario_context: # Clear context if we can't even send a scenario
+        if user_id in user_scenario_context: 
             del user_scenario_context[user_id]
-
 
     selected_sticker = select_sticker_by_keyword(sticker_keyword_from_gemini)
     messages_to_send.append(StickerSendMessage(
@@ -1298,7 +1392,7 @@ def handle_interactive_scenario_request(event):
         logger.info(f"成功發送小雲互動情境模板給 User ID ({user_id})")
     except Exception as final_send_err:
         logger.error(f"最終發送互動情境訊息到 LINE 失敗 ({user_id}): {final_send_err}", exc_info=True)
-        if user_id in user_scenario_context: # Clear context if send fails
+        if user_id in user_scenario_context: 
             del user_scenario_context[user_id]
         try:
             line_bot_api.reply_message(reply_token, TextSendMessage(text="咪...小雲好像說話打結了..."))
@@ -1330,7 +1424,7 @@ def callback():
 def handle_text_message(event):
     user_message = event.message.text
     user_id = event.source.user_id
-    global user_scenario_context # Ensure we can modify it
+    global user_scenario_context 
 
     TRIGGER_TEXT_GET_STATUS = "小雲狀態喵？ฅ^•ﻌ•^ฅ"
     TRIGGER_TEXT_FEED_XIAOYUN_TEMPLATE = "餵小雲點心🐟 🍖"
@@ -1559,12 +1653,11 @@ def handle_text_message(event):
             parse_response_and_send('[{"type": "text", "content": "咪...網路慢吞吞，點心都涼了..."}]', event.reply_token)
         return
     
-    # --- Handle follow-up for interactive scenario ---
-    # Check if the user message is a number and if there's an active scenario for this user
+    # --- Handle follow-up for interactive scenario (優先於一般文字處理) ---
     if user_message.strip().isdigit() and user_id in user_scenario_context:
         logger.info(f"User ID ({user_id}) 回應了互動情境的選項: {user_message}")
         
-        scenario_info = user_scenario_context.pop(user_id) # Get and remove context
+        scenario_info = user_scenario_context.pop(user_id) 
         original_scenario_text = scenario_info.get("last_scenario_text", "先前的一個情境")
         
         follow_up_prompt = f"""
@@ -1601,9 +1694,8 @@ def handle_text_message(event):
         except Exception as e:
             logger.error(f"處理互動情境後續時發生錯誤: {e}", exc_info=True)
             parse_response_and_send('[{"type": "text", "content": "喵嗚～小雲的腦袋好像短路了..."}, {"type": "sticker", "keyword": "無奈"}]', event.reply_token)
-        return # Important: Return after handling this specific type of follow-up
+        return 
 
-    # --- If no specific command matched, proceed with normal text message handling ---
     logger.info(f"收到來自 User ID ({user_id}) 的一般文字訊息：{user_message}")
 
     trigger_keywords = ["秘密", "發現"]
@@ -1937,13 +2029,12 @@ def handle_audio_message(event):
 def clear_memory_route(user_id):
     if user_id in conversation_memory:
         del conversation_memory[user_id]
-        if user_id in user_shared_secrets_indices:
-            del user_shared_secrets_indices[user_id]
-        if user_id in user_scenario_context: # Clear scenario context too
-            del user_scenario_context[user_id]
-        logger.info(f"已清除用戶 {user_id} 的對話記憶、秘密索引和互動情境。")
-        return f"已清除用戶 {user_id} 的對話記憶、秘密索引和互動情境。"
-    return f"用戶 {user_id} 沒有對話記憶可清除。"
+    if user_id in user_shared_secrets_indices:
+        del user_shared_secrets_indices[user_id]
+    if user_id in user_scenario_context: 
+        del user_scenario_context[user_id]
+    logger.info(f"已清除用戶 {user_id} 的對話記憶、秘密索引和互動情境。")
+    return f"已清除用戶 {user_id} 的對話記憶、秘密索引和互動情境。"
 
 @app.route("/memory_status", methods=["GET"])
 def memory_status_route():
