@@ -536,11 +536,11 @@ def fetch_cat_image_from_unsplash_sync(english_theme_query: str, max_candidates_
         logger.warning("fetch_cat_image_from_unsplash_sync called with empty or blank english_theme_query.")
         return None, "an unspecified theme"
     
-    # Ensure the query is simple, ideally two words
-    # This is now more strictly enforced by the Gemini prompt for image_theme keywords
     query_words = english_theme_query.strip().split()
-    if len(query_words) != 2:
+    if len(query_words) != 2: # Check if keyword is exactly 2 words
         logger.warning(f"Unsplash query '{english_theme_query}' is not exactly 2 words as instructed for image_theme. Using as is, but results might vary.")
+        # Depending on strictness, you might choose to return None here or try with the given query
+        # For now, we'll proceed but log the warning.
     
     logger.info(f"開始從 Unsplash 搜尋圖片，英文主題: '{english_theme_query}' (max_candidates_to_check: {max_candidates_to_check}, unsplash_per_page: {unsplash_per_page})")
     api_url_search = f"https://api.unsplash.com/search/photos"
@@ -644,18 +644,33 @@ def get_conversation_history(user_id):
         ]
     return conversation_memory[user_id]
 
-def add_to_conversation(user_id, user_message_for_gemini, bot_response_json_str, message_type_for_log="text"):
+def add_to_conversation(user_id, user_message_for_gemini, bot_response_str, message_type_for_log="text"):
+    """
+    Adds messages to the conversation history.
+    bot_response_str can be a JSON string (for parse_response_and_send) 
+    or a plain text string (for direct text replies like status template).
+    """
     conversation_history = get_conversation_history(user_id)
+    
+    # For user message, always wrap in a parts list with a text object
     user_parts = [{"text": user_message_for_gemini if isinstance(user_message_for_gemini, str) else json.dumps(user_message_for_gemini, ensure_ascii=False)}]
-    model_parts = [{"text": bot_response_json_str if isinstance(bot_response_json_str, str) else json.dumps(bot_response_json_str, ensure_ascii=False)}]
+    
+    # For bot response, if it's not already a JSON string representing a list of message objects
+    # (like direct text from status template), we should log it as a simple text part.
+    # If it IS a JSON string of message objects (from parse_response_and_send or similar),
+    # we log it as is, because Gemini expects model responses in that format.
+    model_parts = [{"text": bot_response_str}] # Gemini expects text part for model
 
     conversation_history.extend([
         {"role": "user", "parts": user_parts},
         {"role": "model", "parts": model_parts}
     ])
-    if len(conversation_history) > (2 + 20 * 2): 
+    
+    if len(conversation_history) > (2 + 20 * 2): # Keep role prompt + last 20 turns (40 entries)
         conversation_history = conversation_history[:2] + conversation_history[-(20*2):]
     conversation_memory[user_id] = conversation_history
+    logger.debug(f"Added to conversation for {user_id}. Type: {message_type_for_log}. History length: {len(conversation_memory[user_id])}")
+
 
 def get_image_from_line(message_id):
     try:
@@ -871,11 +886,6 @@ def parse_response_and_send(gemini_json_string_response: str, reply_token: str):
             logger.error(f"連備用錯誤訊息都發送失敗: {e2}")
 
 def handle_cat_secret_discovery_request(event):
-    """
-    Handles requests for Xiaoyun's secrets/discoveries when triggered by natural language
-    or a generic Rich Menu command that expects a JSON list response.
-    This is the ORIGINAL secret handler.
-    """
     user_id = event.source.user_id
     user_input_message = event.message.text
 
@@ -996,16 +1006,16 @@ def handle_secret_discovery_template_request(event):
     secret_generation_prompt = f"""
 你現在是小雲，一隻害羞、溫和有禮、充滿好奇心且非常愛吃的賓士公貓。用戶剛剛觸發了「小雲的秘密/新發現 ✨」功能。
 請你為小雲創造一個全新的、今日的「小秘密」或「新發現」情節。
-**你需要先隨機決定這次要生成「秘密型」還是「新發現型」的內容。**
+**你需要先隨機決定這次要生成「秘密」還是「新發現」的內容。**
 
-**「秘密型」的風格參考：** 語氣通常比較調皮、害羞、或帶有撒嬌的感覺。是關於小雲自己偷偷做的小事情或內心的小九九。
+**「秘密」的風格參考：** 語氣通常比較調皮、害羞、或帶有撒嬌的感覺。是關於小雲自己偷偷做的小事情或內心的小九九。
     *   例如：偷喝水、把主人的襪子藏起來、在主人的枕頭上滾來滾去睡著了、在門口裝睡不想讓主人出門、偷偷玩跑步機結果摔倒。
 
-**「新發現型」的風格參考：** 語氣通常比較好奇、帶有冒險精神、或像是在分析觀察某件事。是關於小雲對外界事物的觀察和發現。
+**「新發現」的風格參考：** 語氣通常比較好奇、帶有冒險精神、或像是在分析觀察某件事。是關於小雲對外界事物的觀察和發現。
     *   例如：發現窗外的小蜥蜴、發現冰箱裡主人藏的零食、觀察到雨水嚐起來像主人洗完澡的味道、在床底發現可疑的毛球和石頭、被陽台上的大飛蟲嚇到、看到主人對別的動物笑而吃醋。
 
 你的回應必須是一個 JSON 物件，包含以下鍵值：
-- "type": (字串) 必須是 "秘密型" 或 "新發現型" 其中之一，代表你這次選擇生成的風格。
+- "type": (字串) 必須是 "秘密" 或 "新發現" 其中之一，代表你這次選擇生成的風格。
 - "location": (字串) 發現秘密/事件的地點，例如 "🐱窗台秘密據點" 或 "床底下的神秘角落"。
 - "discovery_item": (字串) 發現的物品或事件，例如 "一根……疑似人類掉落的棒棒糖棍🍭（上面還有口水）" 或 "隔壁大黃狗偷偷藏的骨頭！"。
 - "reasoning": (字串) 小雲對此發現的可愛推理或反應，例如 "你是不是……在偷偷吃甜的都沒分我？(눈\_눈)" 或 "原來大黃也有小秘密喵！"。
@@ -1014,15 +1024,15 @@ def handle_secret_discovery_template_request(event):
 - "message3_if_image": (字串) 如果之後成功根據 unsplash_keyword 找到了圖片，這段文字將作為貓咪對圖片的補充說明。內容應該像小雲在說：「你自己看看啦，我都拍下證據了欸！(咕嘟咕嘟喝水中…)」這樣帶有貓咪口吻、指向圖片的句子。
 
 **重要指令：**
-1.  **請務必先在心中隨機選擇「秘密型」或「新發現型」，然後根據該類型特有的風格和語氣，創造一個「全新的」情節。絕對不要直接使用或微改下方提供的範例。**
+1.  **請務必先在心中隨機選擇「秘密」或「新發現」，然後根據該類型特有的風格和語氣，創造一個「全新的」情節。絕對不要直接使用或微改下方提供的範例。**
 2.  JSON 物件中的所有字串內容都必須使用**繁體中文（台灣用語習慣）**和小雲的口吻。
 3.  確保 JSON 格式正確無誤。
 
 **以下是更詳細的風格範例，僅供你理解風格，請勿直接使用：**
 
---- 範例：秘密型 ---
+--- 範例：秘密 ---
 1. 偷喝水
-   - type: "秘密型"
+   - type: "秘密"
    - location: 你的水杯旁邊
    - discovery_item: 你杯子裡的水比我的甜好多！
    - reasoning: 是不是你偷偷加了愛？不然怎麼會這麼好喝 >///<
@@ -1030,7 +1040,7 @@ def handle_secret_discovery_template_request(event):
    - unsplash_keyword: "water glass"
    - message3_if_image: "就是這個杯杯！裡面的水特別好喝！"
 2. 襪子藏起來
-   - type: "秘密型"
+   - type: "秘密"
    - location: 沙發底下
    - discovery_item: 你的襪子（已叼走收藏）
    - reasoning: 因為有你的味道……我不想別人也聞到 >////<
@@ -1038,7 +1048,7 @@ def handle_secret_discovery_template_request(event):
    - unsplash_keyword: "sock hidden"
    - message3_if_image: "看！我把它藏得很好吧！不准拿走！"
 3. 枕頭滾到睡著
-   - type: "秘密型"
+   - type: "秘密"
    - location: 你的枕頭上
    - discovery_item: 一整片超香超軟的你味道
    - reasoning: 我滾著滾著就睡著了…你枕頭是不是有催眠魔法？
@@ -1046,7 +1056,7 @@ def handle_secret_discovery_template_request(event):
    - unsplash_keyword: "cat pillow"
    - message3_if_image: "你看～你的枕頭最好睡了喵～"
 4. 門口裝睡不讓你走
-   - type: "秘密型"
+   - type: "秘密"
    - location: 大門口
    - discovery_item: 我裝睡的技巧已升級Lv.3
    - reasoning: 你差點出不了門，計畫成功😼
@@ -1054,7 +1064,7 @@ def handle_secret_discovery_template_request(event):
    - unsplash_keyword: "cat doorway"
    - message3_if_image: "哼哼～差一點點你就被我擋住了！"
 5. 玩跑步機
-   - type: "秘密型"
+   - type: "秘密"
    - location: 跑步機
    - discovery_item: 它居然可以當溜滑梯玩！？
    - reasoning: 雖然第五次摔了個屁股開花……但我還是覺得好好玩！
@@ -1062,9 +1072,9 @@ def handle_secret_discovery_template_request(event):
    - unsplash_keyword: "cat treadmill"
    - message3_if_image: "就是這個！超好玩的啦！（雖然有點痛痛的…）"
 
---- 範例：新發現型 ---
+--- 範例：新發現 ---
 6. 灰蜥蜴
-   - type: "新發現型"
+   - type: "新發現"
    - location: 窗台外面的小陽台角落
    - discovery_item: 一隻超級靈活的小灰蜥蜴
    - reasoning: 雖然牠跑超快，但我已鎖定牠下次會來的時間…等我喔！
@@ -1072,7 +1082,7 @@ def handle_secret_discovery_template_request(event):
    - unsplash_keyword: "small lizard"
    - message3_if_image: "你看！牠是不是很快！下次我一定抓到！"
 7. 冰箱發現零食
-   - type: "新發現型"
+   - type: "新發現"
    - location: 冰箱最上層！
    - discovery_item: 你偷偷藏起來的零食！！
    - reasoning: 你居然沒分我，太過分了(˃̣̣̥A˂̣̣̥)
@@ -1080,7 +1090,7 @@ def handle_secret_discovery_template_request(event):
    - unsplash_keyword: "hidden snacks"
    - message3_if_image: "證據確鑿！你還敢說沒有偷藏零食！"
 8. 下雨水好香
-   - type: "新發現型"
+   - type: "新發現"
    - location: 陽台
    - discovery_item: 幾滴新鮮雨水
    - reasoning: 舔起來香香的，跟你洗完澡的味道好像喵……你是不是雨做的？
@@ -1088,7 +1098,7 @@ def handle_secret_discovery_template_request(event):
    - unsplash_keyword: "rain puddle"
    - message3_if_image: "就是這個水！聞起來跟你好像喔！"
 9. 床底毛球石頭
-   - type: "新發現型"
+   - type: "新發現"
    - location: 床底
    - discovery_item: 一顆毛球＋兩顆神秘小石頭
    - reasoning: 你是不是…偷養別人家的貓？！(งΦ皿Φ)ง
@@ -1096,7 +1106,7 @@ def handle_secret_discovery_template_request(event):
    - unsplash_keyword: "dust bunny"
    - message3_if_image: "你看看這個！床底下怎麼會有這些東西！說！"
 10. 超大飛蟲
-    - type: "新發現型"
+    - type: "新發現"
     - location: 陽台角落
     - discovery_item: 一隻超大會飛的怪蟲！
     - reasoning: 牠飛過來我就啊啊啊跳下來惹！！你去幫我看牠走了沒啦QAQ
@@ -1104,7 +1114,7 @@ def handle_secret_discovery_template_request(event):
     - unsplash_keyword: "large moth"
     - message3_if_image: "嗚嗚嗚…就是那個大蟲蟲嚇到我了啦！"
 11. 對狗狗笑、生氣踢襪子
-    - type: "新發現型"
+    - type: "新發現"
     - location: 窗邊
     - discovery_item: 你對那隻狗狗笑得好開心……
     - reasoning: 所以我踢翻了你剛疊好的襪子。哼！
@@ -1112,7 +1122,7 @@ def handle_secret_discovery_template_request(event):
     - unsplash_keyword: "smiling at dog"
     - message3_if_image: "哼！你就是這樣對牠笑的！我不開心！"
 
-請嚴格按照上述 JSON 格式，並根據隨機選擇的類型（秘密型/新發現型）創造全新的內容。
+請嚴格按照上述 JSON 格式，並根據隨機選擇的類型（秘密/新發現）創造全新的內容。
 """
     conversation_history_for_secret_template.append({"role": "user", "parts": [{"text": secret_generation_prompt}]})
     
@@ -1148,7 +1158,7 @@ def handle_secret_discovery_template_request(event):
                 if not all(key in parsed_secret_data for key in ["type", "location", "discovery_item", "reasoning", "mood", "unsplash_keyword", "message3_if_image"]):
                     logger.error(f"Gemini 回應的 JSON 缺少必要鍵值: {parsed_secret_data}")
                     raise ValueError("Missing keys in parsed secret data from Gemini.")
-                if parsed_secret_data.get("type") not in ["秘密型", "新發現型"]:
+                if parsed_secret_data.get("type") not in ["秘密", "新發現"]:
                     logger.error(f"Gemini 回應的 JSON type 不正確: {parsed_secret_data.get('type')}")
                     raise ValueError("Invalid 'type' in parsed secret data from Gemini.")
 
@@ -1201,12 +1211,10 @@ def handle_secret_discovery_template_request(event):
         unsplash_keyword = parsed_secret_data.get("unsplash_keyword")
 
         if unsplash_keyword and isinstance(unsplash_keyword, str) and unsplash_keyword.strip():
-            # Ensure keyword is roughly 2 words for Unsplash, though Gemini prompt is primary control
             keyword_parts = unsplash_keyword.strip().split()
             if len(keyword_parts) != 2:
-                logger.warning(f"Unsplash keyword from Gemini '{unsplash_keyword}' is not 2 words. Using as is or first two.")
-                # unsplash_keyword = " ".join(keyword_parts[:2]) # Optional: force to 2 words
-
+                logger.warning(f"Gemini提供的Unsplash關鍵字 '{unsplash_keyword}' 不是正好2個字。將嘗試使用。")
+            
             logger.info(f"為秘密發現 ({user_id}) 搜尋 Unsplash 圖片，關鍵字: '{unsplash_keyword}'")
             image_url_tuple = fetch_cat_image_from_unsplash_sync(unsplash_keyword.strip(), max_candidates_to_check=3, unsplash_per_page=5)
             image_url = image_url_tuple[0]
@@ -1231,10 +1239,15 @@ def handle_secret_discovery_template_request(event):
         messages_to_send.append(TextSendMessage(text=msg4_content))
 
         try:
-            log_summary_for_secret = f"[秘密模板觸發 - {parsed_secret_data.get('type')}]\n地點: {parsed_secret_data.get('location')}\n發現: {parsed_secret_data.get('discovery_item')}\n圖片: {'有' if image_sent_flag else '無'}"
-            bot_response_summary_for_log = f"訊息1: {msg1_content[:50]}...\n圖片: {image_url if image_url else '無'}\n訊息3: {msg3_content}\n訊息4: ..."
-            add_to_conversation(user_id, log_summary_for_secret, bot_response_summary_for_log, "secret_template_response")
+            # For conversation history, combine the essence of what the bot 'said'
+            bot_response_summary_for_history = (
+                f"小雲的{parsed_secret_data.get('type', '秘密發現')}：在 {parsed_secret_data.get('location', '')} "
+                f"發現了 {parsed_secret_data.get('discovery_item', '')}。"
+                f"{' (有給你看照片喔！)' if image_sent_flag else ' (照片壞掉了下次給你看)'}"
+            )
+            add_to_conversation(user_id, f"[秘密模板請求 by text: {event.message.text}]", bot_response_summary_for_history, "secret_template_response")
             line_bot_api.reply_message(reply_token, messages_to_send)
+            logger.info(f"成功發送小雲秘密/發現模板 ({'有圖' if image_sent_flag else '無圖'}) 給 User ID ({user_id})")
         except Exception as final_send_err: 
             logger.error(f"最終發送秘密模板訊息到 LINE 失敗 ({user_id}): {final_send_err}", exc_info=True)
             try: line_bot_api.reply_message(reply_token, TextSendMessage(text="咪...小雲的秘密紙條好像飛走了..."))
@@ -1242,6 +1255,7 @@ def handle_secret_discovery_template_request(event):
     else:
         logger.error(f"Parsed_secret_data 為空，無法為 User ID ({user_id}) 組裝秘密模板訊息。")
         line_bot_api.reply_message(reply_token, TextSendMessage(text="咪...小雲的秘密好像不見了..."))
+
 
 def handle_interactive_scenario_request(event):
     user_id = event.source.user_id
@@ -1261,14 +1275,14 @@ def handle_interactive_scenario_request(event):
 1.  `"scenario_text"`: (字串) 這是情境式對話的完整文字內容。它應該包含：
     *   一個吸引人的情境標題或開場白 (例如：【小雲的午睡夢境探險！】 或 🐾《神秘紙箱的呼喚》🐾)。
     *   一段描述小雲當前遭遇、想法或困境的情境文字。
-    *   **必須是 2 到 3 個帶有「數字編號」的選項** (例如：1️⃣ 選項一, 2️⃣ 選項二, 3️⃣ 選項三)。**絕對不可以使用 A, B, C 等字母標籤。**
+    *   **必須是 2 到 3 個帶有「數字編號」的選項** (例如：1️⃣ 選項一, 2️⃣ 選項二, 3️⃣ 選項三)。**絕對不可以使用 A, B, C 等字母標籤。選項文字本身不要包含換行符。**
     *   一句引導用戶**輸入選項「數字編號」**的提示語 (例如：👉 請輸入選項編號，看看小雲會怎麼辦！ 或 💬 你會怎麼做呢？告訴小雲吧！)。
 2.  `"sticker_keyword"`: (字串) 一個最能代表這個情境或小雲當下主要情緒的貼圖關鍵字 (例如："好奇", "睡覺", "調皮", "思考", "驚訝", "無奈", "愛心" 等)。
 
 **重要規則：**
 *   **情境必須是全新的**，不要重複使用範例或其他已知情境。
 *   情境文字要生動有趣，充滿貓咪的口吻和可愛的表情符號。
-*   **選項標籤必須使用數字 (1, 2, 3...) 並可搭配表情符號 (如 1️⃣)。**
+*   **選項標籤必須使用數字 (1, 2, 3...) 並可搭配表情符號 (如 1️⃣)。選項文字本身應簡潔，不含多餘換行。**
 *   選項要能引導出有趣的後續發展（儘管後續發展不由你這次生成）。
 *   所有文字內容都必須是**繁體中文（台灣用語習慣）**。
 *   確保 JSON 格式正確無誤。
@@ -1390,8 +1404,13 @@ def handle_interactive_scenario_request(event):
     ))
 
     try:
-        bot_response_log = f"Scenario: {generated_scenario_text[:100] if generated_scenario_text else 'N/A'}... Sticker: {sticker_keyword_from_gemini}"
-        add_to_conversation(user_id, "[互動情境請求觸發]", bot_response_log, "interactive_scenario_response")
+        # For conversation history, log the bot's actual output as a JSON list
+        bot_response_for_history_list = [
+            {"type": "text", "content": generated_scenario_text.strip() if generated_scenario_text else "咪？你想跟小雲說什麼呀？"},
+            {"type": "sticker", "keyword": sticker_keyword_from_gemini} # Log keyword, parse_response_and_send handles actual IDs
+        ]
+        bot_response_for_history_str = json.dumps(bot_response_for_history_list, ensure_ascii=False)
+        add_to_conversation(user_id, f"[互動情境請求觸發 by text: {event.message.text}]", bot_response_for_history_str, "interactive_scenario_init")
         
         line_bot_api.reply_message(reply_token, messages_to_send)
         logger.info(f"成功發送小雲互動情境模板給 User ID ({user_id})")
@@ -1496,7 +1515,8 @@ def handle_text_message(event):
             if "candidates" in result and result["candidates"] and \
                result["candidates"][0].get("content", {}).get("parts", [{}])[0].get("text"):
                 generated_status_text = result["candidates"][0]["content"]["parts"][0]["text"]
-                add_to_conversation(user_id, f"[狀態請求觸發: {user_message} (TW Time Ref: {current_tw_time_str})]", generated_status_text, "status_template_response")
+                # Add to conversation memory
+                add_to_conversation(user_id, f"[狀態請求觸發: {user_message} (TW Time Ref: {current_tw_time_str})]", generated_status_text.strip(), "status_template_response")
                 line_bot_api.reply_message(
                     event.reply_token,
                     TextSendMessage(text=generated_status_text.strip())
@@ -1520,8 +1540,8 @@ def handle_text_message(event):
 **你的最終回應必須是兩段文字，中間用一個獨特的標記 `---NEXT_MESSAGE---` 分隔開。**
 
 ---
-【訊息模板1】
-(ฅ`・ω・´)ฅ 喵～今天想吃點什麼好料呢？
+【訊息模板1】(這會是第二則發送的訊息)
+(ฅ`・ω・´)ฅ 喵～今天想給我吃點什麼好料呢？
 
 庫存情況：
 🍗 小雞雞肉泥 × [請為此生成一個 0-5 的隨機整數]
@@ -1536,7 +1556,7 @@ def handle_text_message(event):
 
 ---NEXT_MESSAGE---
 
-【訊息模板2】
+【訊息模板2】(這會是第一則發送的訊息)
 🍗【小雞雞肉泥】
 ✦ 嗷嗷嗷好香！！吃了會邊舔爪爪邊搖尾巴♪
 🐟【胖胖鮪魚塊】
@@ -1578,24 +1598,42 @@ def handle_text_message(event):
                 generated_text_combined = result["candidates"][0]["content"]["parts"][0]["text"]
                 messages_parts = generated_text_combined.split("---NEXT_MESSAGE---")
                 if len(messages_parts) == 2:
-                    message1_text = messages_parts[0].strip()
-                    message2_text = messages_parts[1].strip()
+                    inventory_text = messages_parts[0].strip() # This is now Message 1 from prompt (inventory)
+                    descriptions_text = messages_parts[1].strip() # This is now Message 2 from prompt (descriptions)
+                    
                     def clean_markdown(text): 
                         if text.startswith("```text"): text = text[7:]
                         if text.startswith("```json"): text = text[7:]
                         if text.startswith("```"): text = text[3:]
                         if text.endswith("```"): text = text[:-3]
                         return text.strip()
-                    message1_text = clean_markdown(message1_text)
-                    message2_text = clean_markdown(message2_text)
+                    
+                    inventory_text_cleaned = clean_markdown(inventory_text)
+                    descriptions_text_cleaned = clean_markdown(descriptions_text)
 
-                    if not message1_text or not message2_text: raise ValueError("Empty message part after split/clean.")
-                    messages_to_send = [TextSendMessage(text=message1_text), TextSendMessage(text=message2_text)]
-                    add_to_conversation(user_id, f"[餵食模板請求 by text: {user_message}]", f"Msg1: {message1_text[:50]}... Msg2: {message2_text[:50]}...", "feed_template_response")
+                    if not inventory_text_cleaned or not descriptions_text_cleaned: 
+                        raise ValueError("Empty message part after split/clean for feed template.")
+
+                    # Swapped order + new fixed message 3
+                    messages_to_send = [
+                        TextSendMessage(text=descriptions_text_cleaned), # Descriptions first
+                        TextSendMessage(text=inventory_text_cleaned),   # Inventory second
+                        TextSendMessage(text="你想要給小雲吃什咪?💕")      # Fixed third message
+                    ]
+                    
+                    # For conversation history
+                    bot_response_summary = (
+                        f"小雲菜單(描述): {descriptions_text_cleaned[:70]}...\n"
+                        f"小雲菜單(庫存): {inventory_text_cleaned[:70]}...\n"
+                        f"小雲詢問: 你想要給小雲吃什咪?💕"
+                    )
+                    add_to_conversation(user_id, f"[餵食模板請求 by text: {user_message}]", bot_response_summary, "feed_template_response")
+                    
                     line_bot_api.reply_message(event.reply_token, messages_to_send)
+                    logger.info(f"成功發送小雲餵食模板 (3則訊息，順序調整) 給 User ID ({user_id})")
                 else: 
                     logger.error(f"Gemini 餵食模板回應未使用正確的分隔符 ({len(messages_parts)} parts). Original: {generated_text_combined[:200]}")
-                    fallback_text = generated_text_combined.split("【訊息模板2】")[0].strip()
+                    fallback_text = generated_text_combined.split("【訊息模板2】")[0].strip() # Attempt to send first part
                     if not fallback_text.startswith("(ฅ`・ω・´)ฅ"): fallback_text = "咪...小雲的菜單好像飛走了！QAQ"
                     line_bot_api.reply_message(event.reply_token, TextSendMessage(text=fallback_text))
             else: 
