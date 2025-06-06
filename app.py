@@ -1588,6 +1588,26 @@ def handle_text_message(event):
         "（拿出羽毛逗貓棒晃了晃）": '[{"type": "text", "content": "那個是...！（瞳孔放大，緊緊盯著羽毛）...要...要跟我玩嗎？（發出期待的「嘎嘎」聲）"}, {"type": "sticker", "keyword": "期待"}]'
     }
 
+ # --- 新增的節日任務回應 (根據 holiday_broadcast.py 的靈感庫) ---
+        "小雲，我們來交換禮物吧！": '[{"type": "text", "content": "喵！禮物！(眼睛發亮) 小雲...小雲把最喜歡的紙箱送給你！希望你會喜歡... >///<"}, {"type": "sticker", "keyword": "害羞"}]',
+        "（偷偷幫小雲戴上聖誕帽）": '[{"type": "text", "content": "咪？（感覺頭上重重的，用爪子碰了一下）...是...是帽子耶！我、我戴起來好看嗎？"}, {"type": "sticker", "keyword": "好奇"}]',
+        "（拿出一個頂級貓咪罐罐）": '[{"type": "text", "content": "是...是罐罐的聲音！(°Д°) 킁킁...好香！謝謝你！最喜歡你了！"}, {"type": "sticker", "keyword": "愛心"}]',
+        "小雲，我最喜歡你了！": '[{"type": "text", "content": "喵嗚...（聽到你的告白，瞬間變成一顆害羞的紅白小毛球）...我...我也是..."}, {"type": "sticker", "keyword": "害羞"}]',
+        "我的新年新希望是...": '[{"type": "text", "content": "（小雲歪著頭，用圓滾滾的綠眼睛認真地聽著...）咪...你的願望一定會實現的！小雲幫你祈禱！"}, {"type": "sticker", "keyword": "期待"}]',
+        "（拿出一個裝滿貓肉泥的紅包）": '[{"type": "text", "content": "哇！是紅包耶！裡面...裡面是肉泥條的味道！謝謝你！你是全世界最好的人！"}, {"type": "sticker", "keyword": "開心"}]',
+        "（掰一小塊魚乾口味的月餅給小雲）": '[{"type": "text", "content": "（聞聞）...鹹鹹香香的...（小口小口地吃掉）...咪，好好吃！謝謝你分我！"}, {"type": "sticker", "keyword": "愛心"}]',
+        "（在烤網上放一片小小的雞肉）": '[{"type": "text", "content": "肉肉！是肉肉！小雲的！(發出從沒聽過的、充滿渴望的聲音)"}, {"type": "meow_sound", "sound": "food_demanding_call"}]',
+        "（跟著小雲一起放空）": '[{"type": "text", "content": "...（感覺到身邊有人的氣息，小雲連眼睛都沒睜開，只是尾巴尖輕輕地掃了一下地板，表示知道了）..."}, {"type": "sticker", "keyword": "淡定"}]',
+        "（溫柔地幫小雲蓋上被子）": '[{"type": "text", "content": "呼嚕...（感覺到被子的溫暖，往你手的方向蹭了蹭）...好溫暖喔..."}, {"type": "meow_sound", "sound": "content_purr_soft"}]',
+        "（拿出一根南瓜口味的肉泥條）": '[{"type": "text", "content": "是橘色的點心！跟南瓜一樣耶！好好奇是什麼味道...（湊過來猛聞）"}, {"type": "sticker", "keyword": "好奇"}]',
+        "（對小雲扮了一個可愛的鬼臉）": '[{"type": "text", "content": "喵？！（被嚇得後退一小步，毛微微炸開，但馬上又好奇地歪著頭看你）...你...你在做什麼呀？"}, {"type": "sticker", "keyword": "驚訝"}]',
+        "我覺得黑貓很帥又很可愛！": '[{"type": "text", "content": "對不對！他們就像夜晚的小王子！"}, {"type": "sticker", "keyword": "開心"}]',
+        "小雲的黑色小西裝最帥了！": '[{"type": "text", "content": "喵...（害羞地低下頭，但偷偷用前腳整理了一下胸前的白毛）...謝、謝謝你..."}, {"type": "sticker", "keyword": "害羞"}]',
+        "（獻上三個不同口味的罐罐）": '[{"type": "text", "content": "三...三個！？今天...今天是什麼日子...小雲...小雲不知所措了...（在罐罐和你之間來回踱步，不知道該先吃哪個）"}, {"type": "sticker", "keyword": "慌張"}]',
+        "（拿出相機幫小雲拍紀念照）": '[{"type": "text", "content": "（聽到相機的聲音，身體僵住，擺出一個有點 awkwardly a bit handsome 的姿勢）...要...要拍好看一點喔..."}, {"type": "sticker", "keyword": "淡定"}]'
+    }
+
+    
     if user_message in daily_tasks:
         logger.info(f"User ID ({user_id}) 觸發了每日任務: {user_message}")
         response_json = daily_tasks[user_message]
@@ -1600,6 +1620,8 @@ def handle_text_message(event):
     # # <<< END OF ADDED SECTION FOR DAILY QUESTS >>>
     # ####################################################################
     
+
+
     TRIGGER_TEXT_GET_STATUS = "小雲狀態喵？ฅ^•ﻌ•^ฅ"
     TRIGGER_TEXT_FEED_XIAOYUN_TEMPLATE = "餵小雲點心🐟 🍖"
     TRIGGER_TEXT_SECRET_TEMPLATE = "小雲的秘密/新發現 ✨" 
