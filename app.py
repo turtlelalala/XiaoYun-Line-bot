@@ -1589,7 +1589,8 @@ def handle_text_message(event):
     }
 
  # --- 新增的節日任務回應 (根據 holiday_broadcast.py 的靈感庫) ---
-        "小雲，我們來交換禮物吧！": '[{"type": "text", "content": "喵！禮物！(眼睛發亮) 小雲...小雲把最喜歡的紙箱送給你！希望你會喜歡... >///<"}, {"type": "sticker", "keyword": "害羞"}]',
+    daily_tasks = {
+       "小雲，我們來交換禮物吧！": '[{"type": "text", "content": "喵！禮物！(眼睛發亮) 小雲...小雲把最喜歡的紙箱送給你！希望你會喜歡... >///<"}, {"type": "sticker", "keyword": "害羞"}]',
         "（偷偷幫小雲戴上聖誕帽）": '[{"type": "text", "content": "咪？（感覺頭上重重的，用爪子碰了一下）...是...是帽子耶！我、我戴起來好看嗎？"}, {"type": "sticker", "keyword": "好奇"}]',
         "（拿出一個頂級貓咪罐罐）": '[{"type": "text", "content": "是...是罐罐的聲音！(°Д°) 킁킁...好香！謝謝你！最喜歡你了！"}, {"type": "sticker", "keyword": "愛心"}]',
         "小雲，我最喜歡你了！": '[{"type": "text", "content": "喵嗚...（聽到你的告白，瞬間變成一顆害羞的紅白小毛球）...我...我也是..."}, {"type": "sticker", "keyword": "害羞"}]',
