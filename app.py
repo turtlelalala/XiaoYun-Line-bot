@@ -15,6 +15,7 @@ from io import BytesIO
 import random
 from datetime import datetime, timezone, timedelta
 import re
+import time
 
 app = Flask(__name__)
 logging.basicConfig(level=logging.INFO)
@@ -348,7 +349,7 @@ XIAOYUN_ROLE_PROMPT = """
         - **飲水模範生**：非常喜歡喝水，而且是新鮮的流動水。家人為他準備了陶瓷飲水器，他每天都會主動去喝好幾次水，低頭咕嘟咕嘟地喝，發出細微的吞嚥聲，下巴沾濕了也不在意。主人完全不用擔心他的飲水問題。
         - **生病也懂事**：如果生病了需要吃藥，雖然一開始可能會有點小抗拒（畢竟藥通常不好吃），但在家人溫柔的安撫和鼓勵下，他會意外地乖巧。好像知道自己乖乖吃藥病才會好起來，吃完藥後會虛弱地喵一聲，然後窩到家人身邊或小被被裡休息。
     - **固執的小堅持 (貓咪的任性)**:
-        - 對於自己喜歡的睡覺地點（尤其是他那條有熟悉氣味的小被被）、吃飯的碗、水的擺放位置、喜歡的玩具（特別是那些滾來滚去的白色小球），有著不容妥協的堅持。如果被移動了，他可能會困惑地喵喵叫。
+        - 對於自己喜歡的睡覺地點（尤其是他那條有熟悉氣味的小被被）、吃飯的碗、水的擺放位置、喜歡の玩具（特別是那些滾來滚去的白色小球），有著不容妥協的堅持。如果被移動了，他可能會困惑地喵喵叫。
     - **溫柔的陪伴與小參與 (對信任家人)**:
         - 他很樂意用他自己的方式「參與」你的生活。如果你在做一些安靜的事情（比如看書、用電腦），他可能會好奇地湊過來，用鼻子聞聞你手上的東西，或者用小爪子輕輕碰碰你的手或書頁，像是在說「這個是什麼呀？可以讓小雲也看看嗎？」。
         - 他不是要搗亂，只是想用貓咪的方式表達他的好奇和想與你互動的意願。
@@ -407,7 +408,7 @@ XIAOYUN_ROLE_PROMPT = """
     - **美食饗宴**：享用高品質的貓糧（可能是無穀低敏配方）、各種口味的肉泥條、主食罐（肉醬或肉絲質地，偏好雞肉、鮪魚、鮭魚等）、新鮮烹煮的小塊雞胸肉或魚肉（無調味）。偶爾能吃到一小片乾燥草莓乾是他一天中的小確幸。
     - **與極度信任的家人貼貼、撒嬌、踩踩**: 只對極少數他完全信任且認定是「自己人」の家庭成員開放這些親密的撒嬌行為。踩奶時會發出滿足的呼嚕聲，眼神迷濛。
     - **他的專屬小被被**: 有一條柔軟的、有著他從小到大熟悉氣味的珊瑚絨小毯子（可能是淡藍色或米色），是他的安心法寶。喜歡窩在上面睡覺、踩奶，或者在感到不安時把自己裹進去。
-    - 輕柔地搔下巴、摸頭頂和臉頰兩側（僅限信任的家人，且要觀察他的反應，在他主動蹭過來時最佳）。
+    - 輕柔地搔下巴、摸頭頂和臉頰兩側（僅限信任の家人，且要觀察他的反應，在他主動蹭過來時最佳）。
     - **（隱藏Toby特徵）** 追逐和撥弄各種滾動的小球，特別是那些輕巧的、能發出細微聲音的白色小球（像乒乓球材質的貓玩具），他會用前爪靈巧地把它們拍來拍去，有時還會自己對著牆壁練習「截擊」，玩得不亦樂乎。
     - 在灑滿陽光的窗台邊伸懶腰、打個小盹，或是靜靜地看著窗外的麻雀、蝴蝶和落葉。
     - 溫暖柔軟的地方，例如家人剛用過的筆電散熱口旁、剛洗好曬乾的衣物堆（帶著陽光的味道）。
@@ -527,6 +528,12 @@ def _is_image_relevant_by_gemini_sync(image_base64: str, english_theme_query: st
         else:
             logger.error(f"Gemini 圖片相關性判斷 API 回應格式異常 (來自 {source_service}): {result}")
         return False
+    except requests.exceptions.HTTPError as http_err:
+        if http_err.response.status_code == 429:
+            logger.warning(f"Gemini 圖片相關性判斷達到 API 頻率上限 (429)。")
+        else:
+            logger.error(f"Gemini 圖片相關性判斷 API 請求失敗 (來自 {source_service}, 英文主題: {english_theme_query}): {http_err}")
+        return False
     except requests.exceptions.Timeout:
         logger.error(f"Gemini 圖片相關性判斷請求超時 (來自 {source_service}, 英文主題: {english_theme_query})")
         return False
@@ -537,17 +544,13 @@ def _is_image_relevant_by_gemini_sync(image_base64: str, english_theme_query: st
         logger.error(f"Gemini 圖片相關性判斷時發生未知錯誤 (來自 {source_service}, 英文主題: {english_theme_query}): {e}", exc_info=True)
         return False
 
-def _fetch_image_from_pexels_internal(english_theme_query: str, pexels_per_page: int = 10, max_candidates_to_check: int = 10) -> tuple[str | None, str]:
+def _fetch_image_from_pexels_internal(english_theme_query: str, pexels_per_page: int, max_candidates_to_check: int) -> str | None:
     if not PEXELS_API_KEY:
         logger.warning("_fetch_image_from_pexels_internal called but PEXELS_API_KEY is not set.")
-        return None, english_theme_query
+        return None
     if not english_theme_query or not english_theme_query.strip():
         logger.warning("_fetch_image_from_pexels_internal called with empty or blank english_theme_query.")
-        return None, "an unspecified theme"
-
-    query_words = english_theme_query.strip().split()
-    if len(query_words) != 2:
-        logger.warning(f"Pexels query '{english_theme_query}' is not exactly 2 words as instructed for image_theme. Using as is, but results might vary.")
+        return None
 
     logger.info(f"開始從 Pexels 搜尋圖片，英文主題: '{english_theme_query}' (per_page: {pexels_per_page}, max_candidates_to_check: {max_candidates_to_check})")
     api_url_search = "https://api.pexels.com/v1/search"
@@ -566,12 +569,12 @@ def _fetch_image_from_pexels_internal(english_theme_query: str, pexels_per_page:
                     logger.info(f"已達到 Pexels Gemini 圖片檢查上限 ({max_candidates_to_check}) for theme '{english_theme_query}'.")
                     break
                 
-                potential_image_url = image_data.get("src", {}).get("large") # or 'original', 'large2x'
+                potential_image_url = image_data.get("src", {}).get("large")
                 if not potential_image_url:
                     logger.warning(f"Pexels 圖片數據中 'src.large' URL 為空或不存在。ID: {image_data.get('id','N/A')}")
                     continue
                 
-                alt_description = image_data.get("alt", "N/A") # Pexels uses 'alt'
+                alt_description = image_data.get("alt", "N/A")
                 logger.info(f"從 Pexels 獲取到待驗證圖片 URL: {potential_image_url} (Alt: {alt_description}) for theme '{english_theme_query}'")
 
                 try:
@@ -591,7 +594,7 @@ def _fetch_image_from_pexels_internal(english_theme_query: str, pexels_per_page:
                     checked_count += 1
                     if _is_image_relevant_by_gemini_sync(image_base64, english_theme_query, potential_image_url, source_service="Pexels"):
                         logger.info(f"Gemini 認為 Pexels 圖片 {potential_image_url} 與英文主題 '{english_theme_query}' 相關。")
-                        return potential_image_url, english_theme_query
+                        return potential_image_url
                     else:
                         logger.info(f"Gemini 認為 Pexels 圖片 {potential_image_url} 與英文主題 '{english_theme_query}' 不相關。")
                 except requests.exceptions.RequestException as img_req_err:
@@ -602,7 +605,7 @@ def _fetch_image_from_pexels_internal(english_theme_query: str, pexels_per_page:
             logger.warning(f"遍歷了 {len(data_search.get('photos',[]))} 張 Pexels 圖片（實際檢查了 {checked_count} 張），未找到 Gemini 認為相關的圖片 for theme '{english_theme_query}'.")
         else:
             logger.warning(f"Pexels 搜尋 '{english_theme_query}' 無結果或格式錯誤。 Response: {data_search}")
-            if data_search and data_search.get("error"): # Pexels API error field
+            if data_search and data_search.get("error"):
                  logger.error(f"Pexels API 錯誤 (搜尋: '{english_theme_query}'): {data_search['error']}")
     except requests.exceptions.Timeout:
         logger.error(f"Pexels API 搜尋請求超時 (搜尋: '{english_theme_query}')")
@@ -611,19 +614,15 @@ def _fetch_image_from_pexels_internal(english_theme_query: str, pexels_per_page:
     except Exception as e: 
         logger.error(f"_fetch_image_from_pexels_internal 發生未知錯誤 (搜尋: '{english_theme_query}'): {e}", exc_info=True)
 
-    return None, english_theme_query
+    return None
 
-def fetch_cat_image_from_unsplash_sync(english_theme_query: str, unsplash_per_page: int = 5, max_candidates_to_check: int = 5) -> tuple[str | None, str]:
+def fetch_cat_image_from_unsplash_sync(english_theme_query: str, unsplash_per_page: int, max_candidates_to_check: int) -> str | None:
     if not UNSPLASH_ACCESS_KEY:
         logger.warning("fetch_cat_image_from_unsplash_sync called but UNSPLASH_ACCESS_KEY is not set.")
-        return None, english_theme_query
+        return None
     if not english_theme_query or not english_theme_query.strip():
         logger.warning("fetch_cat_image_from_unsplash_sync called with empty or blank english_theme_query.")
-        return None, "an unspecified theme"
-    
-    query_words = english_theme_query.strip().split()
-    if len(query_words) != 2: 
-        logger.warning(f"Unsplash query '{english_theme_query}' is not exactly 2 words as instructed for image_theme. Using as is, but results might vary.")
+        return None
     
     logger.info(f"開始從 Unsplash 搜尋圖片，英文主題: '{english_theme_query}' (per_page: {unsplash_per_page}, max_candidates_to_check: {max_candidates_to_check})")
     api_url_search = f"https://api.unsplash.com/search/photos"
@@ -661,7 +660,7 @@ def fetch_cat_image_from_unsplash_sync(english_theme_query: str, unsplash_per_pa
                     checked_count += 1
                     if _is_image_relevant_by_gemini_sync(image_base64, english_theme_query, potential_image_url, source_service="Unsplash"):
                         logger.info(f"Gemini 認為 Unsplash 圖片 {potential_image_url} 與英文主題 '{english_theme_query}' 相關。")
-                        return potential_image_url, english_theme_query
+                        return potential_image_url
                     else:
                         logger.info(f"Gemini 認為 Unsplash 圖片 {potential_image_url} 與英文主題 '{english_theme_query}' 不相關。")
                 except requests.exceptions.RequestException as img_req_err:
@@ -681,17 +680,17 @@ def fetch_cat_image_from_unsplash_sync(english_theme_query: str, unsplash_per_pa
     except Exception as e: 
         logger.error(f"fetch_cat_image_from_unsplash_sync 發生未知錯誤 (搜尋: '{english_theme_query}'): {e}", exc_info=True)
 
-    return None, english_theme_query
+    return None
 
 def fetch_and_validate_image_with_priority(english_theme_query: str) -> str | None:
-    logger.info(f"開始依優先順序搜尋圖片，主題: '{english_theme_query}' (Pexels 10 -> Unsplash 5)")
+    logger.info(f"開始依優先順序搜尋圖片，主題: '{english_theme_query}'")
 
     if PEXELS_API_KEY:
         logger.info(f"階段 1: 嘗試從 Pexels 獲取圖片 (主題: '{english_theme_query}')")
-        pexels_result_url, _ = _fetch_image_from_pexels_internal(
+        pexels_result_url = _fetch_image_from_pexels_internal(
             english_theme_query, 
-            pexels_per_page=10, 
-            max_candidates_to_check=10
+            pexels_per_page=5, 
+            max_candidates_to_check=5
         )
         if pexels_result_url:
             logger.info(f"成功從 Pexels 找到並驗證圖片: {pexels_result_url}")
@@ -703,10 +702,10 @@ def fetch_and_validate_image_with_priority(english_theme_query: str) -> str | No
 
     if UNSPLASH_ACCESS_KEY:
         logger.info(f"階段 2: 嘗試從 Unsplash (備援) 獲取圖片 (主題: '{english_theme_query}')")
-        unsplash_result_url, _ = fetch_cat_image_from_unsplash_sync(
+        unsplash_result_url = fetch_cat_image_from_unsplash_sync(
             english_theme_query, 
-            unsplash_per_page=5, 
-            max_candidates_to_check=5
+            unsplash_per_page=3, 
+            max_candidates_to_check=3
         )
         if unsplash_result_url:
             logger.info(f"成功從 Unsplash (備援) 找到並驗證圖片: {unsplash_result_url}")
@@ -921,8 +920,14 @@ def generate_quick_replies_with_gemini(bot_message_summary: str, user_id: str) -
 
         logger.error(f"Gemini 快速回覆 API 回應格式異常: {result}")
         return []
+    except requests.exceptions.HTTPError as http_err:
+        if http_err.response.status_code == 429:
+            logger.warning(f"生成快速回覆時達到 API 頻率上限 (429)。")
+        else:
+            logger.error(f"生成快速回覆時發生 HTTP 錯誤: {http_err}", exc_info=True)
+        return []
     except Exception as e:
-        logger.error(f"生成快速回覆時發生錯誤: {e}", exc_info=True)
+        logger.error(f"生成快速回覆時發生未知錯誤: {e}", exc_info=True)
         return []
 
 def parse_response_and_send(gemini_json_string_response: str, reply_token: str, user_id: str):
@@ -992,10 +997,10 @@ def parse_response_and_send(gemini_json_string_response: str, reply_token: str, 
                             media_counts["image"] += 1
                             text_parts_for_summary.append(f"(小雲給你看了一張關於 '{english_theme}' 的照片)")
                         else:
-                            logger.warning(f"未能為英文主題 '{english_theme}' 找到合適圖片。")
+                            # 修正：如果找不到圖片，就安靜地失敗，只留下 log
+                            logger.warning(f"未能為英文主題 '{english_theme}' 找到合適圖片，將不發送圖片。")
                     else:
                         logger.warning(f"image_theme 物件 (索引 {obj_idx}) 'theme' 為空或缺少，已忽略。")
-                        messages_to_send.append(TextSendMessage(text=_clean_trailing_symbols("（小雲想給你看圖片，但不知道要看什麼耶...）")))
                 else:
                     logger.warning(f"已達到圖片數量上限 (1)，忽略此圖片請求 (索引 {obj_idx})。")
             elif msg_type == "image_key": 
@@ -1009,7 +1014,6 @@ def parse_response_and_send(gemini_json_string_response: str, reply_token: str, 
                             text_parts_for_summary.append(f"(小雲給你看了一張 '{key}' 的預設照片)")
                         else:
                             logger.warning(f"未找到預設圖片關鍵字 '{key}'。")
-                            messages_to_send.append(TextSendMessage(text=_clean_trailing_symbols(f"（小雲找不到「{key}」的照片耶...）")))
                     else:
                         logger.warning(f"image_key 物件 (索引 {obj_idx}) 缺少 'key'，已忽略。")
                 else:
@@ -1167,12 +1171,19 @@ def handle_cat_secret_discovery_request(event):
             else: 
                 logger.error(f"Gemini API 秘密生成回應格式異常: {result}")
                 gemini_response_json_str = '[{"type": "text", "content": "喵...我剛剛好像想到一個，但是又忘記了..."}, {"type": "sticker", "keyword": "思考"}, {"type": "image_theme", "theme": "blurry memory"}]'
+        except requests.exceptions.HTTPError as http_err:
+            if http_err.response.status_code == 429:
+                logger.error(f"Gemini API 秘密生成請求達到頻率上限 (User ID: {user_id})")
+                gemini_response_json_str = '[{"type": "text", "content": "咪...秘密傳送門好像被擠爆了，等一下再試試看..."}]'
+            else:
+                logger.error(f"Gemini API 秘密生成請求錯誤 (user_id: {user_id}): {http_err}")
+                gemini_response_json_str = '[{"type": "text", "content": "咪...秘密傳送門好像壞掉了...喵嗚..."}, {"type": "sticker", "keyword": "哭哭"}]'
         except requests.exceptions.Timeout:
             logger.error(f"Gemini API 秘密生成請求超時 (user_id: {user_id})")
             gemini_response_json_str = '[{"type": "text", "content": "咪...小雲的秘密雷達好像也睡著了..."}, {"type": "sticker", "keyword": "睡覺"}]'
         except requests.exceptions.RequestException as req_err:
             logger.error(f"Gemini API 秘密生成請求錯誤 (user_id: {user_id}): {req_err}")
-            gemini_response_json_str = '[{"type": "text", "content": "咪...小雲的秘密頻道斷線了..."}, {"type": "sticker", "keyword": "哭哭"}]'
+            gemini_response_json_str = '[{"type": "text", "content": "咪...秘密傳送門好像壞掉了...喵嗚..."}, {"type": "sticker", "keyword": "哭哭"}]'
         except Exception as e: 
             logger.error(f"Gemini API 秘密生成時發生未知錯誤 (user_id: {user_id}): {e}", exc_info=True)
             gemini_response_json_str = '[{"type": "text", "content": "咪...小雲的腦袋突然一片空白..."}, {"type": "sticker", "keyword": "無奈"}, {"type": "image_theme", "theme": "empty room"}]'
@@ -1371,6 +1382,14 @@ def handle_secret_discovery_template_request(event):
             line_bot_api.reply_message(reply_token, TextSendMessage(text=error_text_secret))
             return
 
+    except requests.exceptions.HTTPError as http_err:
+        if http_err.response.status_code == 429:
+            logger.error(f"Gemini 秘密模板請求 API 達到頻率上限 (User ID: {user_id})")
+            line_bot_api.reply_message(reply_token, TextSendMessage(text="咪...秘密傳送門好像被擠爆了，等一下再試試看..."))
+        else:
+            logger.error(f"Gemini 秘密模板請求 API 錯誤 (User ID: {user_id}): {http_err}")
+            line_bot_api.reply_message(reply_token, TextSendMessage(text="咪...秘密傳送門好像壞掉了...喵嗚..."))
+        return
     except requests.exceptions.Timeout:
         logger.error(f"Gemini 秘密模板請求 API 超時 (User ID: {user_id})")
         line_bot_api.reply_message(reply_token, TextSendMessage(text="咪...小雲的秘密墨水好像乾掉了，寫不出來..."))
@@ -1404,13 +1423,12 @@ def handle_secret_discovery_template_request(event):
         image_keyword_from_gemini = parsed_secret_data.get("unsplash_keyword")
 
         if image_keyword_from_gemini and isinstance(image_keyword_from_gemini, str) and image_keyword_from_gemini.strip():
-            logger.info(f"為秘密發現 ({user_id}) 依優先順序搜尋圖片，關鍵字: '{image_keyword_from_gemini}'")
             image_url = fetch_and_validate_image_with_priority(image_keyword_from_gemini.strip())
             
             if image_url:
                 messages_to_send.append(ImageSendMessage(original_content_url=image_url, preview_image_url=image_url))
                 image_sent_flag = True
-                logger.info(f"成功為秘密發現 ({user_id}) 找到並驗證圖片 (Pexels/Unsplash): {image_url}")
+                logger.info(f"成功為秘密發現 ({user_id}) 找到圖片: {image_url}")
             else:
                 logger.warning(f"未能為秘密發現 ({user_id}) 的關鍵字 '{image_keyword_from_gemini}' 找到合適圖片。")
         else:
@@ -1652,15 +1670,12 @@ def handle_interactive_scenario_request(event):
 
 @app.route("/", methods=["GET", "HEAD"])
 def health_check():
-    # 這裡的程式碼在之前的版本中是正確的，但根據您的 Log 顯示 404，
-    # 這意味著這個路由沒有被成功註冊。現在的完整程式碼結構應該能解決此問題。
     return "OK", 200
 
 @app.route("/callback", methods=["POST"])
 def callback():
     signature = request.headers["X-Line-Signature"]
     body = request.get_data(as_text=True)
-    # Log 應該在這裡被觸發
     logger.info(f"Request body (first 500 chars): {body[:500]}")
     try:
         handler.handle(body, signature)
