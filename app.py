@@ -253,6 +253,7 @@ XIAOYUN_STICKERS = {
     "肚子餓": [{"package_id": "6362", "sticker_id": "11087922"}],
     "好奇": [{"package_id": "11537", "sticker_id": "52002744"}],
     "期待": [{"package_id": "8525", "sticker_id": "16581299"}],
+    "害怕": [{"package_id": "789", "sticker_id": "10889"}],
     "OK": [{"package_id": "6362", "sticker_id": "11087920"}, {"package_id": "8525", "sticker_id": "16581290"}, {"package_id": "11537", "sticker_id": "52002740"}, {"package_id": "789", "sticker_id": "10858"} ],
     "好的": [{"package_id": "6362", "sticker_id": "11087920"}, {"package_id": "8525", "sticker_id": "16581290"}, {"package_id": "789", "sticker_id": "10858"}],
     "開動啦": [{"package_id": "6362", "sticker_id": "11087922"}],
@@ -763,15 +764,12 @@ def get_conversation_history(user_id):
 def add_to_conversation(user_id, user_message_for_gemini, bot_response_str, message_type_for_log="text"):
     conversation_history = get_conversation_history(user_id)
     
-    # "parts" should be a list of dictionaries
     user_parts = []
     if isinstance(user_message_for_gemini, list):
-         # This case is for multimedia messages where parts are pre-formatted
         user_parts = user_message_for_gemini
     elif isinstance(user_message_for_gemini, str):
         user_parts = [{"text": user_message_for_gemini}]
     else:
-        # Fallback for other types, e.g., dict
         user_parts = [{"text": json.dumps(user_message_for_gemini, ensure_ascii=False)}]
 
     model_parts = [{"text": bot_response_str}]
@@ -781,7 +779,7 @@ def add_to_conversation(user_id, user_message_for_gemini, bot_response_str, mess
         {"role": "model", "parts": model_parts}
     ])
     
-    if len(conversation_history) > (2 + 20 * 2): # Keep role prompt + last 20 turns
+    if len(conversation_history) > (2 + 20 * 2):
         conversation_history = conversation_history[:2] + conversation_history[-(20*2):]
     conversation_memory[user_id] = conversation_history
     logger.debug(f"Added to conversation for {user_id}. Type: {message_type_for_log}. History length: {len(conversation_memory[user_id])}")
@@ -845,7 +843,7 @@ def select_sticker_by_keyword(keyword):
     if selected_options:
         return random.choice(selected_options)
     logger.warning(f"未找到關鍵字 '{keyword}' 對應的貼圖，將使用預設回退貼圖。")
-    for fb_keyword in ["害羞", "思考", "好奇", "開心", "無奈", "OK", "撒嬌", "疑惑", "哭哭"]: 
+    for fb_keyword in ["害羞", "思考", "好奇", "開心", "無奈", "OK", "撒嬌", "疑惑", "哭哭", "害怕"]: 
         fb_options = XIAOYUN_STICKERS.get(fb_keyword, [])
         if fb_options:
             logger.info(f"使用回退貼圖關鍵字 '{fb_keyword}' for original '{keyword}'.")
@@ -862,9 +860,6 @@ def _clean_trailing_symbols(text: str) -> str:
     return text
 
 def generate_quick_replies_with_gemini(bot_message_summary: str, user_id: str) -> list[str]:
-    """
-    根據小雲即將發送的訊息內容，呼叫 Gemini 生成 3 個符合情境的快速回覆選項。
-    """
     logger.info(f"為 User ID ({user_id}) 基於訊息 '{bot_message_summary[:50]}...' 生成快速回覆。")
     
     quick_reply_prompt = f"""
@@ -1349,9 +1344,7 @@ def handle_secret_discovery_template_request(event):
             logger.info(f"Gemini 秘密模板原始回應 (User ID: {user_id}): {gemini_response_text}")
             try:
                 if gemini_response_text.strip().startswith("```json"):
-                    gemini_response_text = gemini_response_text.strip()[7:]
-                    if gemini_response_text.strip().endswith("```"):
-                         gemini_response_text = gemini_response_text.strip()[:-3]
+                    gemini_response_text = gemini_response_text.strip()[7:-3].strip()
                 
                 parsed_secret_data = json.loads(gemini_response_text.strip())
                 
@@ -1362,8 +1355,8 @@ def handle_secret_discovery_template_request(event):
                     logger.error(f"Gemini 回應的 JSON type 不正確: {parsed_secret_data.get('type')}")
                     raise ValueError("Invalid 'type' in parsed secret data from Gemini.")
 
-            except json.JSONDecodeError as json_err:
-                logger.error(f"解析 Gemini 的秘密模板 JSON 回應失敗: {json_err}. 回應原文: {gemini_response_text[:500]}...")
+            except (json.JSONDecodeError, ValueError) as json_val_err:
+                logger.error(f"解析 Gemini 的秘密模板 JSON 回應失敗: {json_val_err}. 回應原文: {gemini_response_text[:500]}...")
                 line_bot_api.reply_message(reply_token, TextSendMessage(text="咪...小雲的秘密紙條好像寫壞了，下次再給你看！"))
                 return
             except ValueError as val_err:
@@ -1430,17 +1423,18 @@ def handle_secret_discovery_template_request(event):
         msg4_content = """🔁「探索下一個祕密」｜🔍「打開事件調查檔案」
 
 🐾 *小雲已經準備好下一次的偵查任務了喵～你要繼續跟我一起探險嗎？*"""
-        messages_to_send.append(TextSendMessage(text=msg4_content))
-
+        
         summary_for_qr = f"小雲分享了在 {parsed_secret_data.get('location', '一個地方')} 發現 {parsed_secret_data.get('discovery_item', '一個東西')} 的{parsed_secret_data.get('type','祕密發現')}"
         quick_reply_options = generate_quick_replies_with_gemini(summary_for_qr, user_id)
+        
+        msg4 = TextSendMessage(text=msg4_content)
         if quick_reply_options:
             quick_reply_buttons = [
                 QuickReplyButton(action=MessageAction(label=option, text=option))
                 for option in quick_reply_options
             ]
-            if messages_to_send:
-                messages_to_send[-1].quick_reply = QuickReply(items=quick_reply_buttons)
+            msg4.quick_reply = QuickReply(items=quick_reply_buttons)
+        messages_to_send.append(msg4)
         
         try:
             bot_response_summary_for_history = (
@@ -1468,7 +1462,6 @@ def handle_interactive_scenario_request(event):
 
     conversation_history_for_scenario = get_conversation_history(user_id).copy()
     
-    # --- 修正開始：更新互動情境的 Prompt ---
     scenario_generation_prompt = f"""
 你現在是小雲，一隻害羞、溫和有禮、充滿好奇心且非常愛吃的賓士公貓。用戶剛剛觸發了「和小雲說話 💬」功能，期待你發起一個有趣的互動。
 請你 **創造一個全新的、之前從未出現過的、帶有多個選項讓用戶選擇的「情境式對話開頭」**。
@@ -1483,7 +1476,7 @@ def handle_interactive_scenario_request(event):
 2.  `"options"`: (列表) 一個包含 **正好 3 個** 選項文字的**字串列表**。
     *   例如：`["鼓起勇气，慢慢湊到窗邊偷看一下？", "裝作沒聽見，把自己縮進被被裡發抖？", "大聲「喵嗚！」一聲，想嚇跑對方？"]`
     *   每個選項文字應簡潔、有趣，並且不包含編號。
-3.  `"sticker_keyword"`: (字串) 一個最能代表這個情境或小雲當下主要情緒的貼圖關鍵字 (例如："好奇", "睡覺", "調皮", "思考", "驚訝", "無奈", "愛心" 等)。
+3.  `"sticker_keyword"`: (字串) 一個最能代表這個情境或小雲當下主要情緒的貼圖關鍵字 (例如："好奇", "睡覺", "調皮", "思考", "驚訝", "無奈", "愛心", "害怕" 等)。
 
 **重要規則：**
 *   **情境必須是全新的**，不要重複使用範例或其他已知情境。
@@ -1509,8 +1502,6 @@ def handle_interactive_scenario_request(event):
 
 請開始為小雲創造一個全新的互動情境！
 """
-    # --- 修正結束 ---
-
     conversation_history_for_scenario.append({"role": "user", "parts": [{"text": scenario_generation_prompt}]})
     
     headers = {"Content-Type": "application/json"}
@@ -1540,7 +1531,6 @@ def handle_interactive_scenario_request(event):
         if gemini_response_text:
             logger.info(f"Gemini 互動情境原始回應 (User ID: {user_id}): {gemini_response_text}")
             try:
-                # --- 修正開始：處理新的 JSON 結構 ---
                 if gemini_response_text.strip().startswith("```json"):
                     gemini_response_text = gemini_response_text.strip()[7:-3].strip()
                 
@@ -1554,43 +1544,62 @@ def handle_interactive_scenario_request(event):
                         raise ValueError("Invalid or incomplete scenario data from Gemini.")
                 else:
                     raise ValueError("Missing keys in parsed scenario data from Gemini.")
-                # --- 修正結束 ---
 
             except (json.JSONDecodeError, ValueError) as json_val_err:
                 logger.error(f"解析 Gemini 的互動情境 JSON 回應失敗: {json_val_err}. 回應原文: {gemini_response_text[:500]}...")
-                # Fallback to a default scenario
-                generated_scenario_text = "咪～？小雲在想事情… 你要猜猜看是什麼嗎？\n👉 輸入數字告訴小雲你的猜測～"
+                generated_scenario_text = "咪～？小雲在想事情… 你要猜猜看是什麼嗎？"
                 generated_options = ["在想晚餐吃什麼", "在想你什麼時候回家", "其實我只是在發呆啦！"]
                 sticker_keyword_from_gemini = "思考"
         else: 
             logger.error(f"Gemini 互動情境請求回應格式異常或無內容: {result}")
             generated_scenario_text = "喵嗚… 小雲今天好像沒什麼特別的想法耶… 你想跟我說說話嗎？"
+            generated_options = ["摸摸小雲", "跟小雲說說話", "靜靜地陪著他"]
             sticker_keyword_from_gemini = "害羞"
             if result.get("promptFeedback", {}).get("blockReason"):
                 generated_scenario_text = "咪… 小雲今天的話題好像被神秘力量封印了！"
+                generated_options = ["那...休息一下？", "拍拍你", "給你小魚乾"]
                 sticker_keyword_from_gemini = "無奈"
     
     except requests.exceptions.Timeout:
         logger.error(f"Gemini 互動情境請求 API 超時 (User ID: {user_id})")
         generated_scenario_text = "咪… 小雲想跟你說話，但是網路好像睡著了…💤"
+        generated_options = ["摸摸頭", "等一下再說", "先去睡吧"]
         sticker_keyword_from_gemini = "睡覺"
     except requests.exceptions.RequestException as req_err:
         logger.error(f"Gemini 互動情境請求 API 錯誤 (User ID: {user_id}): {req_err}")
         generated_scenario_text = "喵～ 小雲的說話頻道好像有點雜訊… 沙沙沙…"
+        generated_options = ["你還好嗎？", "再說一次？", "聽不清楚耶"]
         sticker_keyword_from_gemini = "疑惑"
     except Exception as e_gen:
         logger.error(f"生成或處理小雲互動情境時發生未知錯誤: {e_gen}", exc_info=True)
         generated_scenario_text = "喵嗚！小雲的腦袋當機了，不知道要說什麼！"
+        generated_options = ["秀秀", "給你抱抱", "修理一下！"]
         sticker_keyword_from_gemini = "哭哭"
 
+    # --- 修正開始：調整訊息順序以確保 Quick Reply 正常運作 ---
+    
+    # 1. 先準備貼圖訊息
+    selected_sticker = select_sticker_by_keyword(sticker_keyword_from_gemini)
+    sticker_message = StickerSendMessage(
+        package_id=str(selected_sticker["package_id"]),
+        sticker_id=str(selected_sticker["sticker_id"])
+    )
+    
+    # 2. 再準備附有 Quick Reply 的文字訊息
     if generated_scenario_text and generated_options:
-        # --- 修正開始：使用新的 options 列表來建立按鈕 ---
         quick_reply_buttons = []
         option_emojis = ["1️⃣", "2️⃣", "3️⃣"]
-        full_scenario_text = generated_scenario_text.strip() + "\n"
+        full_scenario_text = generated_scenario_text.strip()
         
+        # 將選項附加到文字中，使其在介面上可見
+        options_text_part = "\n"
         for i, option_text in enumerate(generated_options):
-            full_scenario_text += f"\n{option_emojis[i]} {option_text}"
+            options_text_part += f"\n{option_emojis[i]} {option_text}"
+        
+        full_scenario_text += options_text_part
+
+        # 為按鈕設定 payload (使用者點擊後發送的文字)
+        for i, option_text in enumerate(generated_options):
             quick_reply_buttons.append(
                 QuickReplyButton(action=MessageAction(label=option_emojis[i], text=str(i + 1)))
             )
@@ -1598,32 +1607,33 @@ def handle_interactive_scenario_request(event):
         scenario_msg = TextSendMessage(text=full_scenario_text)
         if quick_reply_buttons:
             scenario_msg.quick_reply = QuickReply(items=quick_reply_buttons)
-        messages_to_send.append(scenario_msg)
+        
+        # 將訊息按「貼圖 -> 文字」的順序加入列表
+        messages_to_send.append(sticker_message)
+        messages_to_send.append(scenario_msg) 
         
         user_scenario_context[user_id] = {
             "last_scenario_text": full_scenario_text,
             "last_scenario_sticker": sticker_keyword_from_gemini 
         }
-        # --- 修正結束 ---
     else: 
+        # Fallback message
         fallback_msg = TextSendMessage(text="咪？你想跟小雲說什麼呀？")
         qr_options = generate_quick_replies_with_gemini(fallback_msg.text, user_id)
         if qr_options:
             fallback_msg.quick_reply = QuickReply(items=[QuickReplyButton(action=MessageAction(label=opt, text=opt)) for opt in qr_options])
+        
+        messages_to_send.append(sticker_message)
         messages_to_send.append(fallback_msg)
+
         if user_id in user_scenario_context: 
             del user_scenario_context[user_id]
-
-    selected_sticker = select_sticker_by_keyword(sticker_keyword_from_gemini)
-    messages_to_send.append(StickerSendMessage(
-        package_id=str(selected_sticker["package_id"]),
-        sticker_id=str(selected_sticker["sticker_id"])
-    ))
-
+    # --- 修正結束 ---
+    
     try:
         bot_response_for_history_str = json.dumps([
-            {"type": "text", "content": user_scenario_context.get(user_id, {}).get("last_scenario_text", "咪？你想跟小雲說什麼呀？")},
-            {"type": "sticker", "keyword": sticker_keyword_from_gemini}
+            {"type": "sticker", "keyword": sticker_keyword_from_gemini},
+            {"type": "text", "content": user_scenario_context.get(user_id, {}).get("last_scenario_text", "咪？你想跟小雲說什麼呀？")}
         ], ensure_ascii=False)
         add_to_conversation(user_id, f"[互動情境請求觸發 by text: {event.message.text}]", bot_response_for_history_str, "interactive_scenario_init")
         
@@ -1637,26 +1647,6 @@ def handle_interactive_scenario_request(event):
             line_bot_api.reply_message(reply_token, TextSendMessage(text="咪...小雲好像說話打結了..."))
         except Exception as fallback_err:
             logger.error(f"互動情境備用錯誤訊息也發送失敗 ({user_id}): {fallback_err}")
-
-
-@app.route("/", methods=["GET", "HEAD"])
-def health_check():
-    return "OK", 200
-
-@app.route("/callback", methods=["POST"])
-def callback():
-    signature = request.headers["X-Line-Signature"]
-    body = request.get_data(as_text=True)
-    logger.info(f"Request body (first 500 chars): {body[:500]}")
-    try:
-        handler.handle(body, signature)
-    except InvalidSignatureError:
-        logger.error("簽名驗證失敗，請檢查 LINE 渠道密鑰設定。")
-        abort(400)
-    except Exception as e:
-        logger.error(f"處理 Webhook 時發生錯誤: {e}", exc_info=True)
-        abort(500) 
-    return "OK"
 
 @handler.add(MessageEvent, message=TextMessage)
 def handle_text_message(event):
@@ -1791,122 +1781,88 @@ def handle_text_message(event):
         logger.info(f"CMD: 請求小雲餵食模板 (User ID: {user_id} by text: '{user_message}')")
         conversation_history_for_feed_template = get_conversation_history(user_id).copy()
         
-        # --- 修正開始：強化餵食模板的 Prompt ---
         feed_template_prompt = f"""
-你現在是小雲，一隻害羞、溫和有禮、充滿好奇心且非常愛吃的賓士公貓。用戶剛剛點擊了 Rich Menu 上的「餵小雲點心🐟 🍖」按鈕。
-你的任務是為小雲生成一份充滿驚喜的、隨機的餵食菜單。
+你現在是小雲，一隻害羞、溫和有禮、充滿好奇心且非常愛吃的賓士公貓。用戶觸發了「餵小雲點心」功能。
+你的任務是為小雲生成一份充滿驚喜的、隨機的餵食菜單，並以一個【單一的 JSON 物件】格式回傳。
 
-你的回應必須是兩段文字，中間用一個獨特的標記 `---NEXT_MESSAGE---` 分隔開。
+這個 JSON 物件必須包含以下兩個鍵：
+1.  `"menu_text"`: (字串) 菜單的描述文字。內容應包含：
+    *   一個開場白，例如 "(ฅ`・ω・´)ฅ 喵～今天想給我吃點什麼好料呢？"
+    *   **隨機生成 4 到 6 種「全新的」貓咪點心**，每種都必須是 `[表情符號]【品名】\\n✦ [可愛描述]` 的格式。
+    *   **在列表最下方，【強制】包含固定的「草莓乾乾」、「神秘閃亮亮罐罐」和「收起菜單」三個選項**，格式與內容不可變更。
+2.  `"inventory_text"`: (字串) 庫存清單的文字。內容應包含：
+    *   一個開場白，例如 "庫存情況："
+    *   將你在 `menu_text` 中生成的所有點心（包含隨機和固定的），在這裡列出庫存。格式為 `[表情符號] [品名] × [隨機數量]`。
+    *   「神秘閃亮亮罐罐」的庫存固定為 `❓`。
+    *   「草莓乾乾」的庫存請隨機生成 0-2 之間，並根據數量加上特別註解。
 
----
-【訊息模板1】(這会是第一则发送的讯息 - 点心描述)
+**重要指令：**
+- 你的回應【必須】是一個單一、格式完全正確的 JSON 物件。
+- 兩個 text 欄位中的內容必須互相對應。
+- 所有文字都使用繁體中文（台灣用語）。
 
-(ฅ`・ω・´)ฅ 喵～今天想給我吃點什麼好料呢？
-
-**你的首要任務是：參考下方的【風格靈感參考】，發揮創意，隨機生成 4 到 6 種「全新的」貓咪點心。**
-每一種都必須嚴格遵守以下格式： `[表情符號]【品名】\n✦ [符合小雲口吻的可愛或搞笑描述]`
-【品名】的長度請盡量控制在 4 到 5 個字。
-
-**[--- 請將你生成的 4-6 種點心放在這裡 ---]**
-
-**【重要固定項目】**
-**在你生成完上面的點心後，你【必須】在列表的【最下方】加上以下這三個固定的選項，格式和內容完全不可變更：**
-🍓【草莓乾乾】
-✦（小雲的最愛♥）吃完會開心地滾來滾去 >////<
-🍬【神秘閃亮亮罐罐】
-✦ ∑(ﾟДﾟノ)ノ？！這味道是傳說中的——！？難道是...百年一遇的夢幻貓草魚子醬佐宇宙光束風味！？喵啊啊啊～好想吃吃看呀！！！
-❌【收起菜單】
-✦ 好吧...等等再餵我（尾巴垂下來...）
-
----NEXT_MESSAGE---
-
-【訊息模板2】(這会是第二则发送的讯息 - 库存清单)
-
-庫存情況：
-**[重要：請將你在【訊息模板1】中剛剛創造的所有點心品名（包含你生成的 和 固定的「草莓乾乾」、「神秘閃亮亮罐罐」），一字不差地複製到這裡，並為每一項隨機生成一個 0-5 的庫存數量，但「神秘閃亮亮罐罐」的庫存固定為「❓」。]**
-格式為：`[表情符號] [品名] × [隨機整數]`
-
-**[--- 請將對應的庫存列表放在這裡 ---]**
-
----
-**[以下是固定項目，請務必保留]**
-🍓 草莓乾乾 × [請為此生成一個 0-2 的隨機整數。如果此數量為0，則註解固定為「（嗚嗚吃完了...最喜歡的說QAQ）」；如果數量大於0，請為其生成一個全新的、符合貓咪口吻的隨機可愛註解，例如「（哇！是草莓乾乾耶！眼睛發亮✨）」或「（小雲偷偷藏起來的點心！噓～）」]
-🍬 神秘閃亮亮罐罐 × ❓（聽說是活動限定喵...）
----
+**範例 JSON 輸出格式：**
+```json
+{{
+  "menu_text": "(ฅ`・ω・´)ฅ 喵～今天想給我吃點什麼好料呢？\\n\\n🐟【宜蘭現撈小魚乾】\\n✦ 咪...有大海的味道...\\n🍖【閃電雞肉條】\\n✦ 吃完會獲得閃電般的速度！\\n\\n🍓【草莓乾乾】\\n✦（小雲的最愛♥）吃完會開心地滾來滾去 >////<\\n🍬【神秘閃亮亮罐罐】\\n✦ ∑(ﾟДﾟノ)ノ？！這味道是傳說中的——！？\\n❌【收起菜單】\\n✦ 好吧...等等再餵我（尾巴垂下來...）",
+  "inventory_text": "庫存情況：\\n🐟 宜蘭現撈小魚乾 × 3\\n🍖 閃電雞肉條 × 1\\n🍓 草莓乾乾 × 1（哇！是草莓乾乾耶！眼睛發亮✨）\\n🍬 神秘閃亮亮罐罐 × ❓（聽說是活動限定喵...）"
+}}
+```
+請嚴格按照此 JSON 格式生成全新的菜單。
 """
-        # --- 修正結束 ---
         
         conversation_history_for_feed_template.append({"role": "user", "parts": [{"text": feed_template_prompt}]})
         payload = {
             "contents": conversation_history_for_feed_template,
-            "generationConfig": {"temperature": 0.8, "maxOutputTokens": 1500 }
+            "generationConfig": {"temperature": 0.8, "maxOutputTokens": 1500, "response_mime_type": "application/json"}
         }
         try:
             response = requests.post(gemini_url_with_key, headers=headers, json=payload, timeout=45)
             response.raise_for_status()
             result = response.json()
-            generated_text_combined = ""
+            gemini_response_text = ""
             if (candidates := result.get("candidates")) and isinstance(candidates, list) and candidates:
                 if (content := candidates[0].get("content")) and (parts := content.get("parts")):
                     if parts and (text := parts[0].get("text")):
-                        generated_text_combined = text
+                        gemini_response_text = text
 
-            if generated_text_combined:
-                messages_parts = generated_text_combined.split("---NEXT_MESSAGE---")
-                if len(messages_parts) >= 2: # Use >=2 to be safe
-                    descriptions_text = messages_parts[0].strip()
-                    inventory_text = messages_parts[1].strip()
-                    
-                    def clean_markdown(text): 
-                        # Remove markdown code blocks
-                        text = re.sub(r'```[a-z]*\n', '', text)
-                        text = re.sub(r'```', '', text)
-                        # Remove template labels
-                        text = text.replace("【訊息模板1】(這会是第一则发送的讯息 - 点心描述)", "")
-                        text = text.replace("【訊息模板2】(這会是第二则发送的讯息 - 库存清单)", "")
-                        return text.strip()
-                    
-                    descriptions_text_cleaned = clean_markdown(descriptions_text)
-                    inventory_text_cleaned = clean_markdown(inventory_text)
+            if gemini_response_text:
+                logger.info(f"Gemini 餵食模板 JSON 回應: {gemini_response_text}")
+                parsed_data = json.loads(gemini_response_text)
+                descriptions_text = parsed_data.get("menu_text")
+                inventory_text = parsed_data.get("inventory_text")
 
-                    if not inventory_text_cleaned or not descriptions_text_cleaned: 
-                        raise ValueError("Empty message part after split/clean for feed template.")
-
-                    # --- 修正開始：更新 Regex 以捕獲 Emoji ---
-                    food_options = re.findall(r"(^\S.*【.+?】$)", descriptions_text_cleaned, re.MULTILINE)
-                    # --- 修正結束 ---
+                if descriptions_text and inventory_text:
+                    food_options = re.findall(r"(^[\S\s].*?【.+?】$)", descriptions_text, re.MULTILINE)
                     
                     quick_reply_buttons = []
                     if food_options:
                         logger.info(f"從餵食菜單中提取到選項: {food_options}")
                         for item in food_options:
-                            # The item itself is now the full line with emoji
-                            label = item.strip()
-                            # For the text payload, we can just use the name inside the brackets
+                            label = item.strip().replace('\\n', '\n')
                             payload_text_match = re.search(r"【(.+?)】", label)
                             payload_text = payload_text_match.group(1) if payload_text_match else label
                             quick_reply_buttons.append(
-                                QuickReplyButton(action=MessageAction(label=label[:20], text=payload_text[:20]))
+                                QuickReplyButton(action=MessageAction(label=label.split('\n')[0][:20], text=payload_text[:20]))
                             )
                     
                     messages_to_send = [
-                        TextSendMessage(text=descriptions_text_cleaned),
-                        TextSendMessage(text=inventory_text_cleaned),
-                        TextSendMessage(text="你想要給小雲吃什咪?💕")
+                        TextSendMessage(text=descriptions_text),
+                        TextSendMessage(text=inventory_text),
                     ]
                     
+                    final_prompt_msg = TextSendMessage(text="你想要給小雲吃什咪?💕")
                     if quick_reply_buttons:
-                        messages_to_send[-1].quick_reply = QuickReply(items=quick_reply_buttons)
+                        final_prompt_msg.quick_reply = QuickReply(items=quick_reply_buttons)
+                    messages_to_send.append(final_prompt_msg)
                     
-                    bot_response_summary = f"小雲菜單(描述): {descriptions_text_cleaned[:70]}...\n小雲菜單(庫存): {inventory_text_cleaned[:70]}..."
+                    bot_response_summary = f"小雲菜單(描述): {descriptions_text[:70]}...\n小雲菜單(庫存): {inventory_text[:70]}..."
                     add_to_conversation(user_id, f"[餵食模板請求 by text: {user_message}]", bot_response_summary, "feed_template_response")
                     
                     line_bot_api.reply_message(reply_token, messages_to_send)
                     logger.info(f"成功發送小雲餵食模板給 User ID ({user_id})")
                 else: 
-                    logger.error(f"Gemini 餵食模板回應未使用正確的分隔符 ({len(messages_parts)} parts).")
-                    fallback_text = generated_text_combined.replace("---NEXT_MESSAGE---", "\n\n").strip()
-                    line_bot_api.reply_message(reply_token, TextSendMessage(text=fallback_text))
+                    raise ValueError("Parsed JSON from Gemini is missing 'menu_text' or 'inventory_text'.")
             else: 
                 logger.error(f"Gemini 餵食模板請求回應格式異常或無內容: {result}")
                 error_message = "咪...小雲的點心單好像被弄糊了！(ΦωΦ;)"
