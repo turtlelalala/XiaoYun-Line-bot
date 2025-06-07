@@ -1648,6 +1648,30 @@ def handle_interactive_scenario_request(event):
         except Exception as fallback_err:
             logger.error(f"互動情境備用錯誤訊息也發送失敗 ({user_id}): {fallback_err}")
 
+# --- 路由與 Webhook 處理 ---
+
+@app.route("/", methods=["GET", "HEAD"])
+def health_check():
+    # 這裡的程式碼在之前的版本中是正確的，但根據您的 Log 顯示 404，
+    # 這意味著這個路由沒有被成功註冊。現在的完整程式碼結構應該能解決此問題。
+    return "OK", 200
+
+@app.route("/callback", methods=["POST"])
+def callback():
+    signature = request.headers["X-Line-Signature"]
+    body = request.get_data(as_text=True)
+    # Log 應該在這裡被觸發
+    logger.info(f"Request body (first 500 chars): {body[:500]}")
+    try:
+        handler.handle(body, signature)
+    except InvalidSignatureError:
+        logger.error("簽名驗證失敗，請檢查 LINE 渠道密鑰設定。")
+        abort(400)
+    except Exception as e:
+        logger.error(f"處理 Webhook 時發生錯誤: {e}", exc_info=True)
+        abort(500) 
+    return "OK"
+
 @handler.add(MessageEvent, message=TextMessage)
 def handle_text_message(event):
     user_message = event.message.text
@@ -1833,7 +1857,7 @@ def handle_text_message(event):
                 inventory_text = parsed_data.get("inventory_text")
 
                 if descriptions_text and inventory_text:
-                    food_options = re.findall(r"(^[\S\s].*?【.+?】$)", descriptions_text, re.MULTILINE)
+                    food_options = re.findall(r"(^.*【.+?】$)", descriptions_text, re.MULTILINE)
                     
                     quick_reply_buttons = []
                     if food_options:
