@@ -514,18 +514,22 @@ def _is_image_relevant_by_gemini_sync(image_base64: str, english_theme_query: st
         response = requests.post(gemini_url_with_key, headers=headers, json=payload, timeout=30)
         response.raise_for_status()
         result = response.json()
-        if "candidates" in result and result["candidates"] and \
-           "content" in result["candidates"][0] and "parts" in result["candidates"][0]["content"] and \
-           result["candidates"][0]["content"]["parts"]:
-            gemini_answer = result["candidates"][0]["content"]["parts"][0]["text"].strip().upper()
-            logger.info(f"Gemini 圖片相關性判斷回應: '{gemini_answer}' (來自 {source_service}, 英文主題: '{english_theme_query}', 圖片: {image_url_for_log[:70]}...)")
-            return "YES" in gemini_answer
+        # --- 修正開始 ---
+        # 修正對 'candidates' 列表的存取方式
+        if (candidates := result.get("candidates")) and isinstance(candidates, list) and candidates:
+            if (content := candidates[0].get("content")) and (parts := content.get("parts")):
+                if parts and (text := parts[0].get("text")):
+                    gemini_answer = text.strip().upper()
+                    logger.info(f"Gemini 圖片相關性判斷回應: '{gemini_answer}' (來自 {source_service}, 英文主題: '{english_theme_query}', 圖片: {image_url_for_log[:70]}...)")
+                    return "YES" in gemini_answer
+        # --- 修正結束 ---
+        
+        # 處理原始碼中已有的錯誤日誌
+        if result.get("promptFeedback", {}).get("blockReason"):
+            logger.error(f"Gemini 圖片相關性判斷被阻擋 (來自 {source_service}): {result['promptFeedback']['blockReason']}")
         else:
-            if result.get("promptFeedback", {}).get("blockReason"):
-                logger.error(f"Gemini 圖片相關性判斷被阻擋 (來自 {source_service}): {result['promptFeedback']['blockReason']}")
-            else:
-                logger.error(f"Gemini 圖片相關性判斷 API 回應格式異常 (來自 {source_service}): {result}")
-            return False
+            logger.error(f"Gemini 圖片相關性判斷 API 回應格式異常 (來自 {source_service}): {result}")
+        return False
     except requests.exceptions.Timeout:
         logger.error(f"Gemini 圖片相關性判斷請求超時 (來自 {source_service}, 英文主題: {english_theme_query})")
         return False
@@ -763,8 +767,17 @@ def get_conversation_history(user_id):
 def add_to_conversation(user_id, user_message_for_gemini, bot_response_str, message_type_for_log="text"):
     conversation_history = get_conversation_history(user_id)
     
-    user_parts = [{"text": user_message_for_gemini if isinstance(user_message_for_gemini, str) else json.dumps(user_message_for_gemini, ensure_ascii=False)}]
-    
+    # "parts" should be a list of dictionaries
+    user_parts = []
+    if isinstance(user_message_for_gemini, list):
+         # This case is for multimedia messages where parts are pre-formatted
+        user_parts = user_message_for_gemini
+    elif isinstance(user_message_for_gemini, str):
+        user_parts = [{"text": user_message_for_gemini}]
+    else:
+        # Fallback for other types, e.g., dict
+        user_parts = [{"text": json.dumps(user_message_for_gemini, ensure_ascii=False)}]
+
     model_parts = [{"text": bot_response_str}]
 
     conversation_history.extend([
@@ -896,28 +909,29 @@ def generate_quick_replies_with_gemini(bot_message_summary: str, user_id: str) -
         response.raise_for_status()
         result = response.json()
         
-        if "candidates" in result and result["candidates"] and \
-           result["candidates"][0].get("content", {}).get("parts", [{}])[0].get("text"):
-            
-            response_text = result["candidates"][0]["content"]["parts"][0]["text"]
-            logger.info(f"Gemini 快速回覆原始回應: {response_text}")
-            
-            if response_text.strip().startswith("```json"):
-                response_text = response_text.strip()[7:-3].strip()
+        # --- 修正開始 ---
+        if (candidates := result.get("candidates")) and isinstance(candidates, list) and candidates:
+            if (content := candidates[0].get("content")) and (parts := content.get("parts")):
+                if parts and (response_text := parts[0].get("text")):
+                    logger.info(f"Gemini 快速回覆原始回應: {response_text}")
+                    
+                    if response_text.strip().startswith("```json"):
+                        response_text = response_text.strip()[7:-3].strip()
 
-            data = json.loads(response_text)
-            replies = data.get("replies", [])
-            
-            if isinstance(replies, list) and len(replies) > 0:
-                validated_replies = [reply[:20] for reply in replies]
-                logger.info(f"成功生成快速回覆選項: {validated_replies}")
-                return validated_replies
-            else:
-                logger.warning("Gemini 回應的 replies 格式不符或為空。")
-                return []
-        else:
-            logger.error(f"Gemini 快速回覆 API 回應格式異常: {result}")
-            return []
+                    data = json.loads(response_text)
+                    replies = data.get("replies", [])
+                    
+                    if isinstance(replies, list) and len(replies) > 0:
+                        validated_replies = [reply[:20] for reply in replies]
+                        logger.info(f"成功生成快速回覆選項: {validated_replies}")
+                        return validated_replies
+                    else:
+                        logger.warning("Gemini 回應的 replies 格式不符或為空。")
+                        return []
+        # --- 修正結束 ---
+
+        logger.error(f"Gemini 快速回覆 API 回應格式異常: {result}")
+        return []
     except Exception as e:
         logger.error(f"生成快速回覆時發生錯誤: {e}", exc_info=True)
         return []
@@ -927,12 +941,14 @@ def parse_response_and_send(gemini_json_string_response: str, reply_token: str, 
     text_parts_for_summary = []
 
     try:
+        # --- 修正開始：強化 JSON 清理 ---
         cleaned_json_string = gemini_json_string_response.strip()
         if cleaned_json_string.startswith("```json"):
             cleaned_json_string = cleaned_json_string[7:]
         if cleaned_json_string.endswith("```"):
             cleaned_json_string = cleaned_json_string[:-3]
         cleaned_json_string = cleaned_json_string.strip()
+        # --- 修正結束 ---
 
         logger.info(f"準備解析 Gemini 的 JSON 字串: {cleaned_json_string}")
         message_objects = json.loads(cleaned_json_string)
@@ -1125,8 +1141,14 @@ def handle_cat_secret_discovery_request(event):
             response = requests.post(gemini_url_with_key, headers=headers, json=payload, timeout=35)
             response.raise_for_status()
             result = response.json()
-            if "candidates" in result and result["candidates"] and "content" in result["candidates"] and "parts" in result["candidates"]["content"] and result["candidates"]["content"]["parts"]:
-                gemini_response_json_str = result["candidates"]["content"]["parts"]["text"]
+            # --- 修正開始 ---
+            if (candidates := result.get("candidates")) and isinstance(candidates, list) and candidates:
+                if (content := candidates[0].get("content")) and (parts := content.get("parts")):
+                    if parts and (text := parts[0].get("text")):
+                        gemini_response_json_str = text
+            # --- 修正結束 ---
+            
+            if gemini_response_json_str:
                 try:
                     cleaned_json_str_for_check = gemini_response_json_str.strip()
                     if cleaned_json_str_for_check.startswith("```json"): cleaned_json_str_for_check = cleaned_json_str_for_check[7:]
@@ -1139,7 +1161,7 @@ def handle_cat_secret_discovery_request(event):
                             logger.warning(f"Gemini 生成的秘密JSON缺少 image_theme，將嘗試追加。原始: {gemini_response_json_str}")
                             new_image_obj = {"type": "image_theme", "theme": "cat secret discovery"} 
                             if len(parsed_secret_list) < 5: 
-                                insert_pos = 1 if parsed_secret_list and parsed_secret_list.get("type") == "text" else 0
+                                insert_pos = 1 if parsed_secret_list and parsed_secret_list[0].get("type") == "text" else 0
                                 parsed_secret_list.insert(insert_pos, new_image_obj)
                                 gemini_response_json_str = json.dumps(parsed_secret_list, ensure_ascii=False)
                             else:
@@ -1321,16 +1343,21 @@ def handle_secret_discovery_template_request(event):
 
     messages_to_send = []
     parsed_secret_data = None
+    gemini_response_text = ""
 
     try:
         response = requests.post(gemini_url_with_key, headers=headers, json=payload, timeout=45)
         response.raise_for_status()
         result = response.json() 
         
-        if "candidates" in result and result["candidates"] and \
-           result["candidates"].get("content", {}).get("parts", [{}]).get("text"):
-            
-            gemini_response_text = result["candidates"]["content"]["parts"]["text"]
+        # --- 修正開始 ---
+        if (candidates := result.get("candidates")) and isinstance(candidates, list) and candidates:
+            if (content := candidates[0].get("content")) and (parts := content.get("parts")):
+                if parts and (text := parts[0].get("text")):
+                    gemini_response_text = text
+        # --- 修正結束 ---
+        
+        if gemini_response_text:
             logger.info(f"Gemini 秘密模板原始回應 (User ID: {user_id}): {gemini_response_text}")
             try:
                 if gemini_response_text.strip().startswith("```json"):
@@ -1519,16 +1546,21 @@ def handle_interactive_scenario_request(event):
     messages_to_send = []
     generated_scenario_text = None
     sticker_keyword_from_gemini = "思考" 
+    gemini_response_text = ""
 
     try:
         response = requests.post(gemini_url_with_key, headers=headers, json=payload, timeout=45)
         response.raise_for_status()
         result = response.json()
         
-        if "candidates" in result and result["candidates"] and \
-           result["candidates"].get("content", {}).get("parts", [{}]).get("text"):
-            
-            gemini_response_text = result["candidates"]["content"]["parts"]["text"]
+        # --- 修正開始 ---
+        if (candidates := result.get("candidates")) and isinstance(candidates, list) and candidates:
+            if (content := candidates[0].get("content")) and (parts := content.get("parts")):
+                if parts and (text := parts[0].get("text")):
+                    gemini_response_text = text
+        # --- 修正結束 ---
+        
+        if gemini_response_text:
             logger.info(f"Gemini 互動情境原始回應 (User ID: {user_id}): {gemini_response_text}")
             try:
                 if gemini_response_text.strip().startswith("```json"):
@@ -1747,9 +1779,15 @@ def handle_text_message(event):
             response = requests.post(gemini_url_with_key, headers=headers, json=payload, timeout=40)
             response.raise_for_status()
             result = response.json()
-            if "candidates" in result and result["candidates"] and \
-               result["candidates"].get("content", {}).get("parts", [{}]).get("text"):
-                generated_status_text = result["candidates"]["content"]["parts"]["text"]
+            generated_status_text = ""
+            # --- 修正開始 ---
+            if (candidates := result.get("candidates")) and isinstance(candidates, list) and candidates:
+                if (content := candidates[0].get("content")) and (parts := content.get("parts")):
+                    if parts and (text := parts[0].get("text")):
+                        generated_status_text = text
+            # --- 修正結束 ---
+            
+            if generated_status_text:
                 add_to_conversation(user_id, f"[狀態請求觸發: {user_message}]", generated_status_text.strip(), "status_template_response")
                 
                 status_message = TextSendMessage(text=generated_status_text.strip())
@@ -1856,13 +1894,19 @@ def handle_text_message(event):
             response = requests.post(gemini_url_with_key, headers=headers, json=payload, timeout=45)
             response.raise_for_status()
             result = response.json()
-            if "candidates" in result and result["candidates"] and \
-               result["candidates"].get("content", {}).get("parts", [{}]).get("text"):
-                generated_text_combined = result["candidates"]["content"]["parts"]["text"]
+            generated_text_combined = ""
+            # --- 修正開始 ---
+            if (candidates := result.get("candidates")) and isinstance(candidates, list) and candidates:
+                if (content := candidates[0].get("content")) and (parts := content.get("parts")):
+                    if parts and (text := parts[0].get("text")):
+                        generated_text_combined = text
+            # --- 修正結束 ---
+
+            if generated_text_combined:
                 messages_parts = generated_text_combined.split("---NEXT_MESSAGE---")
                 if len(messages_parts) == 2:
-                    descriptions_text = messages_parts.strip()
-                    inventory_text = messages_parts.strip()
+                    descriptions_text = messages_parts[0].strip()
+                    inventory_text = messages_parts[1].strip()
                     
                     def clean_markdown(text): 
                         if text.startswith("```text"): text = text[7:]
@@ -1903,7 +1947,7 @@ def handle_text_message(event):
                     logger.info(f"成功發送小雲餵食模板給 User ID ({user_id})")
                 else: 
                     logger.error(f"Gemini 餵食模板回應未使用正確的分隔符 ({len(messages_parts)} parts).")
-                    fallback_text = generated_text_combined.split("---NEXT_MESSAGE---").strip()
+                    fallback_text = generated_text_combined.replace("---NEXT_MESSAGE---", "\n\n").strip()
                     line_bot_api.reply_message(reply_token, TextSendMessage(text=fallback_text))
             else: 
                 logger.error(f"Gemini 餵食模板請求回應格式異常或無內容: {result}")
@@ -1949,9 +1993,15 @@ def handle_text_message(event):
             response = requests.post(gemini_url_with_key, headers=headers, json=payload, timeout=30)
             response.raise_for_status()
             result = response.json()
-            if "candidates" in result and result["candidates"] and \
-               result["candidates"].get("content", {}).get("parts", [{}]).get("text"):
-                ai_response_json_str = result["candidates"]["content"]["parts"]["text"]
+            ai_response_json_str = ""
+            # --- 修正開始 ---
+            if (candidates := result.get("candidates")) and isinstance(candidates, list) and candidates:
+                if (content := candidates[0].get("content")) and (parts := content.get("parts")):
+                    if parts and (text := parts[0].get("text")):
+                        ai_response_json_str = text
+            # --- 修正結束 ---
+
+            if ai_response_json_str:
                 add_to_conversation(user_id, f"[{RICH_MENU_CMD_FEED_ME_NOW} Triggered]", ai_response_json_str, "richmenu_command_response")
                 parse_response_and_send(ai_response_json_str, reply_token, user_id)
             else: 
@@ -1993,9 +2043,15 @@ def handle_text_message(event):
             response = requests.post(gemini_url_with_key, headers=headers, json=payload, timeout=40)
             response.raise_for_status()
             result = response.json()
-            if "candidates" in result and result["candidates"] and \
-               result["candidates"].get("content", {}).get("parts", [{}]).get("text"):
-                ai_response_json_str = result["candidates"]["content"]["parts"]["text"]
+            ai_response_json_str = ""
+            # --- 修正開始 ---
+            if (candidates := result.get("candidates")) and isinstance(candidates, list) and candidates:
+                if (content := candidates[0].get("content")) and (parts := content.get("parts")):
+                    if parts and (text := parts[0].get("text")):
+                        ai_response_json_str = text
+            # --- 修正結束 ---
+
+            if ai_response_json_str:
                 add_to_conversation(user_id, f"[情境選項回應: {user_message}]", ai_response_json_str, "interactive_scenario_followup")
                 parse_response_and_send(ai_response_json_str, reply_token, user_id)
             else:
@@ -2023,33 +2079,37 @@ def handle_text_message(event):
 
     conversation_history_for_payload = get_conversation_history(user_id).copy()
     
-    # Contextual Reminder Logic (same as before)
+    # --- 修正開始：修正上下文解析邏輯 ---
     bot_last_message_text = ""
     bot_expressed_emotion_state = None
-    if len(conversation_history_for_payload) >= 1 and conversation_history_for_payload[-1]["role"] == "model":
+    if len(conversation_history_for_payload) >= 1 and conversation_history_for_payload[-1].get("role") == "model":
         try:
-            last_model_response_json_str = conversation_history_for_payload[-1]["parts"].get("text", "")
-            if last_model_response_json_str.startswith("[") and last_model_response_json_str.endswith("]"):
-                last_model_obj_list = json.loads(last_model_response_json_str)
-                temp_text_parts = [obj.get("content","") for obj in last_model_obj_list if isinstance(obj, dict) and obj.get("type") == "text"]
-                bot_last_message_text = " ".join(filter(None, temp_text_parts)).strip().lower()
-                if "委屈" in bot_last_message_text or "\"keyword\": \"哭哭\"" in last_model_response_json_str.lower():
-                     bot_expressed_emotion_state = "委屈"
-                elif "餓" in bot_last_message_text or "\"keyword\": \"肚子餓\"" in last_model_response_json_str.lower():
-                     bot_expressed_emotion_state = "飢餓"
+            # "parts" is a list, we need to access the first element
+            if (last_model_parts := conversation_history_for_payload[-1].get("parts")) and isinstance(last_model_parts, list) and last_model_parts:
+                last_model_response_json_str = last_model_parts[0].get("text", "")
+                if last_model_response_json_str.startswith("[") and last_model_response_json_str.endswith("]"):
+                    last_model_obj_list = json.loads(last_model_response_json_str)
+                    temp_text_parts = [obj.get("content","") for obj in last_model_obj_list if isinstance(obj, dict) and obj.get("type") == "text"]
+                    bot_last_message_text = " ".join(filter(None, temp_text_parts)).strip().lower()
+                    if "委屈" in bot_last_message_text or "\"keyword\": \"哭哭\"" in last_model_response_json_str.lower():
+                         bot_expressed_emotion_state = "委屈"
+                    elif "餓" in bot_last_message_text or "\"keyword\": \"肚子餓\"" in last_model_response_json_str.lower():
+                         bot_expressed_emotion_state = "飢餓"
+                else: # Handle cases where the last response was not a JSON list string
+                    bot_last_message_text = last_model_response_json_str.lower()
         except Exception as e:
             logger.warning(f"解析上一條機器人回應JSON時出錯 (user: {user_id}): {e}")
-            if isinstance(conversation_history_for_payload[-1]["parts"].get("text", ""), str):
-                 bot_last_message_text = conversation_history_for_payload[-1]["parts"].get("text", "").lower()
+            if isinstance(conversation_history_for_payload[-1].get("parts", [{}])[0].get("text"), str):
+                 bot_last_message_text = conversation_history_for_payload[-1].get("parts")[0].get("text", "").lower()
 
     user_prev_message_text = ""
-    if len(conversation_history_for_payload) >= 3 and \
-       conversation_history_for_payload[-2]["role"] == "model" and \
-       conversation_history_for_payload[-3]["role"] == "user":
-        if isinstance(conversation_history_for_payload[-3].get("parts"), list) and conversation_history_for_payload[-3]["parts"]:
-            part_content = conversation_history_for_payload[-3]["parts"].get("text", "")
+    if len(conversation_history_for_payload) >= 2 and conversation_history_for_payload[-2]["role"] == "user":
+        if (prev_user_parts := conversation_history_for_payload[-2].get("parts")) and isinstance(prev_user_parts, list) and prev_user_parts:
+            part_content = prev_user_parts[0].get("text", "")
             if isinstance(part_content, str):
                 user_prev_message_text = part_content.lower()
+    # --- 修正結束 ---
+
 
     user_current_message_lower = user_message.lower()
     contextual_reminder = ""
@@ -2103,10 +2163,15 @@ def handle_text_message(event):
         response = requests.post(gemini_url_with_key, headers=headers, json=payload, timeout=40)
         response.raise_for_status()
         result = response.json()
-        if "candidates" in result and result["candidates"] and \
-           result["candidates"].get("content", {}).get("parts", [{}]).get("text"): 
-            
-            ai_response_json_str = result["candidates"]["content"]["parts"]["text"]
+        ai_response_json_str = ""
+        # --- 修正開始 ---
+        if (candidates := result.get("candidates")) and isinstance(candidates, list) and candidates:
+            if (content := candidates[0].get("content")) and (parts := content.get("parts")):
+                if parts and (text := parts[0].get("text")):
+                    ai_response_json_str = text
+        # --- 修正結束 ---
+
+        if ai_response_json_str:
             add_to_conversation(user_id, final_user_message_for_gemini, ai_response_json_str)
             logger.info(f"小雲 JSON 回覆({user_id} 一般訊息)：{ai_response_json_str}")
             parse_response_and_send(ai_response_json_str, reply_token, user_id)
@@ -2162,9 +2227,15 @@ def handle_image_message(event):
         response = requests.post(gemini_url_with_key, headers=headers, json=payload, timeout=45)
         response.raise_for_status()
         result = response.json()
-        if "candidates" in result and result["candidates"] and \
-           result["candidates"].get("content", {}).get("parts", [{}]).get("text"): 
-            ai_response_json_str = result["candidates"]["content"]["parts"]["text"]
+        ai_response_json_str = ""
+        # --- 修正開始 ---
+        if (candidates := result.get("candidates")) and isinstance(candidates, list) and candidates:
+            if (content := candidates[0].get("content")) and (parts := content.get("parts")):
+                if parts and (text := parts[0].get("text")):
+                    ai_response_json_str = text
+        # --- 修正結束 ---
+        
+        if ai_response_json_str:
             add_to_conversation(user_id, "[使用者傳來了一張圖片]", ai_response_json_str, "image")
             logger.info(f"小雲 JSON 回覆({user_id})圖片訊息：{ai_response_json_str}")
             parse_response_and_send(ai_response_json_str, reply_token, user_id)
@@ -2234,9 +2305,15 @@ def handle_sticker_message(event):
         response = requests.post(gemini_url_with_key, headers=headers, json=payload, timeout=45)
         response.raise_for_status()
         result = response.json()
-        if "candidates" in result and result["candidates"] and \
-           result["candidates"].get("content", {}).get("parts", [{}]).get("text"): 
-            ai_response_json_str = result["candidates"]["content"]["parts"]["text"]
+        ai_response_json_str = ""
+        # --- 修正開始 ---
+        if (candidates := result.get("candidates")) and isinstance(candidates, list) and candidates:
+            if (content := candidates[0].get("content")) and (parts := content.get("parts")):
+                if parts and (text := parts[0].get("text")):
+                    ai_response_json_str = text
+        # --- 修正結束 ---
+        
+        if ai_response_json_str:
             add_to_conversation(user_id, user_message_log_for_history_entry, ai_response_json_str, "sticker")
             logger.info(f"小雲 JSON 回覆({user_id})貼圖訊息：{ai_response_json_str}")
             parse_response_and_send(ai_response_json_str, reply_token, user_id)
@@ -2299,9 +2376,15 @@ def handle_audio_message(event):
         response = requests.post(gemini_url_with_key, headers=headers, json=payload, timeout=45)
         response.raise_for_status()
         result = response.json()
-        if "candidates" in result and result["candidates"] and \
-           result["candidates"].get("content", {}).get("parts", [{}]).get("text"): 
-            ai_response_json_str = result["candidates"]["content"]["parts"]["text"]
+        ai_response_json_str = ""
+        # --- 修正開始 ---
+        if (candidates := result.get("candidates")) and isinstance(candidates, list) and candidates:
+            if (content := candidates[0].get("content")) and (parts := content.get("parts")):
+                if parts and (text := parts[0].get("text")):
+                    ai_response_json_str = text
+        # --- 修正結束 ---
+        
+        if ai_response_json_str:
             add_to_conversation(user_id, "[使用者傳來了一段語音訊息]", ai_response_json_str, "audio")
             logger.info(f"小雲 JSON 回覆({user_id})語音訊息：{ai_response_json_str}")
             parse_response_and_send(ai_response_json_str, reply_token, user_id)
@@ -2340,8 +2423,8 @@ def memory_status_route():
     status = {"total_users_in_memory": len(conversation_memory), "users_details": {}}
     for uid, hist in conversation_memory.items():
         last_interaction_summary = "無歷史或格式問題"
-        if hist and isinstance(hist[-1].get("parts"), list) and hist[-1]["parts"] and isinstance(hist[-1]["parts"].get("text"), str):
-            last_interaction_summary = hist[-1]["parts"]["text"][:100] + "..."
+        if hist and isinstance(hist[-1].get("parts"), list) and hist[-1]["parts"] and isinstance(hist[-1]["parts"][0].get("text"), str):
+            last_interaction_summary = hist[-1]["parts"][0]["text"][:100] + "..."
         secrets_shared_count = len(user_shared_secrets_indices.get(uid, set()))
         active_scenario_info = user_scenario_context.get(uid, {}).get("last_scenario_text", "無進行中情境")[:50] + "..."
         status["users_details"][uid] = {
