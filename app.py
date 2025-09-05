@@ -472,7 +472,7 @@ XIAOYUN_ROLE_PROMPT = """
         *   **範例：** 如果小雲看到窗邊的麻雀，`theme` 應為 `"bird window"` 或 `"sparrow windowsill"`。如果看到雨滴打在玻璃上，可以是 `"rain drops glass"`。如果看到陽光下的灰塵，可以是 `"sunlight dust motes"` 或 `"dusty air sunlight"`。
         *   圖片中**絕對不應該**出現小雲自己或其他任何貓咪（除非主題明確說明看到了某隻特定的動物朋友，且該動物朋友的英文描述必須簡潔地包含在`theme`中，例如`"calico cat roof"`)。
     *   `{"type": "image_key", "key": "預設圖片關鍵字"}`: 發送一張預設的圖片，例如 "tuxedo_cat_default"。僅在特殊情況下使用（如描述夢境中的自己）。
-    *   `{"type": "meow_sound", "sound": "貓叫聲關鍵字"}`: 發送一段貓叫聲音訊，例如 "generic_meow", "happy_purr"。**低頻率使用**，僅在情緒強烈且文字/貼圖不足時。
+    *   `{"type": "meow_sound", "sound": "貓叫聲關鍵字"}`: 發送一段貓叫聲音訊，例如 "generic_meow", "content_purr_soft"。**請在合適的時機**，例如表達強烈情緒、撒嬌或打招呼時，**多多使用**，讓小雲更生動！
 
 4.  **訊息數量與類型限制 (非常重要！)：**
     *   **總訊息物件數量：最少1個，最多5個。** 請你主動控制，盡可能生成接近5個訊息物件的豐富回應，但絕不能超過5個。
@@ -713,10 +713,11 @@ def fetch_and_validate_image_with_priority(english_theme_query: str) -> str | No
 
     if PEXELS_API_KEY:
         logger.info(f"階段 1: 嘗試從 Pexels 獲取圖片 (主題: '{english_theme_query}')")
+        # --- 修改：減少 Pexels 的檢查次數以提升速度 ---
         pexels_result_url = _fetch_image_from_pexels_internal(
             english_theme_query, 
-            pexels_per_page=5, 
-            max_candidates_to_check=5
+            pexels_per_page=2, # 減少 API 獲取數量
+            max_candidates_to_check=2 # 最多只驗證 2 張
         )
         if pexels_result_url:
             logger.info(f"成功從 Pexels 找到並驗證圖片: {pexels_result_url}")
@@ -728,10 +729,11 @@ def fetch_and_validate_image_with_priority(english_theme_query: str) -> str | No
 
     if UNSPLASH_ACCESS_KEY:
         logger.info(f"階段 2: 嘗試從 Unsplash (備援) 獲取圖片 (主題: '{english_theme_query}')")
+        # --- 修改：減少 Unsplash 的檢查次數以提升速度 ---
         unsplash_result_url = fetch_cat_image_from_unsplash_sync(
             english_theme_query, 
-            unsplash_per_page=3, 
-            max_candidates_to_check=3
+            unsplash_per_page=1, # 減少 API 獲取數量
+            max_candidates_to_check=1 # 最多只驗證 1 張
         )
         if unsplash_result_url:
             logger.info(f"成功從 Unsplash (備援) 找到並驗證圖片: {unsplash_result_url}")
@@ -1159,8 +1161,8 @@ def handle_cat_secret_discovery_request(event):
             response.raise_for_status()
             result = response.json()
             if (candidates := result.get("candidates")) and isinstance(candidates, list) and candidates:
-                if (content := candidates[0].get("content")) and (parts := content.get("parts")):
-                    if parts and (text := parts[0].get("text")):
+                if (content := candidates.get("content")) and (parts := content.get("parts")):
+                    if parts and (text := parts.get("text")):
                         gemini_response_json_str = text
 
             if gemini_response_json_str:
@@ -1176,7 +1178,7 @@ def handle_cat_secret_discovery_request(event):
                             logger.warning(f"Gemini 生成的秘密JSON缺少 image_theme，將嘗試追加。原始: {gemini_response_json_str}")
                             new_image_obj = {"type": "image_theme", "theme": "cat secret discovery"} 
                             if len(parsed_secret_list) < 5: 
-                                insert_pos = 1 if parsed_secret_list and parsed_secret_list[0].get("type") == "text" else 0
+                                insert_pos = 1 if parsed_secret_list and parsed_secret_list.get("type") == "text" else 0
                                 parsed_secret_list.insert(insert_pos, new_image_obj)
                                 gemini_response_json_str = json.dumps(parsed_secret_list, ensure_ascii=False)
                             else:
@@ -1373,8 +1375,8 @@ def handle_secret_discovery_template_request(event):
         result = response.json() 
         
         if (candidates := result.get("candidates")) and isinstance(candidates, list) and candidates:
-            if (content := candidates[0].get("content")) and (parts := content.get("parts")):
-                if parts and (text := parts[0].get("text")):
+            if (content := candidates.get("content")) and (parts := content.get("parts")):
+                if parts and (text := parts.get("text")):
                     gemini_response_text = text
         
         if gemini_response_text:
@@ -1818,8 +1820,8 @@ def handle_text_message(event):
             result = response.json()
             generated_status_text = ""
             if (candidates := result.get("candidates")) and isinstance(candidates, list) and candidates:
-                if (content := candidates[0].get("content")) and (parts := content.get("parts")):
-                    if parts and (text := parts[0].get("text")):
+                if (content := candidates.get("content")) and (parts := content.get("parts")):
+                    if parts and (text := parts.get("text")):
                         generated_status_text = text
             
             if generated_status_text:
@@ -1887,8 +1889,8 @@ def handle_text_message(event):
             result = response.json()
             gemini_response_text = ""
             if (candidates := result.get("candidates")) and isinstance(candidates, list) and candidates:
-                if (content := candidates[0].get("content")) and (parts := content.get("parts")):
-                    if parts and (text := parts[0].get("text")):
+                if (content := candidates.get("content")) and (parts := content.get("parts")):
+                    if parts and (text := parts.get("text")):
                         gemini_response_text = text
 
             if gemini_response_text:
@@ -1908,7 +1910,7 @@ def handle_text_message(event):
                             payload_text_match = re.search(r"【(.+?)】", label)
                             payload_text = payload_text_match.group(1) if payload_text_match else label
                             quick_reply_buttons.append(
-                                QuickReplyButton(action=MessageAction(label=label.split('\n')[0][:20], text=payload_text[:20]))
+                                QuickReplyButton(action=MessageAction(label=label.split('\n')[:20], text=payload_text[:20]))
                             )
                     
                     messages_to_send = [
@@ -1974,8 +1976,8 @@ def handle_text_message(event):
             result = response.json()
             ai_response_json_str = ""
             if (candidates := result.get("candidates")) and isinstance(candidates, list) and candidates:
-                if (content := candidates[0].get("content")) and (parts := content.get("parts")):
-                    if parts and (text := parts[0].get("text")):
+                if (content := candidates.get("content")) and (parts := content.get("parts")):
+                    if parts and (text := parts.get("text")):
                         ai_response_json_str = text
 
             if ai_response_json_str:
@@ -2022,8 +2024,8 @@ def handle_text_message(event):
             result = response.json()
             ai_response_json_str = ""
             if (candidates := result.get("candidates")) and isinstance(candidates, list) and candidates:
-                if (content := candidates[0].get("content")) and (parts := content.get("parts")):
-                    if parts and (text := parts[0].get("text")):
+                if (content := candidates.get("content")) and (parts := content.get("parts")):
+                    if parts and (text := parts.get("text")):
                         ai_response_json_str = text
 
             if ai_response_json_str:
@@ -2059,7 +2061,7 @@ def handle_text_message(event):
     if len(conversation_history_for_payload) >= 1 and conversation_history_for_payload[-1].get("role") == "model":
         try:
             if (last_model_parts := conversation_history_for_payload[-1].get("parts")) and isinstance(last_model_parts, list) and last_model_parts:
-                last_model_response_json_str = last_model_parts[0].get("text", "")
+                last_model_response_json_str = last_model_parts.get("text", "")
                 if last_model_response_json_str.startswith("[") and last_model_response_json_str.endswith("]"):
                     last_model_obj_list = json.loads(last_model_response_json_str)
                     temp_text_parts = [obj.get("content","") for obj in last_model_obj_list if isinstance(obj, dict) and obj.get("type") == "text"]
@@ -2072,13 +2074,13 @@ def handle_text_message(event):
                     bot_last_message_text = last_model_response_json_str.lower()
         except Exception as e:
             logger.warning(f"解析上一條機器人回應JSON時出錯 (user: {user_id}): {e}")
-            if isinstance(conversation_history_for_payload[-1].get("parts", [{}])[0].get("text"), str):
-                 bot_last_message_text = conversation_history_for_payload[-1].get("parts")[0].get("text", "").lower()
+            if isinstance(conversation_history_for_payload[-1].get("parts", [{}]).get("text"), str):
+                 bot_last_message_text = conversation_history_for_payload[-1].get("parts").get("text", "").lower()
 
     user_prev_message_text = ""
     if len(conversation_history_for_payload) >= 2 and conversation_history_for_payload[-2].get("role") == "user":
         if (prev_user_parts := conversation_history_for_payload[-2].get("parts")) and isinstance(prev_user_parts, list) and prev_user_parts:
-            part_content = prev_user_parts[0].get("text", "")
+            part_content = prev_user_parts.get("text", "")
             if isinstance(part_content, str):
                 user_prev_message_text = part_content.lower()
 
@@ -2137,8 +2139,8 @@ def handle_text_message(event):
         result = response.json()
         ai_response_json_str = ""
         if (candidates := result.get("candidates")) and isinstance(candidates, list) and candidates:
-            if (content := candidates[0].get("content")) and (parts := content.get("parts")):
-                if parts and (text := parts[0].get("text")):
+            if (content := candidates.get("content")) and (parts := content.get("parts")):
+                if parts and (text := parts.get("text")):
                     ai_response_json_str = text
         
         if ai_response_json_str:
@@ -2199,8 +2201,8 @@ def handle_image_message(event):
         result = response.json()
         ai_response_json_str = ""
         if (candidates := result.get("candidates")) and isinstance(candidates, list) and candidates:
-            if (content := candidates[0].get("content")) and (parts := content.get("parts")):
-                if parts and (text := parts[0].get("text")):
+            if (content := candidates.get("content")) and (parts := content.get("parts")):
+                if parts and (text := parts.get("text")):
                     ai_response_json_str = text
         
         if ai_response_json_str:
@@ -2272,8 +2274,8 @@ def handle_sticker_message(event):
         result = response.json()
         ai_response_json_str = ""
         if (candidates := result.get("candidates")) and isinstance(candidates, list) and candidates:
-            if (content := candidates[0].get("content")) and (parts := content.get("parts")):
-                if parts and (text := parts[0].get("text")):
+            if (content := candidates.get("content")) and (parts := content.get("parts")):
+                if parts and (text := parts.get("text")):
                     ai_response_json_str = text
         
         if ai_response_json_str:
@@ -2341,8 +2343,8 @@ def handle_audio_message(event):
         result = response.json()
         ai_response_json_str = ""
         if (candidates := result.get("candidates")) and isinstance(candidates, list) and candidates:
-            if (content := candidates[0].get("content")) and (parts := content.get("parts")):
-                if parts and (text := parts[0].get("text")):
+            if (content := candidates.get("content")) and (parts := content.get("parts")):
+                if parts and (text := parts.get("text")):
                     ai_response_json_str = text
         
         if ai_response_json_str:
@@ -2384,8 +2386,8 @@ def memory_status_route():
     status = {"total_users_in_memory": len(conversation_memory), "users_details": {}}
     for uid, hist in conversation_memory.items():
         last_interaction_summary = "無歷史或格式問題"
-        if hist and isinstance(hist[-1].get("parts"), list) and hist[-1]["parts"] and isinstance(hist[-1]["parts"][0].get("text"), str):
-            last_interaction_summary = hist[-1]["parts"][0].get("text", "")[:100] + "..."
+        if hist and isinstance(hist[-1].get("parts"), list) and hist[-1]["parts"] and isinstance(hist[-1]["parts"].get("text"), str):
+            last_interaction_summary = hist[-1]["parts"].get("text", "")[:100] + "..."
         secrets_shared_count = len(user_shared_secrets_indices.get(uid, set()))
         active_scenario_info = user_scenario_context.get(uid, {}).get("last_scenario_text", "無進行中情境")[:50] + "..."
         status["users_details"][uid] = {
@@ -2399,3 +2401,4 @@ def memory_status_route():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8080))
     app.run(host="0.0.0.0", port=port, debug=False)
+```
