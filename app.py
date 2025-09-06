@@ -2060,33 +2060,41 @@ def handle_text_message(event):
     bot_expressed_emotion_state = None
     if len(conversation_history_for_payload) >= 1 and conversation_history_for_payload[-1].get("role") == "model":
         try:
+            # Check if 'parts' exists and is a non-empty list
             if (last_model_parts := conversation_history_for_payload[-1].get("parts")) and isinstance(last_model_parts, list) and last_model_parts:
-                # --- 修正點 1 ---
-                last_model_response_json_str = last_model_parts.get("text", "")
-                if last_model_response_json_str.startswith("[") and last_model_response_json_str.endswith("]"):
-                    last_model_obj_list = json.loads(last_model_response_json_str)
-                    temp_text_parts = [obj.get("content","") for obj in last_model_obj_list if isinstance(obj, dict) and obj.get("type") == "text"]
-                    bot_last_message_text = " ".join(filter(None, temp_text_parts)).strip().lower()
-                    if "委屈" in bot_last_message_text or "\"keyword\": \"哭哭\"" in last_model_response_json_str.lower():
-                         bot_expressed_emotion_state = "委屈"
-                    elif "餓" in bot_last_message_text or "\"keyword\": \"肚子餓\"" in last_model_response_json_str.lower():
-                         bot_expressed_emotion_state = "飢餓"
-                else: 
-                    bot_last_message_text = last_model_response_json_str.lower()
+                # CORRECTED: Access the first dictionary in the list, then get its 'text' value.
+                first_part = last_model_parts
+                if isinstance(first_part, dict):
+                    last_model_response_json_str = first_part.get("text", "")
+                    if last_model_response_json_str.startswith("[") and last_model_response_json_str.endswith("]"):
+                        last_model_obj_list = json.loads(last_model_response_json_str)
+                        temp_text_parts = [obj.get("content","") for obj in last_model_obj_list if isinstance(obj, dict) and obj.get("type") == "text"]
+                        bot_last_message_text = " ".join(filter(None, temp_text_parts)).strip().lower()
+                        if "委屈" in bot_last_message_text or "\"keyword\": \"哭哭\"" in last_model_response_json_str.lower():
+                             bot_expressed_emotion_state = "委屈"
+                        elif "餓" in bot_last_message_text or "\"keyword\": \"肚子餓\"" in last_model_response_json_str.lower():
+                             bot_expressed_emotion_state = "飢餓"
+                    else: 
+                        bot_last_message_text = last_model_response_json_str.lower()
         except Exception as e:
             logger.warning(f"解析上一條機器人回應JSON時出錯 (user: {user_id}): {e}")
-            # --- 修正點 2 ---
+            # CORRECTED: Access the list element correctly
             parts_list = conversation_history_for_payload[-1].get("parts")
-            if parts_list and isinstance(parts_list, list) and len(parts_list) > 0 and isinstance(parts_list.get("text"), str):
-                 bot_last_message_text = parts_list.get("text", "").lower()
+            if parts_list and isinstance(parts_list, list) and len(parts_list) > 0:
+                first_part = parts_list
+                if isinstance(first_part, dict) and isinstance(first_part.get("text"), str):
+                     bot_last_message_text = first_part.get("text", "").lower()
 
     user_prev_message_text = ""
     if len(conversation_history_for_payload) >= 2 and conversation_history_for_payload[-2].get("role") == "user":
+        # Check if 'parts' exists and is a non-empty list
         if (prev_user_parts := conversation_history_for_payload[-2].get("parts")) and isinstance(prev_user_parts, list) and prev_user_parts:
-            # --- 修正點 3 ---
-            part_content = prev_user_parts.get("text", "")
-            if isinstance(part_content, str):
-                user_prev_message_text = part_content.lower()
+            # CORRECTED: Access the first dictionary and then its 'text'
+            first_part = prev_user_parts
+            if isinstance(first_part, dict):
+                part_content = first_part.get("text", "")
+                if isinstance(part_content, str):
+                    user_prev_message_text = part_content.lower()
 
 
     user_current_message_lower = user_message.lower()
@@ -2391,9 +2399,10 @@ def memory_status_route():
     for uid, hist in conversation_memory.items():
         last_interaction_summary = "無歷史或格式問題"
         if hist and isinstance(hist[-1].get("parts"), list) and hist[-1]["parts"]:
-            # --- 修正點 4 ---
-            if isinstance(hist[-1]["parts"].get("text"), str):
-                last_interaction_summary = hist[-1]["parts"].get("text", "")[:100] + "..."
+            # CORRECTED: Access the first element (dict) of the list first.
+            first_part = hist[-1]["parts"]
+            if isinstance(first_part, dict) and isinstance(first_part.get("text"), str):
+                last_interaction_summary = first_part.get("text", "")[:100] + "..."
         secrets_shared_count = len(user_shared_secrets_indices.get(uid, set()))
         active_scenario_info = user_scenario_context.get(uid, {}).get("last_scenario_text", "無進行中情境")[:50] + "..."
         status["users_details"][uid] = {
