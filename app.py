@@ -1715,6 +1715,9 @@ def callback():
         abort(500) 
     return "OK"
 
+#
+# >>>>> 這裡是主要的修改區域 <<<<<
+#
 @handler.add(MessageEvent, message=TextMessage)
 def handle_text_message(event):
     user_message = event.message.text
@@ -2061,6 +2064,7 @@ def handle_text_message(event):
     if len(conversation_history_for_payload) >= 1 and conversation_history_for_payload[-1].get("role") == "model":
         try:
             if (last_model_parts := conversation_history_for_payload[-1].get("parts")) and isinstance(last_model_parts, list) and last_model_parts:
+                # --- 修正點 1 ---
                 last_model_response_json_str = last_model_parts.get("text", "")
                 if last_model_response_json_str.startswith("[") and last_model_response_json_str.endswith("]"):
                     last_model_obj_list = json.loads(last_model_response_json_str)
@@ -2074,16 +2078,17 @@ def handle_text_message(event):
                     bot_last_message_text = last_model_response_json_str.lower()
         except Exception as e:
             logger.warning(f"解析上一條機器人回應JSON時出錯 (user: {user_id}): {e}")
-            if isinstance(conversation_history_for_payload[-1].get("parts", [{}]).get("text"), str):
+            # --- 修正點 2 ---
+            if conversation_history_for_payload[-1].get("parts") and isinstance(conversation_history_for_payload[-1].get("parts"), list) and conversation_history_for_payload[-1].get("parts").get("text"):
                  bot_last_message_text = conversation_history_for_payload[-1].get("parts").get("text", "").lower()
 
     user_prev_message_text = ""
     if len(conversation_history_for_payload) >= 2 and conversation_history_for_payload[-2].get("role") == "user":
         if (prev_user_parts := conversation_history_for_payload[-2].get("parts")) and isinstance(prev_user_parts, list) and prev_user_parts:
+            # --- 修正點 3 ---
             part_content = prev_user_parts.get("text", "")
             if isinstance(part_content, str):
                 user_prev_message_text = part_content.lower()
-
 
     user_current_message_lower = user_message.lower()
     contextual_reminder = ""
