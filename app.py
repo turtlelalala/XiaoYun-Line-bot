@@ -1715,9 +1715,6 @@ def callback():
         abort(500) 
     return "OK"
 
-#
-# >>>>> 這裡是主要的修改區域 <<<<<
-#
 @handler.add(MessageEvent, message=TextMessage)
 def handle_text_message(event):
     user_message = event.message.text
@@ -2079,8 +2076,9 @@ def handle_text_message(event):
         except Exception as e:
             logger.warning(f"解析上一條機器人回應JSON時出錯 (user: {user_id}): {e}")
             # --- 修正點 2 ---
-            if conversation_history_for_payload[-1].get("parts") and isinstance(conversation_history_for_payload[-1].get("parts"), list) and conversation_history_for_payload[-1].get("parts").get("text"):
-                 bot_last_message_text = conversation_history_for_payload[-1].get("parts").get("text", "").lower()
+            parts_list = conversation_history_for_payload[-1].get("parts")
+            if parts_list and isinstance(parts_list, list) and len(parts_list) > 0 and isinstance(parts_list.get("text"), str):
+                 bot_last_message_text = parts_list.get("text", "").lower()
 
     user_prev_message_text = ""
     if len(conversation_history_for_payload) >= 2 and conversation_history_for_payload[-2].get("role") == "user":
@@ -2089,6 +2087,7 @@ def handle_text_message(event):
             part_content = prev_user_parts.get("text", "")
             if isinstance(part_content, str):
                 user_prev_message_text = part_content.lower()
+
 
     user_current_message_lower = user_message.lower()
     contextual_reminder = ""
@@ -2391,8 +2390,10 @@ def memory_status_route():
     status = {"total_users_in_memory": len(conversation_memory), "users_details": {}}
     for uid, hist in conversation_memory.items():
         last_interaction_summary = "無歷史或格式問題"
-        if hist and isinstance(hist[-1].get("parts"), list) and hist[-1]["parts"] and isinstance(hist[-1]["parts"].get("text"), str):
-            last_interaction_summary = hist[-1]["parts"].get("text", "")[:100] + "..."
+        if hist and isinstance(hist[-1].get("parts"), list) and hist[-1]["parts"]:
+            # --- 修正點 4 ---
+            if isinstance(hist[-1]["parts"].get("text"), str):
+                last_interaction_summary = hist[-1]["parts"].get("text", "")[:100] + "..."
         secrets_shared_count = len(user_shared_secrets_indices.get(uid, set()))
         active_scenario_info = user_scenario_context.get(uid, {}).get("last_scenario_text", "無進行中情境")[:50] + "..."
         status["users_details"][uid] = {
