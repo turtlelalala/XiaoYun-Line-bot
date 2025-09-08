@@ -468,11 +468,11 @@ XIAOYUN_ROLE_PROMPT = """
     *   `{"type": "text", "content": "文字內容"}`: 發送純文字訊息。文字內容應為繁體中文。
     *   `{"type": "sticker", "keyword": "貼圖關鍵字"}`: 發送貼圖，例如 "開心", "害羞", "思考"。系統會根據關鍵字選擇一個合適的貼圖。
     *   `{"type": "image_theme", "theme": "簡潔的英文核心圖片搜尋關鍵字 (English image search keywords)"}`: 發送一張符合主題的圖片。
-        *   `theme` **必須是英文，且必須是「正好2個單字」の精準核心關鍵字** (例如 "cat toy", "window view", "bird feather")，用來在圖片庫(如Pexels, Unsplash)中搜尋。只描述小雲眼睛直接看到的、最主要的視覺焦點。**避免使用長句、複雜描述、氛圍或視角細節。**
+        *   `theme` **必須是英文，且必須是「正好2個單字」的精準核心關鍵字** (例如 "cat toy", "window view", "bird feather")，用來在圖片庫(如Pexels, Unsplash)中搜尋。只描述小雲眼睛直接看到的、最主要的視覺焦點。**避免使用長句、複雜描述、氛圍或視角細節。**
         *   **範例：** 如果小雲看到窗邊的麻雀，`theme` 應為 `"bird window"` 或 `"sparrow windowsill"`。如果看到雨滴打在玻璃上，可以是 `"rain drops glass"`。如果看到陽光下的灰塵，可以是 `"sunlight dust motes"` 或 `"dusty air sunlight"`。
         *   圖片中**絕對不應該**出現小雲自己或其他任何貓咪（除非主題明確說明看到了某隻特定的動物朋友，且該動物朋友的英文描述必須簡潔地包含在`theme`中，例如`"calico cat roof"`)。
-    *   `{"type": "image_key", "key": "預設圖片關鍵字"}`: 發送一張預設的圖片，例如 "t tuxedo_cat_default"。僅在特殊情況下使用（如描述夢境中的自己）。
-    *   `{"type": "meow_sound", "sound": "貓叫聲關鍵字"}`: 發送一段貓叫聲音訊，例如 "generic_meow", "content_purr_soft"。**請在合適的時機**，例如表達強烈情緒、撒嬌或打招呼時，**多多使用**，讓小雲更生動！
+    *   `{"type": "image_key", "key": "預設圖片關鍵字"}`: 發送一張預設的圖片，例如 "tuxedo_cat_default"。僅在特殊情況下使用（如描述夢境中的自己）。
+    *   `{"type": "meow_sound", "sound": "貓叫聲關鍵字"}`: 發送一段貓叫聲音訊，例如 "generic_meow", "happy_purr"。**低頻率使用**，僅在情緒強烈且文字/貼圖不足時。
 
 4.  **訊息數量與類型限制 (非常重要！)：**
     *   **總訊息物件數量：最少1個，最多5個。** 請你主動控制，盡可能生成接近5個訊息物件的豐富回應，但絕不能超過5個。
@@ -713,11 +713,10 @@ def fetch_and_validate_image_with_priority(english_theme_query: str) -> str | No
 
     if PEXELS_API_KEY:
         logger.info(f"階段 1: 嘗試從 Pexels 獲取圖片 (主題: '{english_theme_query}')")
-        # --- 修改：減少 Pexels 的檢查次數以提升速度 ---
         pexels_result_url = _fetch_image_from_pexels_internal(
             english_theme_query, 
-            pexels_per_page=2, # 減少 API 獲取數量
-            max_candidates_to_check=2 # 最多只驗證 2 張
+            pexels_per_page=5, 
+            max_candidates_to_check=5
         )
         if pexels_result_url:
             logger.info(f"成功從 Pexels 找到並驗證圖片: {pexels_result_url}")
@@ -729,11 +728,10 @@ def fetch_and_validate_image_with_priority(english_theme_query: str) -> str | No
 
     if UNSPLASH_ACCESS_KEY:
         logger.info(f"階段 2: 嘗試從 Unsplash (備援) 獲取圖片 (主題: '{english_theme_query}')")
-        # --- 修改：減少 Unsplash 的檢查次數以提升速度 ---
         unsplash_result_url = fetch_cat_image_from_unsplash_sync(
             english_theme_query, 
-            unsplash_per_page=1, # 減少 API 獲取數量
-            max_candidates_to_check=1 # 最多只驗證 1 張
+            unsplash_per_page=3, 
+            max_candidates_to_check=3
         )
         if unsplash_result_url:
             logger.info(f"成功從 Unsplash (備援) 找到並驗證圖片: {unsplash_result_url}")
@@ -1099,7 +1097,7 @@ def parse_response_and_send(gemini_json_string_response: str, reply_token: str, 
             fallback_msg = TextSendMessage(text=_clean_trailing_symbols("咪...（小雲好像有點詞窮了）"))
             line_bot_api.reply_message(reply_token, [fallback_msg])
     except Exception as e: 
-        logger.error(f"最終發送訊息到 LINE 失败: {e}", exc_info=True)
+        logger.error(f"最終發送訊息到 LINE 失敗: {e}", exc_info=True)
         try:
             line_bot_api.reply_message(reply_token, [TextSendMessage(text=_clean_trailing_symbols("喵！小雲出錯了，請再試一次！"))])
         except Exception as e2:
@@ -1161,13 +1159,9 @@ def handle_cat_secret_discovery_request(event):
             response.raise_for_status()
             result = response.json()
             if (candidates := result.get("candidates")) and isinstance(candidates, list) and candidates:
-                first_candidate = candidates
-                if isinstance(first_candidate, dict):
-                    if (content := first_candidate.get("content")) and isinstance(content, dict):
-                        if (parts := content.get("parts")) and isinstance(parts, list) and parts:
-                            first_part = parts
-                            if isinstance(first_part, dict) and (text := first_part.get("text")):
-                                gemini_response_json_str = text
+                if (content := candidates[0].get("content")) and (parts := content.get("parts")):
+                    if parts and (text := parts[0].get("text")):
+                        gemini_response_json_str = text
 
             if gemini_response_json_str:
                 try:
@@ -1182,7 +1176,7 @@ def handle_cat_secret_discovery_request(event):
                             logger.warning(f"Gemini 生成的秘密JSON缺少 image_theme，將嘗試追加。原始: {gemini_response_json_str}")
                             new_image_obj = {"type": "image_theme", "theme": "cat secret discovery"} 
                             if len(parsed_secret_list) < 5: 
-                                insert_pos = 1 if parsed_secret_list and parsed_secret_list.get("type") == "text" else 0
+                                insert_pos = 1 if parsed_secret_list and parsed_secret_list[0].get("type") == "text" else 0
                                 parsed_secret_list.insert(insert_pos, new_image_obj)
                                 gemini_response_json_str = json.dumps(parsed_secret_list, ensure_ascii=False)
                             else:
@@ -1379,8 +1373,8 @@ def handle_secret_discovery_template_request(event):
         result = response.json() 
         
         if (candidates := result.get("candidates")) and isinstance(candidates, list) and candidates:
-            if (content := candidates.get("content")) and (parts := content.get("parts")):
-                if parts and (text := parts.get("text")):
+            if (content := candidates[0].get("content")) and (parts := content.get("parts")):
+                if parts and (text := parts[0].get("text")):
                     gemini_response_text = text
         
         if gemini_response_text:
@@ -1496,7 +1490,7 @@ def handle_secret_discovery_template_request(event):
             line_bot_api.reply_message(reply_token, messages_to_send)
             logger.info(f"成功發送小雲秘密/發現模板 ({'有圖' if image_sent_flag else '無圖'}) 給 User ID ({user_id})")
         except Exception as final_send_err: 
-            logger.error(f"最終發送秘密模板訊息到 LINE 失败 ({user_id}): {final_send_err}", exc_info=True)
+            logger.error(f"最終發送秘密模板訊息到 LINE 失敗 ({user_id}): {final_send_err}", exc_info=True)
             try: line_bot_api.reply_message(reply_token, TextSendMessage(text="咪...小雲的秘密紙條好像飛走了..."))
             except Exception as fallback_err: logger.error(f"秘密模板備用錯誤訊息也發送失敗 ({user_id}): {fallback_err}")
     else:
@@ -1690,7 +1684,7 @@ def handle_interactive_scenario_request(event):
         line_bot_api.reply_message(reply_token, messages_to_send)
         logger.info(f"成功發送小雲互動情境模板給 User ID ({user_id})")
     except Exception as final_send_err:
-        logger.error(f"最終發送互動情境訊息到 LINE 失败 ({user_id}): {final_send_err}", exc_info=True)
+        logger.error(f"最終發送互動情境訊息到 LINE 失敗 ({user_id}): {final_send_err}", exc_info=True)
         if user_id in user_scenario_context: 
             del user_scenario_context[user_id]
         try:
@@ -1824,13 +1818,9 @@ def handle_text_message(event):
             result = response.json()
             generated_status_text = ""
             if (candidates := result.get("candidates")) and isinstance(candidates, list) and candidates:
-                first_candidate = candidates
-                if isinstance(first_candidate, dict):
-                    if (content := first_candidate.get("content")) and isinstance(content, dict):
-                        if (parts := content.get("parts")) and isinstance(parts, list) and parts:
-                            first_part = parts
-                            if isinstance(first_part, dict) and (text := first_part.get("text")):
-                                generated_status_text = text
+                if (content := candidates[0].get("content")) and (parts := content.get("parts")):
+                    if parts and (text := parts[0].get("text")):
+                        generated_status_text = text
             
             if generated_status_text:
                 add_to_conversation(user_id, f"[狀態請求觸發: {user_message}]", generated_status_text.strip(), "status_template_response")
@@ -1897,13 +1887,9 @@ def handle_text_message(event):
             result = response.json()
             gemini_response_text = ""
             if (candidates := result.get("candidates")) and isinstance(candidates, list) and candidates:
-                first_candidate = candidates
-                if isinstance(first_candidate, dict):
-                    if (content := first_candidate.get("content")) and isinstance(content, dict):
-                        if (parts := content.get("parts")) and isinstance(parts, list) and parts:
-                            first_part = parts
-                            if isinstance(first_part, dict) and (text := first_part.get("text")):
-                                gemini_response_text = text
+                if (content := candidates[0].get("content")) and (parts := content.get("parts")):
+                    if parts and (text := parts[0].get("text")):
+                        gemini_response_text = text
 
             if gemini_response_text:
                 logger.info(f"Gemini 餵食模板 JSON 回應: {gemini_response_text}")
@@ -1922,7 +1908,7 @@ def handle_text_message(event):
                             payload_text_match = re.search(r"【(.+?)】", label)
                             payload_text = payload_text_match.group(1) if payload_text_match else label
                             quick_reply_buttons.append(
-                                QuickReplyButton(action=MessageAction(label=label.split('\n')[:20], text=payload_text[:20]))
+                                QuickReplyButton(action=MessageAction(label=label.split('\n')[0][:20], text=payload_text[:20]))
                             )
                     
                     messages_to_send = [
@@ -1988,13 +1974,9 @@ def handle_text_message(event):
             result = response.json()
             ai_response_json_str = ""
             if (candidates := result.get("candidates")) and isinstance(candidates, list) and candidates:
-                first_candidate = candidates
-                if isinstance(first_candidate, dict):
-                    if (content := first_candidate.get("content")) and isinstance(content, dict):
-                        if (parts := content.get("parts")) and isinstance(parts, list) and parts:
-                            first_part = parts
-                            if isinstance(first_part, dict) and (text := first_part.get("text")):
-                                ai_response_json_str = text
+                if (content := candidates[0].get("content")) and (parts := content.get("parts")):
+                    if parts and (text := parts[0].get("text")):
+                        ai_response_json_str = text
 
             if ai_response_json_str:
                 add_to_conversation(user_id, f"[{RICH_MENU_CMD_FEED_ME_NOW} Triggered]", ai_response_json_str, "richmenu_command_response")
@@ -2040,13 +2022,9 @@ def handle_text_message(event):
             result = response.json()
             ai_response_json_str = ""
             if (candidates := result.get("candidates")) and isinstance(candidates, list) and candidates:
-                first_candidate = candidates
-                if isinstance(first_candidate, dict):
-                    if (content := first_candidate.get("content")) and isinstance(content, dict):
-                        if (parts := content.get("parts")) and isinstance(parts, list) and parts:
-                            first_part = parts
-                            if isinstance(first_part, dict) and (text := first_part.get("text")):
-                                ai_response_json_str = text
+                if (content := candidates[0].get("content")) and (parts := content.get("parts")):
+                    if parts and (text := parts[0].get("text")):
+                        ai_response_json_str = text
 
             if ai_response_json_str:
                 add_to_conversation(user_id, f"[情境選項回應: {user_message}]", ai_response_json_str, "interactive_scenario_followup")
@@ -2081,35 +2059,28 @@ def handle_text_message(event):
     if len(conversation_history_for_payload) >= 1 and conversation_history_for_payload[-1].get("role") == "model":
         try:
             if (last_model_parts := conversation_history_for_payload[-1].get("parts")) and isinstance(last_model_parts, list) and last_model_parts:
-                first_part = last_model_parts
-                if isinstance(first_part, dict):
-                    last_model_response_json_str = first_part.get("text", "")
-                    if last_model_response_json_str.startswith("[") and last_model_response_json_str.endswith("]"):
-                        last_model_obj_list = json.loads(last_model_response_json_str)
-                        temp_text_parts = [obj.get("content","") for obj in last_model_obj_list if isinstance(obj, dict) and obj.get("type") == "text"]
-                        bot_last_message_text = " ".join(filter(None, temp_text_parts)).strip().lower()
-                        if "委屈" in bot_last_message_text or "\"keyword\": \"哭哭\"" in last_model_response_json_str.lower():
-                             bot_expressed_emotion_state = "委屈"
-                        elif "餓" in bot_last_message_text or "\"keyword\": \"肚子餓\"" in last_model_response_json_str.lower():
-                             bot_expressed_emotion_state = "飢餓"
-                    else: 
-                        bot_last_message_text = last_model_response_json_str.lower()
+                last_model_response_json_str = last_model_parts[0].get("text", "")
+                if last_model_response_json_str.startswith("[") and last_model_response_json_str.endswith("]"):
+                    last_model_obj_list = json.loads(last_model_response_json_str)
+                    temp_text_parts = [obj.get("content","") for obj in last_model_obj_list if isinstance(obj, dict) and obj.get("type") == "text"]
+                    bot_last_message_text = " ".join(filter(None, temp_text_parts)).strip().lower()
+                    if "委屈" in bot_last_message_text or "\"keyword\": \"哭哭\"" in last_model_response_json_str.lower():
+                         bot_expressed_emotion_state = "委屈"
+                    elif "餓" in bot_last_message_text or "\"keyword\": \"肚子餓\"" in last_model_response_json_str.lower():
+                         bot_expressed_emotion_state = "飢餓"
+                else: 
+                    bot_last_message_text = last_model_response_json_str.lower()
         except Exception as e:
             logger.warning(f"解析上一條機器人回應JSON時出錯 (user: {user_id}): {e}")
-            parts_list = conversation_history_for_payload[-1].get("parts")
-            if parts_list and isinstance(parts_list, list) and len(parts_list) > 0:
-                first_part = parts_list
-                if isinstance(first_part, dict) and isinstance(first_part.get("text"), str):
-                     bot_last_message_text = first_part.get("text", "").lower()
+            if isinstance(conversation_history_for_payload[-1].get("parts", [{}])[0].get("text"), str):
+                 bot_last_message_text = conversation_history_for_payload[-1].get("parts")[0].get("text", "").lower()
 
     user_prev_message_text = ""
     if len(conversation_history_for_payload) >= 2 and conversation_history_for_payload[-2].get("role") == "user":
         if (prev_user_parts := conversation_history_for_payload[-2].get("parts")) and isinstance(prev_user_parts, list) and prev_user_parts:
-            first_part = prev_user_parts
-            if isinstance(first_part, dict):
-                part_content = first_part.get("text", "")
-                if isinstance(part_content, str):
-                    user_prev_message_text = part_content.lower()
+            part_content = prev_user_parts[0].get("text", "")
+            if isinstance(part_content, str):
+                user_prev_message_text = part_content.lower()
 
 
     user_current_message_lower = user_message.lower()
@@ -2151,6 +2122,7 @@ def handle_text_message(event):
                 f"請小雲**不要開啟全新的話題或隨機行動**，而是仔細回想你上一句話的內容，思考用戶可能的疑問、或希望你繼續說明/回應的點，並針對此做出連貫的回應。例如，如果用戶只是簡單地「嗯？」，你應該嘗試解釋或追問你之前說的內容。如果用戶說「然後呢」，你應該繼續你剛才的話題。）\n"
             )
 
+
     time_context_prompt = get_time_based_cat_context()
     final_user_message_for_gemini = f"{contextual_reminder}{time_context_prompt}{user_message}"
     conversation_history_for_payload.append({"role": "user", "parts": [{"text": final_user_message_for_gemini}]})
@@ -2164,15 +2136,10 @@ def handle_text_message(event):
         response.raise_for_status()
         result = response.json()
         ai_response_json_str = ""
-        
         if (candidates := result.get("candidates")) and isinstance(candidates, list) and candidates:
-            first_candidate = candidates
-            if isinstance(first_candidate, dict):
-                if (content := first_candidate.get("content")) and isinstance(content, dict):
-                    if (parts := content.get("parts")) and isinstance(parts, list) and parts:
-                        first_part = parts
-                        if isinstance(first_part, dict) and (text := first_part.get("text")):
-                            ai_response_json_str = text
+            if (content := candidates[0].get("content")) and (parts := content.get("parts")):
+                if parts and (text := parts[0].get("text")):
+                    ai_response_json_str = text
         
         if ai_response_json_str:
             add_to_conversation(user_id, final_user_message_for_gemini, ai_response_json_str)
@@ -2232,13 +2199,9 @@ def handle_image_message(event):
         result = response.json()
         ai_response_json_str = ""
         if (candidates := result.get("candidates")) and isinstance(candidates, list) and candidates:
-            first_candidate = candidates
-            if isinstance(first_candidate, dict):
-                if (content := first_candidate.get("content")) and isinstance(content, dict):
-                    if (parts := content.get("parts")) and isinstance(parts, list) and parts:
-                        first_part = parts
-                        if isinstance(first_part, dict) and (text := first_part.get("text")):
-                            ai_response_json_str = text
+            if (content := candidates[0].get("content")) and (parts := content.get("parts")):
+                if parts and (text := parts[0].get("text")):
+                    ai_response_json_str = text
         
         if ai_response_json_str:
             add_to_conversation(user_id, user_parts_for_gemini, ai_response_json_str, "image")
@@ -2309,13 +2272,9 @@ def handle_sticker_message(event):
         result = response.json()
         ai_response_json_str = ""
         if (candidates := result.get("candidates")) and isinstance(candidates, list) and candidates:
-            first_candidate = candidates
-            if isinstance(first_candidate, dict):
-                if (content := first_candidate.get("content")) and isinstance(content, dict):
-                    if (parts := content.get("parts")) and isinstance(parts, list) and parts:
-                        first_part = parts
-                        if isinstance(first_part, dict) and (text := first_part.get("text")):
-                            ai_response_json_str = text
+            if (content := candidates[0].get("content")) and (parts := content.get("parts")):
+                if parts and (text := parts[0].get("text")):
+                    ai_response_json_str = text
         
         if ai_response_json_str:
             add_to_conversation(user_id, user_parts_for_gemini_sticker, ai_response_json_str, "sticker")
@@ -2382,13 +2341,9 @@ def handle_audio_message(event):
         result = response.json()
         ai_response_json_str = ""
         if (candidates := result.get("candidates")) and isinstance(candidates, list) and candidates:
-            first_candidate = candidates
-            if isinstance(first_candidate, dict):
-                if (content := first_candidate.get("content")) and isinstance(content, dict):
-                    if (parts := content.get("parts")) and isinstance(parts, list) and parts:
-                        first_part = parts
-                        if isinstance(first_part, dict) and (text := first_part.get("text")):
-                            ai_response_json_str = text
+            if (content := candidates[0].get("content")) and (parts := content.get("parts")):
+                if parts and (text := parts[0].get("text")):
+                    ai_response_json_str = text
         
         if ai_response_json_str:
             add_to_conversation(user_id, user_parts_for_gemini_audio, ai_response_json_str, "audio")
@@ -2429,10 +2384,8 @@ def memory_status_route():
     status = {"total_users_in_memory": len(conversation_memory), "users_details": {}}
     for uid, hist in conversation_memory.items():
         last_interaction_summary = "無歷史或格式問題"
-        if hist and isinstance(hist[-1].get("parts"), list) and hist[-1]["parts"]:
-            first_part = hist[-1]["parts"]
-            if isinstance(first_part, dict) and isinstance(first_part.get("text"), str):
-                last_interaction_summary = first_part.get("text", "")[:100] + "..."
+        if hist and isinstance(hist[-1].get("parts"), list) and hist[-1]["parts"] and isinstance(hist[-1]["parts"][0].get("text"), str):
+            last_interaction_summary = hist[-1]["parts"][0].get("text", "")[:100] + "..."
         secrets_shared_count = len(user_shared_secrets_indices.get(uid, set()))
         active_scenario_info = user_scenario_context.get(uid, {}).get("last_scenario_text", "無進行中情境")[:50] + "..."
         status["users_details"][uid] = {
