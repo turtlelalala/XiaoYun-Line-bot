@@ -804,8 +804,14 @@ def add_to_conversation(user_id, user_message_for_gemini, bot_response_str, mess
         {"role": "model", "parts": model_parts}
     ])
     
-    if len(conversation_history) > (2 + 20 * 2):
-        conversation_history = conversation_history[:2] + conversation_history[-(20*2):]
+    # --- 修改開始 ---
+    # 說明：將保留的對話輪數從 20 減少到 8，以避免 Token 數量超出模型限制。
+    # (2 + 8 * 2) = 18 則訊息 (1則系統提示 + 1則初始回應 + 8輪對話)
+    MAX_CONVERSATION_TURNS = 8
+    if len(conversation_history) > (2 + MAX_CONVERSATION_TURNS * 2):
+        conversation_history = conversation_history[:2] + conversation_history[-(MAX_CONVERSATION_TURNS * 2):]
+    # --- 修改結束 ---
+
     conversation_memory[user_id] = conversation_history
     logger.debug(f"Added to conversation for {user_id}. Type: {message_type_for_log}. History length: {len(conversation_memory[user_id])}")
 
@@ -1230,7 +1236,11 @@ def handle_secret_discovery_template_request(event):
     
     logger.info(f"開始為 User ID ({user_id}) 生成秘密/發現模板。")
 
-    conversation_history_for_secret_template = get_conversation_history(user_id).copy()
+    # --- 修改開始 ---
+    # 說明：生成新的秘密模板不需要舊的對話歷史，只傳送角色設定以節省 Token。
+    initial_prompt_only = get_conversation_history(user_id)[:2]
+    conversation_history_for_secret_template = initial_prompt_only.copy()
+    # --- 修改結束 ---
     
     secret_generation_prompt = f"""
 你現在是小雲，一隻害羞、溫和有禮、充滿好奇心且非常愛吃的賓士公貓。用戶剛剛觸發了「小雲的秘密/新發現 ✨」功能。
@@ -1504,7 +1514,11 @@ def handle_interactive_scenario_request(event):
     
     logger.info(f"開始為 User ID ({user_id}) 生成互動情境模板。")
 
-    conversation_history_for_scenario = get_conversation_history(user_id).copy()
+    # --- 修改開始 ---
+    # 說明：生成新的互動情境不需要舊的對話歷史，只傳送角色設定以節省 Token。
+    initial_prompt_only = get_conversation_history(user_id)[:2]
+    conversation_history_for_scenario = initial_prompt_only.copy()
+    # --- 修改結束 ---
     
     scenario_generation_prompt = f"""
 你現在是小雲，一隻害羞、溫和有禮、充滿好奇心且非常愛吃的賓士公貓。用戶剛剛觸發了「和小雲說話 💬」功能，期待你發起一個有趣的互動。
@@ -1770,7 +1784,12 @@ def handle_text_message(event):
         current_tw_time_obj = get_taiwan_time()
         current_tw_time_str = current_tw_time_obj.strftime("台灣時間 %p %I點%M分").replace("AM", "上午").replace("PM", "下午")
         
-        conversation_history_for_status_prompt = get_conversation_history(user_id).copy()
+        # --- 修改開始 ---
+        # 說明：生成狀態模板不需要舊的對話歷史，只傳送角色設定以節省 Token。
+        initial_prompt_only = get_conversation_history(user_id)[:2]
+        conversation_history_for_status_prompt = initial_prompt_only.copy()
+        # --- 修改結束 ---
+
         status_template_prompt = f"""
 你現在是小雲，一隻害羞、溫和有禮、充滿好奇心的賓士公貓。用戶剛剛點擊了 Rich Menu 上的「小雲狀態」按鈕，想看看你現在的可愛狀態。
 **目前實際時間提示（僅供你參考，不要直接說出這個時間，而是用貓咪的感覺來描述）：現在大約是 {current_tw_time_str}。**
@@ -1844,7 +1863,12 @@ def handle_text_message(event):
 
     elif user_message == TRIGGER_TEXT_FEED_XIAOYUN_TEMPLATE:
         logger.info(f"CMD: 請求小雲餵食模板 (User ID: {user_id} by text: '{user_message}')")
-        conversation_history_for_feed_template = get_conversation_history(user_id).copy()
+        
+        # --- 修改開始 ---
+        # 說明：生成新的餵食菜單不需要舊的對話歷史，只傳送角色設定以節省 Token。
+        initial_prompt_only = get_conversation_history(user_id)[:2]
+        conversation_history_for_feed_template = initial_prompt_only.copy()
+        # --- 修改結束 ---
         
         feed_template_prompt = f"""
 你現在是小雲，一隻害羞、溫和有禮、充滿好奇心且非常愛吃的賓士公貓。用戶觸發了「餵小雲點心」功能。
