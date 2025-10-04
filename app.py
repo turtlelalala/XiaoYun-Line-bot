@@ -804,10 +804,10 @@ def add_to_conversation(user_id, user_message_for_gemini, bot_response_str, mess
         {"role": "model", "parts": model_parts}
     ])
     
-    # --- 修改開始 ---
-    # 說明：將保留的對話輪數從 20 減少到 8，以避免 Token 數量超出模型限制。
-    # (2 + 8 * 2) = 18 則訊息 (1則系統提示 + 1則初始回應 + 8輪對話)
-    MAX_CONVERSATION_TURNS = 8
+    # --- 第1處修改：縮減對話歷史 ---
+    # 說明：將保留的對話輪數從 8 減少到 4，因為角色設定檔極其龐大，需要為 AI 回應預留更多 Token 空間。
+    # (2 + 4 * 2) = 10 則訊息 (1則系統提示 + 1則初始回應 + 4輪對話)
+    MAX_CONVERSATION_TURNS = 4
     if len(conversation_history) > (2 + MAX_CONVERSATION_TURNS * 2):
         conversation_history = conversation_history[:2] + conversation_history[-(MAX_CONVERSATION_TURNS * 2):]
     # --- 修改結束 ---
@@ -1784,11 +1784,9 @@ def handle_text_message(event):
         current_tw_time_obj = get_taiwan_time()
         current_tw_time_str = current_tw_time_obj.strftime("台灣時間 %p %I點%M分").replace("AM", "上午").replace("PM", "下午")
         
-        # --- 修改開始 ---
-        # 說明：生成狀態模板不需要舊的對話歷史，只傳送角色設定以節省 Token。
+        # --- 說明：這部分在上次已修改為只使用初始 Prompt，保持不變 ---
         initial_prompt_only = get_conversation_history(user_id)[:2]
         conversation_history_for_status_prompt = initial_prompt_only.copy()
-        # --- 修改結束 ---
 
         status_template_prompt = f"""
 你現在是小雲，一隻害羞、溫和有禮、充滿好奇心的賓士公貓。用戶剛剛點擊了 Rich Menu 上的「小雲狀態」按鈕，想看看你現在的可愛狀態。
@@ -1864,11 +1862,9 @@ def handle_text_message(event):
     elif user_message == TRIGGER_TEXT_FEED_XIAOYUN_TEMPLATE:
         logger.info(f"CMD: 請求小雲餵食模板 (User ID: {user_id} by text: '{user_message}')")
         
-        # --- 修改開始 ---
-        # 說明：生成新的餵食菜單不需要舊的對話歷史，只傳送角色設定以節省 Token。
+        # --- 說明：這部分在上次已修改為只使用初始 Prompt，保持不變 ---
         initial_prompt_only = get_conversation_history(user_id)[:2]
         conversation_history_for_feed_template = initial_prompt_only.copy()
-        # --- 修改結束 ---
         
         feed_template_prompt = f"""
 你現在是小雲，一隻害羞、溫和有禮、充滿好奇心且非常愛吃的賓士公貓。用戶觸發了「餵小雲點心」功能。
@@ -2153,7 +2149,7 @@ def handle_text_message(event):
 
     payload = {
         "contents": conversation_history_for_payload,
-        "generationConfig": {"temperature": TEMPERATURE, "maxOutputTokens": 800}
+        "generationConfig": {"temperature": TEMPERATURE, "maxOutputTokens": 1200} # <-- 第2處修改：增加輸出空間
     }
     try:
         response = requests.post(gemini_url_with_key, headers=headers, json=payload, timeout=40)
