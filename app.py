@@ -2283,7 +2283,7 @@ def handle_sticker_message(event):
     
     payload = {
         "contents": conversation_history_for_payload, 
-        "generationConfig": {"temperature": TEMPERATURE, "maxOutputTokens": 500}
+        "generationConfig": {"temperature": TEMPERATURE, "maxOutputTokens": 4096}
     }
 
     try:
@@ -2352,7 +2352,7 @@ def handle_audio_message(event):
     
     payload = {
         "contents": conversation_history_for_payload, 
-        "generationConfig": {"temperature": TEMPERATURE, "maxOutputTokens": 500}
+        "generationConfig": {"temperature": TEMPERATURE, "maxOutputTokens": 4096}
     }
 
     try:
